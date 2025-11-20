@@ -1,0 +1,93 @@
+{
+  "shopName": "My Store",
+  "description": "Your online store description",
+  "logo": "/config/logo.svg",
+  "currency": {
+    "symbol": "$",
+    "code": "USD",
+    "position": "before"
+  },
+  "managerContact": "@your_manager",
+  "categories": [
+    {
+      "id": "category-1",
+      "name": "Category 1"
+    },
+    {
+      "id": "category-2",
+      "name": "Category 2"
+    },
+    {
+      "id": "category-3",
+      "name": "Category 3"
+    },
+    {
+      "id": "category-4",
+      "name": "Category 4"
+    },
+    {
+      "id": "category-5",
+      "name": "Category 5"
+    }
+  ],
+  "colorScheme": {
+    "background": "#FEFEFE",
+    "foreground": "#1A1A1A",
+    "card": "#FFFFFF",
+    "cardForeground": "#1A1A1A",
+    "primary": "#3B82F6",
+    "primaryForeground": "#FFFFFF",
+    "secondary": "#6366F1",
+    "secondaryForeground": "#FFFFFF",
+    "muted": "#F5F5F5",
+    "mutedForeground": "#737373",
+    "accent": "#8B5CF6",
+    "accentForeground": "#FFFFFF",
+    "border": "#E5E5E5",
+    "input": "#E5E5E5",
+    "ring": "#E5E7EB"
+  },
+  "sortOptions": [
+    {
+      "id": "new",
+      "label": "Новые"
+    },
+    {
+      "id": "price_asc",
+      "label": "Дешевле"
+    },
+    {
+      "id": "price_desc",
+      "label": "Дороже"
+    }
+  ],
+  "ui": {
+    "maxWidth": "420px",
+    "productsPerPage": 12,
+    "showCategoryIcons": true,
+    "showPriceFilter": true
+  },
+  "texts": {
+    "addToCart": "Добавить в корзину",
+    "addedToCart": "Добавлено в корзину",
+    "checkout": "Оформить заказ",
+    "total": "Итого",
+    "emptyCart": "Корзина пуста",
+    "emptyFavorites": "Нет избранных товаров",
+    "loading": "Загрузка..."
+  },
+  "fonts": {
+    "fontFamily": "Inter",
+    "fontFile": null,
+    "productName": {
+      "weight": 500
+    },
+    "price": {
+      "weight": 600
+    },
+    "description": {
+      "weight": 400
+    }
+  },
+  "logoSize": 32
+}

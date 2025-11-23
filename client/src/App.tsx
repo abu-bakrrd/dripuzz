@@ -18,9 +18,18 @@ import FontLoader from "@/components/FontLoader";
 
 type Page = 'home' | 'cart' | 'favorites' | 'product' | 'login' | 'register';
 
+interface PendingAction {
+  type: 'addToCart' | 'toggleFavorite' | 'navigate';
+  productId?: string;
+  selectedColor?: string;
+  selectedAttributes?: Record<string, string>;
+  targetPage?: Page;
+}
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState<Page>('home');
   const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   
   const { user: authUser, isLoading: isAuthLoading } = useAuth();
   const { user: telegramUser, isLoading: isTelegramLoading } = useTelegram();
@@ -45,16 +54,45 @@ function AppContent() {
   } = useFavorites();
 
   useEffect(() => {
-    if (!isUserLoading && !user && !isTelegramLoading && currentPage !== 'login' && currentPage !== 'register') {
-      setCurrentPage('login');
+    if (user && pendingAction && !isUserLoading) {
+      const action = pendingAction;
+      setPendingAction(null);
+      
+      if (action.type === 'addToCart' && action.productId) {
+        addToCart(action.productId, action.selectedColor, action.selectedAttributes);
+      } else if (action.type === 'toggleFavorite' && action.productId) {
+        toggleFavorite(action.productId);
+      }
+      
+      setCurrentPage(action.targetPage || 'home');
     }
-  }, [user, isUserLoading, isTelegramLoading, currentPage]);
+  }, [user, isUserLoading]);
 
   const handleAddToCart = (id: string, selectedColor?: string, selectedAttributes?: Record<string, string>) => {
+    if (!user) {
+      setPendingAction({ 
+        type: 'addToCart', 
+        productId: id, 
+        selectedColor, 
+        selectedAttributes,
+        targetPage: currentPage
+      });
+      setCurrentPage('register');
+      return;
+    }
     addToCart(id, selectedColor, selectedAttributes);
   };
 
   const handleToggleFavorite = (id: string) => {
+    if (!user) {
+      setPendingAction({ 
+        type: 'toggleFavorite', 
+        productId: id,
+        targetPage: currentPage
+      });
+      setCurrentPage('register');
+      return;
+    }
     toggleFavorite(id);
   };
 
@@ -114,7 +152,11 @@ function AppContent() {
     return (
       <Login
         onRegisterClick={() => setCurrentPage('register')}
-        onSuccess={() => setCurrentPage('home')}
+        onSuccess={() => {
+          if (!pendingAction) {
+            setCurrentPage('home');
+          }
+        }}
       />
     );
   }
@@ -123,28 +165,46 @@ function AppContent() {
     return (
       <Register
         onLoginClick={() => setCurrentPage('login')}
-        onSuccess={() => setCurrentPage('home')}
+        onSuccess={() => {
+          if (!pendingAction) {
+            setCurrentPage('home');
+          }
+        }}
       />
     );
   }
 
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-muted-foreground">Загрузка...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleCartClick = () => {
+    if (!user) {
+      setPendingAction({ 
+        type: 'navigate', 
+        targetPage: 'cart'
+      });
+      setCurrentPage('register');
+      return;
+    }
+    setCurrentPage('cart');
+  };
+
+  const handleFavoritesClick = () => {
+    if (!user) {
+      setPendingAction({ 
+        type: 'navigate', 
+        targetPage: 'favorites'
+      });
+      setCurrentPage('register');
+      return;
+    }
+    setCurrentPage('favorites');
+  };
 
   return (
     <div className="w-full mx-auto bg-background min-h-screen md:max-w-7xl">
       <div className="md:max-w-7xl mx-auto">
         {currentPage === 'home' && (
           <Home
-            onCartClick={() => setCurrentPage('cart')}
-            onFavoritesClick={() => setCurrentPage('favorites')}
+            onCartClick={handleCartClick}
+            onFavoritesClick={handleFavoritesClick}
             onProductClick={handleProductClick}
             cartCount={cartCount}
             favoritesCount={transformedFavoriteItems.length}

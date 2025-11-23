@@ -2,11 +2,12 @@ from flask import Flask, jsonify, request, send_from_directory, Blueprint, sessi
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__, static_folder='dist/public', static_url_path='')
 app.secret_key = os.environ.get("SESSION_SECRET")
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
 # Create API Blueprint with /api prefix for Render deployment
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -355,6 +356,7 @@ def register():
         conn.close()
         
         # Set session
+        session.permanent = True
         session['user_id'] = new_user['id']
         
         return jsonify({'user': new_user, 'message': 'Registration successful'}), 201
@@ -388,6 +390,7 @@ def login():
             return jsonify({'error': 'Invalid email or password'}), 401
         
         # Set session
+        session.permanent = True
         session['user_id'] = user['id']
         
         # Return user data without password hash
@@ -430,6 +433,39 @@ def get_current_user():
             return jsonify({'error': 'User not found'}), 404
         
         return jsonify({'user': user}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/profile', methods=['PATCH'])
+def update_profile():
+    try:
+        user_id = session.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
+        data = request.json
+        first_name = data.get('first_name')
+        last_name = data.get('last_name')
+        phone = data.get('phone')
+        telegram_username = data.get('telegram_username')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute(
+            '''UPDATE users 
+               SET first_name = %s, last_name = %s, phone = %s, telegram_username = %s 
+               WHERE id = %s 
+               RETURNING id, email, first_name, last_name, phone, telegram_username''',
+            (first_name, last_name, phone, telegram_username, user_id)
+        )
+        updated_user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'user': updated_user, 'message': 'Profile updated successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -615,6 +651,19 @@ def create_order():
         
         print(f"✅ Order saved to database: {order_id}")
         
+        # Keep only last 5 orders for this user (delete older ones after saving items)
+        cur.execute('''
+            WITH recent_orders AS (
+                SELECT id FROM orders 
+                WHERE user_id = %s 
+                ORDER BY created_at DESC 
+                LIMIT 5
+            )
+            DELETE FROM orders 
+            WHERE user_id = %s 
+            AND id NOT IN (SELECT id FROM recent_orders)
+        ''', (user_id, user_id))
+        
         # Clear the cart after order
         cur.execute('DELETE FROM cart WHERE user_id = %s', (user_id,))
         conn.commit()
@@ -641,13 +690,13 @@ def get_user_orders():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Get last 3 orders for user
+        # Get last 5 orders for user
         cur.execute('''
             SELECT id, user_id, total, status, created_at 
             FROM orders 
             WHERE user_id = %s 
             ORDER BY created_at DESC
-            LIMIT 3
+            LIMIT 5
         ''', (user_id,))
         orders = cur.fetchall()
         

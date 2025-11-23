@@ -200,6 +200,7 @@ function AppContent() {
           <Home
             onCartClick={handleCartClick}
             onFavoritesClick={handleFavoritesClick}
+            onLoginClick={() => setCurrentPage('login')}
             onProductClick={handleProductClick}
             cartCount={cartCount}
             favoritesCount={transformedFavoriteItems.length}

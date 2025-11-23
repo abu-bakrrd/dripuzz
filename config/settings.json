@@ -89,5 +89,11 @@
       "weight": 400
     }
   },
-  "logoSize": 32
+  "logoSize": 32,
+  "orderStatuses": {
+    "pending": "В обработке",
+    "processing": "Собирается",
+    "shipped": "В пути",
+    "delivered": "Доставлен"
+  }
 }

@@ -66,6 +66,9 @@ export interface AppConfig {
     };
   };
   logoSize?: number;
+  orderStatuses?: {
+    [key: string]: string;
+  };
 }
 
 export function useConfig() {

@@ -9,10 +9,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Package, LogOut } from 'lucide-react';
+import { User, Package, LogOut, Edit, Save, X } from 'lucide-react';
 import { useConfig } from '@/hooks/useConfig';
+import { useToast } from '@/hooks/use-toast';
 
 interface Order {
   id: string;
@@ -30,10 +32,19 @@ interface Order {
 }
 
 export default function ProfileDropdown() {
-  const { user, logout } = useAuth();
+  const { user, logout, checkAuth } = useAuth();
   const { config } = useConfig();
+  const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    first_name: '',
+    last_name: '',
+    phone: '',
+    telegram_username: '',
+  });
 
   const formatPrice = (price: number) => {
     const formattedPrice = (price / 100).toFixed(2);
@@ -78,11 +89,82 @@ export default function ProfileDropdown() {
   useEffect(() => {
     if (user) {
       loadOrders();
+      setEditFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone: user.phone || '',
+        telegram_username: user.telegram_username || '',
+      });
     }
   }, [user]);
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleEditChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditFormData({
+      ...editFormData,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch('/api/auth/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(editFormData),
+      });
+
+      if (response.ok) {
+        await checkAuth();
+        setIsEditing(false);
+        toast({
+          title: 'Успешно',
+          description: 'Профиль обновлен',
+        });
+      } else {
+        const data = await response.json();
+        toast({
+          title: 'Ошибка',
+          description: data.error || 'Не удалось обновить профиль',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Ошибка сети',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    if (user) {
+      setEditFormData({
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        phone: user.phone || '',
+        telegram_username: user.telegram_username || '',
+      });
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    const orderStatuses = config?.orderStatuses || {
+      pending: 'В обработке',
+      processing: 'Собирается',
+      shipped: 'В пути',
+      delivered: 'Доставлен',
+    };
+    return orderStatuses[status as keyof typeof orderStatuses] || status;
   };
 
   if (!user) return null;
@@ -112,31 +194,112 @@ export default function ProfileDropdown() {
           </TabsList>
           
           <TabsContent value="info" className="px-2 pb-2">
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Имя</p>
-                <p className="font-medium">{fullName}</p>
+            {isEditing ? (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Имя</label>
+                  <Input
+                    name="first_name"
+                    value={editFormData.first_name}
+                    onChange={handleEditChange}
+                    placeholder="Введите имя"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Фамилия</label>
+                  <Input
+                    name="last_name"
+                    value={editFormData.last_name}
+                    onChange={handleEditChange}
+                    placeholder="Введите фамилию"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Телефон</label>
+                  <Input
+                    name="phone"
+                    value={editFormData.phone}
+                    onChange={handleEditChange}
+                    placeholder="+7 (___) ___-__-__"
+                    className="h-8 text-sm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Telegram</label>
+                  <Input
+                    name="telegram_username"
+                    value={editFormData.telegram_username}
+                    onChange={handleEditChange}
+                    placeholder="@username"
+                    className="h-8 text-sm"
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-2">
+                  <Button
+                    onClick={handleSaveProfile}
+                    disabled={isSaving}
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    {isSaving ? 'Сохранение...' : 'Сохранить'}
+                  </Button>
+                  <Button
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Отмена
+                  </Button>
+                </div>
               </div>
-              
-              <div>
-                <p className="text-muted-foreground text-xs mb-1">Email</p>
-                <p className="font-medium">{user.email}</p>
-              </div>
-              
-              {user.phone && (
+            ) : (
+              <div className="space-y-3 text-sm">
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Email</p>
+                  <p className="font-medium">{user.email}</p>
+                </div>
+                
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Имя</p>
+                  <p className="font-medium">{user.first_name || 'Не указано'}</p>
+                </div>
+                
+                <div>
+                  <p className="text-muted-foreground text-xs mb-1">Фамилия</p>
+                  <p className="font-medium">{user.last_name || 'Не указано'}</p>
+                </div>
+                
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Телефон</p>
-                  <p className="font-medium">{user.phone}</p>
+                  <p className="font-medium">{user.phone || 'Не указано'}</p>
                 </div>
-              )}
-              
-              {user.telegram_username && (
+                
                 <div>
                   <p className="text-muted-foreground text-xs mb-1">Telegram</p>
-                  <p className="font-medium">{user.telegram_username}</p>
+                  <p className="font-medium">{user.telegram_username || 'Не указано'}</p>
                 </div>
-              )}
-            </div>
+
+                <Button
+                  onClick={() => setIsEditing(true)}
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2"
+                >
+                  <Edit className="h-3 w-3 mr-1" />
+                  Редактировать
+                </Button>
+              </div>
+            )}
           </TabsContent>
           
           <TabsContent value="orders" className="px-2 pb-2">
@@ -164,7 +327,7 @@ export default function ProfileDropdown() {
                           </p>
                         </div>
                         <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
-                          {order.status === 'pending' ? 'В обработке' : order.status}
+                          {getStatusLabel(order.status)}
                         </span>
                       </div>
                       

@@ -17,6 +17,7 @@ interface Product {
 interface HomeProps {
   onCartClick: () => void;
   onFavoritesClick: () => void;
+  onLoginClick: () => void;
   onProductClick: (id: string) => void;
   cartCount: number;
   favoritesCount: number;
@@ -29,6 +30,7 @@ interface HomeProps {
 export default function Home({
   onCartClick,
   onFavoritesClick,
+  onLoginClick,
   onProductClick,
   cartCount,
   favoritesCount,
@@ -125,6 +127,7 @@ export default function Home({
       <Header
         onCartClick={onCartClick}
         onFavoritesClick={onFavoritesClick}
+        onLoginClick={onLoginClick}
         cartCount={cartCount}
         favoritesCount={favoritesCount}
       />

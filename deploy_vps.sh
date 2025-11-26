@@ -314,10 +314,12 @@ fi
 
 # Создание .env файла
 print_step "Создание файла .env..."
+SESSION_SECRET=$(openssl rand -hex 32)
 cat > $APP_DIR/.env <<EOF
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
 PORT=$APP_PORT
 FLASK_ENV=production
+SESSION_SECRET=$SESSION_SECRET
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID=$TELEGRAM_CHAT_ID
 EOF

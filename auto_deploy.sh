@@ -180,10 +180,12 @@ fi
 
 # Создание .env
 print_step "Создание .env файла..."
+SESSION_SECRET=$(openssl rand -hex 32)
 cat > "$APP_DIR/.env" <<EOF
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost:5432/$DB_NAME
 PORT=$APP_PORT
 FLASK_ENV=production
+SESSION_SECRET=$SESSION_SECRET
 EOF
 
 chown "$APP_USER":"$APP_USER" "$APP_DIR/.env"

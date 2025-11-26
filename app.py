@@ -2,6 +2,8 @@ from flask import Flask, jsonify, request, send_from_directory, Blueprint, sessi
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
+import json
+import base64
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -163,8 +165,55 @@ def init_db():
             user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
             total INTEGER NOT NULL,
             status TEXT DEFAULT 'pending',
+            payment_method TEXT,
+            payment_status TEXT DEFAULT 'pending',
+            payment_id TEXT,
+            delivery_address TEXT,
+            delivery_lat DOUBLE PRECISION,
+            delivery_lng DOUBLE PRECISION,
+            customer_phone TEXT,
+            customer_name TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
+    ''')
+    
+    # Add new columns to orders table if they don't exist
+    cur.execute('''
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='payment_method') THEN
+                ALTER TABLE orders ADD COLUMN payment_method TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='payment_status') THEN
+                ALTER TABLE orders ADD COLUMN payment_status TEXT DEFAULT 'pending';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='payment_id') THEN
+                ALTER TABLE orders ADD COLUMN payment_id TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='delivery_address') THEN
+                ALTER TABLE orders ADD COLUMN delivery_address TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='delivery_lat') THEN
+                ALTER TABLE orders ADD COLUMN delivery_lat DOUBLE PRECISION;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='delivery_lng') THEN
+                ALTER TABLE orders ADD COLUMN delivery_lng DOUBLE PRECISION;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='customer_phone') THEN
+                ALTER TABLE orders ADD COLUMN customer_phone TEXT;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='customer_name') THEN
+                ALTER TABLE orders ADD COLUMN customer_name TEXT;
+            END IF;
+        END $$;
     ''')
     
     # Create order_items table
@@ -679,6 +728,457 @@ def create_order():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# Checkout endpoint with payment integration
+@app.route('/api/orders/checkout', methods=['POST'])
+def checkout_order():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        cart_items = data.get('items', [])
+        total = data.get('total', 0)
+        payment_method = data.get('payment_method')
+        delivery_address = data.get('delivery_address')
+        delivery_lat = data.get('delivery_lat')
+        delivery_lng = data.get('delivery_lng')
+        customer_name = data.get('customer_name')
+        customer_phone = data.get('customer_phone')
+        
+        print(f"\n{'='*50}")
+        print(f"💳 CHECKOUT REQUEST")
+        print(f"{'='*50}")
+        print(f"User ID: {user_id}")
+        print(f"Payment method: {payment_method}")
+        print(f"Delivery: {delivery_address}")
+        print(f"Total: {total}")
+        
+        # Get user info
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+        user_info = cur.fetchone()
+        
+        if not user_info:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'User not found'}), 404
+        
+        # Create order in database with delivery info
+        cur.execute(
+            '''INSERT INTO orders (user_id, total, status, payment_method, payment_status, 
+               delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *''',
+            (user_id, total, 'pending', payment_method, 'pending',
+             delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name)
+        )
+        order = cur.fetchone()
+        order_id = order['id']
+        
+        # Insert order items
+        import json as json_lib
+        for item in cart_items:
+            cur.execute(
+                '''INSERT INTO order_items (order_id, product_id, name, price, quantity, selected_color, selected_attributes) 
+                   VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                (order_id, item.get('id'), item.get('name'), item.get('price'), 
+                 item.get('quantity'), item.get('selected_color'),
+                 json_lib.dumps(item.get('selected_attributes')) if item.get('selected_attributes') else None)
+            )
+        
+        conn.commit()
+        
+        # Generate payment URL based on payment method
+        payment_url = None
+        
+        # Load payment config
+        config_path = os.path.join(os.path.dirname(__file__), 'config', 'settings.json')
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        payment_config = config.get('payment', {})
+        
+        if payment_method == 'click':
+            click_config = payment_config.get('click', {})
+            merchant_id = click_config.get('merchantId') or os.getenv('CLICK_MERCHANT_ID')
+            service_id = click_config.get('serviceId') or os.getenv('CLICK_SERVICE_ID')
+            
+            if merchant_id and service_id:
+                # Click payment URL format
+                payment_url = f"https://my.click.uz/services/pay?service_id={service_id}&merchant_id={merchant_id}&amount={total}&transaction_param={order_id}"
+                
+        elif payment_method == 'payme':
+            payme_config = payment_config.get('payme', {})
+            merchant_id = payme_config.get('merchantId') or os.getenv('PAYME_MERCHANT_ID')
+            
+            if merchant_id:
+                # Payme payment URL format (amount in tiyins)
+                import base64
+                amount_tiyins = total * 100
+                # Encode account data
+                account_data = f"m={merchant_id};ac.order_id={order_id};a={amount_tiyins}"
+                encoded = base64.b64encode(account_data.encode()).decode()
+                payment_url = f"https://checkout.paycom.uz/{encoded}"
+                
+        elif payment_method == 'uzum':
+            uzum_config = payment_config.get('uzum', {})
+            merchant_id = uzum_config.get('merchantId') or os.getenv('UZUM_MERCHANT_ID')
+            
+            if merchant_id:
+                # Uzum Bank payment - they use webhook system
+                # For now, store order and redirect to Uzum payment page
+                payment_url = f"https://payment.apelsin.uz/merchant?merchantId={merchant_id}&amount={total}&orderId={order_id}"
+        
+        # Update order with payment info
+        if payment_url:
+            cur.execute(
+                'UPDATE orders SET payment_id = %s WHERE id = %s',
+                (f"{payment_method}_{order_id}", order_id)
+            )
+            conn.commit()
+        
+        cur.close()
+        conn.close()
+        
+        print(f"✅ Order created: {order_id}")
+        print(f"💳 Payment URL: {payment_url}")
+        print(f"{'='*50}\n")
+        
+        return jsonify({
+            'order_id': order_id,
+            'payment_url': payment_url,
+            'message': 'Order created successfully'
+        }), 201
+        
+    except Exception as e:
+        print(f"❌ ERROR in checkout: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+# Payment webhooks for Click
+@app.route('/api/webhooks/click/prepare', methods=['POST'])
+def click_prepare():
+    try:
+        data = request.json or request.form.to_dict()
+        print(f"Click prepare webhook: {data}")
+        
+        click_trans_id = data.get('click_trans_id')
+        merchant_trans_id = data.get('merchant_trans_id')  # order_id
+        amount = data.get('amount')
+        
+        # Verify order exists
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM orders WHERE id = %s', (merchant_trans_id,))
+        order = cur.fetchone()
+        
+        if not order:
+            cur.close()
+            conn.close()
+            return jsonify({
+                'error': -5,
+                'error_note': 'Order not found'
+            })
+        
+        # Check amount matches
+        if int(float(amount)) != order['total']:
+            cur.close()
+            conn.close()
+            return jsonify({
+                'error': -2,
+                'error_note': 'Amount mismatch'
+            })
+        
+        # Update order with click transaction id
+        cur.execute(
+            'UPDATE orders SET payment_id = %s WHERE id = %s',
+            (click_trans_id, merchant_trans_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'error': 0,
+            'error_note': 'Success',
+            'click_trans_id': click_trans_id,
+            'merchant_trans_id': merchant_trans_id,
+            'merchant_prepare_id': merchant_trans_id
+        })
+        
+    except Exception as e:
+        print(f"Click prepare error: {e}")
+        return jsonify({'error': -1, 'error_note': str(e)})
+
+@app.route('/api/webhooks/click/complete', methods=['POST'])
+def click_complete():
+    try:
+        data = request.json or request.form.to_dict()
+        print(f"Click complete webhook: {data}")
+        
+        click_trans_id = data.get('click_trans_id')
+        merchant_trans_id = data.get('merchant_trans_id')  # order_id
+        error = data.get('error')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        if error == '0' or error == 0:
+            # Payment successful
+            cur.execute(
+                "UPDATE orders SET payment_status = 'paid', status = 'paid' WHERE id = %s",
+                (merchant_trans_id,)
+            )
+            print(f"✅ Click payment successful for order {merchant_trans_id}")
+        else:
+            # Payment failed
+            cur.execute(
+                "UPDATE orders SET payment_status = 'failed' WHERE id = %s",
+                (merchant_trans_id,)
+            )
+            print(f"❌ Click payment failed for order {merchant_trans_id}")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'error': 0,
+            'error_note': 'Success',
+            'click_trans_id': click_trans_id,
+            'merchant_trans_id': merchant_trans_id,
+            'merchant_confirm_id': merchant_trans_id
+        })
+        
+    except Exception as e:
+        print(f"Click complete error: {e}")
+        return jsonify({'error': -1, 'error_note': str(e)})
+
+# Payment webhooks for Payme
+@app.route('/api/webhooks/payme', methods=['POST'])
+def payme_webhook():
+    try:
+        data = request.json
+        print(f"Payme webhook: {data}")
+        
+        method = data.get('method')
+        params = data.get('params', {})
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        if method == 'CheckPerformTransaction':
+            # Check if order exists and can be paid
+            account = params.get('account', {})
+            order_id = account.get('order_id')
+            amount = params.get('amount', 0) // 100  # Convert tiyins to sum
+            
+            cur.execute('SELECT * FROM orders WHERE id = %s', (order_id,))
+            order = cur.fetchone()
+            
+            if not order:
+                cur.close()
+                conn.close()
+                return jsonify({
+                    'error': {'code': -31050, 'message': 'Order not found'}
+                })
+            
+            if order['total'] != amount:
+                cur.close()
+                conn.close()
+                return jsonify({
+                    'error': {'code': -31001, 'message': 'Amount mismatch'}
+                })
+            
+            cur.close()
+            conn.close()
+            return jsonify({'result': {'allow': True}})
+            
+        elif method == 'CreateTransaction':
+            account = params.get('account', {})
+            order_id = account.get('order_id')
+            transaction_id = params.get('id')
+            
+            cur.execute(
+                'UPDATE orders SET payment_id = %s WHERE id = %s',
+                (transaction_id, order_id)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return jsonify({
+                'result': {
+                    'create_time': int(datetime.now().timestamp() * 1000),
+                    'transaction': order_id,
+                    'state': 1
+                }
+            })
+            
+        elif method == 'PerformTransaction':
+            transaction_id = params.get('id')
+            
+            cur.execute(
+                "UPDATE orders SET payment_status = 'paid', status = 'paid' WHERE payment_id = %s RETURNING id",
+                (transaction_id,)
+            )
+            order = cur.fetchone()
+            conn.commit()
+            
+            if order:
+                print(f"✅ Payme payment successful for order {order['id']}")
+            
+            cur.close()
+            conn.close()
+            
+            return jsonify({
+                'result': {
+                    'perform_time': int(datetime.now().timestamp() * 1000),
+                    'transaction': transaction_id,
+                    'state': 2
+                }
+            })
+            
+        elif method == 'CancelTransaction':
+            transaction_id = params.get('id')
+            reason = params.get('reason')
+            
+            cur.execute(
+                "UPDATE orders SET payment_status = 'cancelled' WHERE payment_id = %s",
+                (transaction_id,)
+            )
+            conn.commit()
+            cur.close()
+            conn.close()
+            
+            return jsonify({
+                'result': {
+                    'cancel_time': int(datetime.now().timestamp() * 1000),
+                    'transaction': transaction_id,
+                    'state': -1
+                }
+            })
+        
+        cur.close()
+        conn.close()
+        return jsonify({'error': {'code': -32601, 'message': 'Method not found'}})
+        
+    except Exception as e:
+        print(f"Payme webhook error: {e}")
+        return jsonify({'error': {'code': -32400, 'message': str(e)}})
+
+# Payment webhooks for Uzum Bank
+@app.route('/api/webhooks/uzum/check', methods=['POST'])
+def uzum_check():
+    try:
+        data = request.json
+        print(f"Uzum check webhook: {data}")
+        
+        order_id = data.get('orderId')
+        amount = data.get('amount')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM orders WHERE id = %s', (order_id,))
+        order = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not order:
+            return jsonify({'status': 'ERROR', 'message': 'Order not found'})
+        
+        if order['total'] != int(amount):
+            return jsonify({'status': 'ERROR', 'message': 'Amount mismatch'})
+        
+        return jsonify({
+            'status': 'OK',
+            'data': {
+                'orderId': order_id,
+                'amount': order['total']
+            }
+        })
+        
+    except Exception as e:
+        print(f"Uzum check error: {e}")
+        return jsonify({'status': 'ERROR', 'message': str(e)})
+
+@app.route('/api/webhooks/uzum/create', methods=['POST'])
+def uzum_create():
+    try:
+        data = request.json
+        print(f"Uzum create webhook: {data}")
+        
+        order_id = data.get('orderId')
+        transaction_id = data.get('transactionId')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'UPDATE orders SET payment_id = %s WHERE id = %s',
+            (transaction_id, order_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'status': 'OK'})
+        
+    except Exception as e:
+        print(f"Uzum create error: {e}")
+        return jsonify({'status': 'ERROR', 'message': str(e)})
+
+@app.route('/api/webhooks/uzum/confirm', methods=['POST'])
+def uzum_confirm():
+    try:
+        data = request.json
+        print(f"Uzum confirm webhook: {data}")
+        
+        transaction_id = data.get('transactionId')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE orders SET payment_status = 'paid', status = 'paid' WHERE payment_id = %s RETURNING id",
+            (transaction_id,)
+        )
+        order = cur.fetchone()
+        conn.commit()
+        
+        if order:
+            print(f"✅ Uzum payment successful for order {order['id']}")
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({'status': 'OK'})
+        
+    except Exception as e:
+        print(f"Uzum confirm error: {e}")
+        return jsonify({'status': 'ERROR', 'message': str(e)})
+
+@app.route('/api/webhooks/uzum/reverse', methods=['POST'])
+def uzum_reverse():
+    try:
+        data = request.json
+        print(f"Uzum reverse webhook: {data}")
+        
+        transaction_id = data.get('transactionId')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE orders SET payment_status = 'cancelled' WHERE payment_id = %s",
+            (transaction_id,)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'status': 'OK'})
+        
+    except Exception as e:
+        print(f"Uzum reverse error: {e}")
+        return jsonify({'status': 'ERROR', 'message': str(e)})
+
 @app.route('/api/orders', methods=['GET'])
 def get_user_orders():
     try:
@@ -767,6 +1267,10 @@ def api_clear_cart(user_id):
 @api.route('/orders', methods=['POST'])
 def api_create_order():
     return create_order()
+
+@api.route('/orders/checkout', methods=['POST'])
+def api_checkout_order():
+    return checkout_order()
 
 # Register the API blueprint
 app.register_blueprint(api)

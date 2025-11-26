@@ -2,10 +2,11 @@ import { useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import CartItem from "@/components/CartItem";
-import OrderModal from "@/components/OrderModal";
+import CheckoutModal from "@/components/CheckoutModal";
 import { useAuth } from "@/contexts/AuthContext";
 import { apiRequest } from "@/lib/queryClient";
 import { useConfig } from "@/hooks/useConfig";
+import { useToast } from "@/hooks/use-toast";
 
 interface CartItemData {
   id: string;
@@ -13,6 +14,8 @@ interface CartItemData {
   price: number;
   quantity: number;
   images: string[];
+  selected_color?: string;
+  selected_attributes?: Record<string, string>;
 }
 
 interface CartProps {
@@ -21,6 +24,14 @@ interface CartProps {
   onQuantityChange: (id: string, quantity: number) => void;
   onRemoveItem: (id: string) => void;
   onClearCart: () => void;
+}
+
+interface DeliveryInfo {
+  address: string;
+  lat: number | null;
+  lng: number | null;
+  customerName: string;
+  customerPhone: string;
 }
 
 export default function Cart({
@@ -33,40 +44,72 @@ export default function Cart({
   const { formatPrice } = useConfig();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const orderItems = items.map((item) => ({
+    id: item.id,
     name: item.name,
     quantity: item.quantity,
     price: item.price,
+    selected_color: item.selected_color,
+    selected_attributes: item.selected_attributes,
   }));
 
   const handleCheckout = () => {
     setIsModalOpen(true);
   };
 
-  const handleOrderComplete = async () => {
+  const handlePaymentSelect = async (paymentMethod: string, deliveryInfo: DeliveryInfo): Promise<string | null> => {
     if (!user?.id) {
       console.error('User ID not available');
-      return;
+      toast({
+        title: "Ошибка",
+        description: "Необходимо авторизоваться",
+        variant: "destructive",
+      });
+      return null;
     }
 
     try {
-      console.log('Sending order:', { user_id: user.id, items: orderItems, total });
-      await apiRequest('/api/orders', {
+      const response = await apiRequest('/api/orders/checkout', {
         method: 'POST',
         body: JSON.stringify({
           user_id: user.id,
           items: orderItems,
           total: total,
+          payment_method: paymentMethod,
+          delivery_address: deliveryInfo.address,
+          delivery_lat: deliveryInfo.lat,
+          delivery_lng: deliveryInfo.lng,
+          customer_name: deliveryInfo.customerName,
+          customer_phone: deliveryInfo.customerPhone,
         }),
       });
-      console.log('Order sent successfully');
-      onClearCart();
+
+      if (response.payment_url) {
+        onClearCart();
+        return response.payment_url;
+      } else if (response.order_id) {
+        toast({
+          title: "Заказ создан",
+          description: `Номер заказа: ${response.order_id}`,
+        });
+        onClearCart();
+        setIsModalOpen(false);
+        return null;
+      }
+
+      return null;
     } catch (error) {
       console.error('Failed to create order:', error);
-      onClearCart();
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать заказ",
+        variant: "destructive",
+      });
+      return null;
     }
   };
 
@@ -138,12 +181,12 @@ export default function Cart({
         )}
       </div>
 
-      <OrderModal
+      <CheckoutModal
         isOpen={isModalOpen}
         items={orderItems}
         total={total}
         onClose={() => setIsModalOpen(false)}
-        onOrderComplete={handleOrderComplete}
+        onPaymentSelect={handlePaymentSelect}
       />
     </div>
   );

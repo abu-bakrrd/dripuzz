@@ -3,9 +3,9 @@
   "description": "Your online store description",
   "logo": "/config/logo.svg",
   "currency": {
-    "symbol": "$",
-    "code": "USD",
-    "position": "before"
+    "symbol": "сум",
+    "code": "UZS",
+    "position": "after"
   },
   "managerContact": "@your_manager",
   "categories": [
@@ -91,9 +91,37 @@
   },
   "logoSize": 32,
   "orderStatuses": {
-    "pending": "В обработке",
+    "pending": "Ожидает оплаты",
+    "paid": "Оплачен",
     "processing": "Собирается",
     "shipped": "В пути",
     "delivered": "Доставлен"
+  },
+  "payment": {
+    "click": {
+      "enabled": true,
+      "merchantId": "",
+      "serviceId": "",
+      "secretKey": ""
+    },
+    "payme": {
+      "enabled": true,
+      "merchantId": "",
+      "secretKey": ""
+    },
+    "uzum": {
+      "enabled": true,
+      "merchantId": "",
+      "secretKey": ""
+    }
+  },
+  "yandexMaps": {
+    "apiKey": "",
+    "defaultCenter": [41.311081, 69.240562],
+    "defaultZoom": 12
+  },
+  "delivery": {
+    "enabled": true,
+    "freeDeliveryNote": "Доставка оплачивается при получении"
   }
 }

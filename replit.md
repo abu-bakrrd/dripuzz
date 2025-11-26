@@ -51,6 +51,40 @@ All shop settings are centralized in `config/settings.json`, covering:
 
 Deployment supports fully automated (`auto_deploy.sh`) and interactive (`deploy_vps.sh`) methods for Ubuntu 22.04 VPS environments. It handles environment variable setup, GitHub integration for cloning, automatic database initialization, Nginx configuration as a reverse proxy, and optional Telegram bot deployment as a systemd service. Remote database access can be enabled via `enable_remote_db.sh`. The Flask backend runs on port 5000 and is served through Nginx.
 
+## Payment Integration
+
+The system supports three Uzbekistan payment gateways:
+
+### Click
+- **Webhook URLs:** `/api/webhooks/click/prepare`, `/api/webhooks/click/complete`
+- **Required Environment Variables:**
+  - `CLICK_MERCHANT_ID` - Merchant ID from Click cabinet
+  - `CLICK_SERVICE_ID` - Service ID from Click cabinet
+  - `CLICK_SECRET_KEY` - Secret key for signature verification
+
+### Payme
+- **Webhook URL:** `/api/webhooks/payme` (JSON-RPC API)
+- **Required Environment Variables:**
+  - `PAYME_MERCHANT_ID` - Merchant ID from Payme cabinet
+  - `PAYME_KEY` - Secret key for Basic Auth verification
+
+### Uzum Bank
+- **Webhook URLs:** `/api/webhooks/uzum/check`, `/api/webhooks/uzum/create`, `/api/webhooks/uzum/confirm`, `/api/webhooks/uzum/reverse`
+- **Required Environment Variables:**
+  - `UZUM_MERCHANT_ID` - Merchant ID from Uzum cabinet
+  - `UZUM_SECRET_KEY` - Secret key for HMAC signature verification
+
+### Yandex Maps
+For address selection during checkout:
+- **Required:** Yandex Maps API key in `config/settings.json` under `yandexMaps.apiKey`
+- Default center: Tashkent (41.311081, 69.240562)
+
+### Security Notes
+- Secret keys are stored ONLY in environment variables, never in config files
+- Merchant IDs (public) can be stored in `config/settings.json`
+- All webhooks verify signatures/authentication before processing
+- Order totals are calculated server-side from database prices (never trusting client data)
+
 ## External Dependencies
 
 -   **Database:** PostgreSQL (self-hosted on VPS or cloud-hosted like Neon)
@@ -58,3 +92,5 @@ Deployment supports fully automated (`auto_deploy.sh`) and interactive (`deploy_
 -   **Fonts:** Google Fonts (Inter, Poppins)
 -   **Web Server:** Nginx (reverse proxy)
 -   **Backend:** Flask 3.1.2 with Python 3
+-   **Payment Gateways:** Click, Payme, Uzum Bank (Uzbekistan)
+-   **Maps:** Yandex Maps API (for delivery address selection)

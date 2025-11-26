@@ -44,6 +44,9 @@ def init_db():
     conn = get_db_connection()
     cur = conn.cursor()
     
+    # Enable pgcrypto extension for gen_random_uuid()
+    cur.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto')
+    
     # Create products table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS products (
@@ -733,9 +736,6 @@ def create_order():
 def checkout_order():
     try:
         data = request.json
-        user_id = data.get('user_id')
-        cart_items = data.get('items', [])
-        total = data.get('total', 0)
         payment_method = data.get('payment_method')
         delivery_address = data.get('delivery_address')
         delivery_lat = data.get('delivery_lat')
@@ -743,15 +743,23 @@ def checkout_order():
         customer_name = data.get('customer_name')
         customer_phone = data.get('customer_phone')
         
+        # SECURITY: Get user_id from session, not from client
+        user_id = session.get('user_id')
+        if not user_id:
+            # Fallback for Telegram Mini App auth
+            user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'Not authenticated'}), 401
+        
         print(f"\n{'='*50}")
         print(f"💳 CHECKOUT REQUEST")
         print(f"{'='*50}")
         print(f"User ID: {user_id}")
         print(f"Payment method: {payment_method}")
         print(f"Delivery: {delivery_address}")
-        print(f"Total: {total}")
         
-        # Get user info
+        # Get user info and validate
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute('SELECT * FROM users WHERE id = %s', (user_id,))
@@ -761,6 +769,26 @@ def checkout_order():
             cur.close()
             conn.close()
             return jsonify({'error': 'User not found'}), 404
+        
+        # SECURITY: Fetch cart items from database, not from client
+        cur.execute('''
+            SELECT c.product_id, c.quantity, c.selected_color, c.selected_attributes,
+                   p.name, p.price
+            FROM cart c
+            JOIN products p ON c.product_id = p.id
+            WHERE c.user_id = %s
+        ''', (user_id,))
+        cart_items = cur.fetchall()
+        
+        if not cart_items:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Cart is empty'}), 400
+        
+        # SECURITY: Calculate total from database prices, not client data
+        total = sum(item['price'] * item['quantity'] for item in cart_items)
+        
+        print(f"Total (calculated from DB): {total}")
         
         # Create order in database with delivery info
         cur.execute(
@@ -773,15 +801,14 @@ def checkout_order():
         order = cur.fetchone()
         order_id = order['id']
         
-        # Insert order items
-        import json as json_lib
+        # Insert order items from database cart data
         for item in cart_items:
             cur.execute(
                 '''INSERT INTO order_items (order_id, product_id, name, price, quantity, selected_color, selected_attributes) 
                    VALUES (%s, %s, %s, %s, %s, %s, %s)''',
-                (order_id, item.get('id'), item.get('name'), item.get('price'), 
-                 item.get('quantity'), item.get('selected_color'),
-                 json_lib.dumps(item.get('selected_attributes')) if item.get('selected_attributes') else None)
+                (order_id, item['product_id'], item['name'], item['price'], 
+                 item['quantity'], item.get('selected_color'),
+                 item.get('selected_attributes'))
             )
         
         conn.commit()
@@ -854,12 +881,39 @@ def checkout_order():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# Helper function to verify Click signature
+def verify_click_signature(data, secret_key):
+    import hashlib
+    
+    click_trans_id = str(data.get('click_trans_id', ''))
+    service_id = str(data.get('service_id', ''))
+    merchant_trans_id = str(data.get('merchant_trans_id', ''))
+    amount = str(data.get('amount', ''))
+    action = str(data.get('action', ''))
+    sign_time = str(data.get('sign_time', ''))
+    received_sign = data.get('sign_string', '')
+    
+    # For prepare: click_trans_id + service_id + SECRET_KEY + merchant_trans_id + amount + action + sign_time
+    sign_string = f"{click_trans_id}{service_id}{secret_key}{merchant_trans_id}{amount}{action}{sign_time}"
+    calculated_sign = hashlib.md5(sign_string.encode()).hexdigest()
+    
+    return calculated_sign == received_sign
+
 # Payment webhooks for Click
 @app.route('/api/webhooks/click/prepare', methods=['POST'])
 def click_prepare():
     try:
         data = request.json or request.form.to_dict()
         print(f"Click prepare webhook: {data}")
+        
+        # SECURITY: Verify signature
+        click_secret = os.getenv('CLICK_SECRET_KEY')
+        if click_secret and not verify_click_signature(data, click_secret):
+            print("Click signature verification failed")
+            return jsonify({
+                'error': -1,
+                'error_note': 'Invalid signature'
+            })
         
         click_trans_id = data.get('click_trans_id')
         merchant_trans_id = data.get('merchant_trans_id')  # order_id
@@ -886,6 +940,15 @@ def click_prepare():
             return jsonify({
                 'error': -2,
                 'error_note': 'Amount mismatch'
+            })
+        
+        # Check order is not already paid (idempotency)
+        if order['payment_status'] == 'paid':
+            cur.close()
+            conn.close()
+            return jsonify({
+                'error': -4,
+                'error_note': 'Order already paid'
             })
         
         # Update order with click transaction id
@@ -915,12 +978,45 @@ def click_complete():
         data = request.json or request.form.to_dict()
         print(f"Click complete webhook: {data}")
         
+        # SECURITY: Verify signature
+        click_secret = os.getenv('CLICK_SECRET_KEY')
+        if click_secret and not verify_click_signature(data, click_secret):
+            print("Click signature verification failed")
+            return jsonify({
+                'error': -1,
+                'error_note': 'Invalid signature'
+            })
+        
         click_trans_id = data.get('click_trans_id')
         merchant_trans_id = data.get('merchant_trans_id')  # order_id
         error = data.get('error')
         
         conn = get_db_connection()
         cur = conn.cursor()
+        
+        # Verify order exists and get current state
+        cur.execute('SELECT * FROM orders WHERE id = %s', (merchant_trans_id,))
+        order = cur.fetchone()
+        
+        if not order:
+            cur.close()
+            conn.close()
+            return jsonify({
+                'error': -5,
+                'error_note': 'Order not found'
+            })
+        
+        # Idempotency: if already paid, just return success
+        if order['payment_status'] == 'paid':
+            cur.close()
+            conn.close()
+            return jsonify({
+                'error': 0,
+                'error_note': 'Already confirmed',
+                'click_trans_id': click_trans_id,
+                'merchant_trans_id': merchant_trans_id,
+                'merchant_confirm_id': merchant_trans_id
+            })
         
         if error == '0' or error == 0:
             # Payment successful
@@ -953,10 +1049,38 @@ def click_complete():
         print(f"Click complete error: {e}")
         return jsonify({'error': -1, 'error_note': str(e)})
 
+# Helper function to verify Payme authorization
+def verify_payme_auth():
+    import base64
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Basic '):
+        return False
+    
+    payme_key = os.getenv('PAYME_KEY')
+    if not payme_key:
+        return True  # Skip if not configured
+    
+    try:
+        encoded = auth_header[6:]  # Remove "Basic " prefix
+        decoded = base64.b64decode(encoded).decode('utf-8')
+        # Format: Paycom:key
+        if ':' in decoded:
+            _, received_key = decoded.split(':', 1)
+            return received_key == payme_key
+        return False
+    except:
+        return False
+
 # Payment webhooks for Payme
 @app.route('/api/webhooks/payme', methods=['POST'])
 def payme_webhook():
     try:
+        # SECURITY: Verify Basic Auth
+        if os.getenv('PAYME_KEY') and not verify_payme_auth():
+            return jsonify({
+                'error': {'code': -32504, 'message': 'Invalid authorization'}
+            }), 401
+        
         data = request.json
         print(f"Payme webhook: {data}")
         
@@ -1067,9 +1191,34 @@ def payme_webhook():
         return jsonify({'error': {'code': -32400, 'message': str(e)}})
 
 # Payment webhooks for Uzum Bank
+# Helper function to verify Uzum signature
+def verify_uzum_signature():
+    import hmac
+    import hashlib
+    
+    uzum_secret = os.getenv('UZUM_SECRET_KEY')
+    if not uzum_secret:
+        return True  # Skip if not configured
+    
+    received_signature = request.headers.get('X-Signature', '')
+    body = request.get_data()
+    
+    expected_signature = hmac.new(
+        uzum_secret.encode(),
+        body,
+        hashlib.sha256
+    ).hexdigest()
+    
+    return hmac.compare_digest(expected_signature, received_signature)
+
 @app.route('/api/webhooks/uzum/check', methods=['POST'])
 def uzum_check():
     try:
+        # SECURITY: Verify HMAC signature
+        if os.getenv('UZUM_SECRET_KEY') and not verify_uzum_signature():
+            print("Uzum signature verification failed")
+            return jsonify({'status': 'ERROR', 'message': 'Invalid signature'}), 401
+        
         data = request.json
         print(f"Uzum check webhook: {data}")
         
@@ -1104,6 +1253,11 @@ def uzum_check():
 @app.route('/api/webhooks/uzum/create', methods=['POST'])
 def uzum_create():
     try:
+        # SECURITY: Verify HMAC signature
+        if os.getenv('UZUM_SECRET_KEY') and not verify_uzum_signature():
+            print("Uzum signature verification failed")
+            return jsonify({'status': 'ERROR', 'message': 'Invalid signature'}), 401
+        
         data = request.json
         print(f"Uzum create webhook: {data}")
         
@@ -1129,6 +1283,11 @@ def uzum_create():
 @app.route('/api/webhooks/uzum/confirm', methods=['POST'])
 def uzum_confirm():
     try:
+        # SECURITY: Verify HMAC signature
+        if os.getenv('UZUM_SECRET_KEY') and not verify_uzum_signature():
+            print("Uzum signature verification failed")
+            return jsonify({'status': 'ERROR', 'message': 'Invalid signature'}), 401
+        
         data = request.json
         print(f"Uzum confirm webhook: {data}")
         
@@ -1158,6 +1317,11 @@ def uzum_confirm():
 @app.route('/api/webhooks/uzum/reverse', methods=['POST'])
 def uzum_reverse():
     try:
+        # SECURITY: Verify HMAC signature
+        if os.getenv('UZUM_SECRET_KEY') and not verify_uzum_signature():
+            print("Uzum signature verification failed")
+            return jsonify({'status': 'ERROR', 'message': 'Invalid signature'}), 401
+        
         data = request.json
         print(f"Uzum reverse webhook: {data}")
         

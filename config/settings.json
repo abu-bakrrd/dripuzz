@@ -101,18 +101,15 @@
     "click": {
       "enabled": true,
       "merchantId": "",
-      "serviceId": "",
-      "secretKey": ""
+      "serviceId": ""
     },
     "payme": {
       "enabled": true,
-      "merchantId": "",
-      "secretKey": ""
+      "merchantId": ""
     },
     "uzum": {
       "enabled": true,
-      "merchantId": "",
-      "secretKey": ""
+      "merchantId": ""
     }
   },
   "yandexMaps": {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
+import { Router, Route, Switch, useLocation } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -15,18 +16,16 @@ import Register from "@/pages/Register";
 import ThemeApplier from "@/components/ThemeApplier";
 import FontLoader from "@/components/FontLoader";
 
-type Page = 'home' | 'cart' | 'favorites' | 'product' | 'login' | 'register';
-
 interface PendingAction {
   type: 'addToCart' | 'toggleFavorite' | 'navigate';
   productId?: string;
   selectedColor?: string;
   selectedAttributes?: Record<string, string>;
-  targetPage?: Page;
+  targetPath?: string;
 }
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [location, setLocation] = useLocation();
   const [selectedProductId, setSelectedProductId] = useState<string>('');
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   
@@ -59,7 +58,7 @@ function AppContent() {
         toggleFavorite(action.productId);
       }
       
-      setCurrentPage(action.targetPage || 'home');
+      setLocation(action.targetPath || '/');
     }
   }, [user, isUserLoading]);
 
@@ -70,9 +69,9 @@ function AppContent() {
         productId: id, 
         selectedColor, 
         selectedAttributes,
-        targetPage: currentPage
+        targetPath: location
       });
-      setCurrentPage('register');
+      setLocation('/registration');
       return;
     }
     addToCart(id, selectedColor, selectedAttributes);
@@ -83,9 +82,9 @@ function AppContent() {
       setPendingAction({ 
         type: 'toggleFavorite', 
         productId: id,
-        targetPage: currentPage
+        targetPath: location
       });
-      setCurrentPage('register');
+      setLocation('/registration');
       return;
     }
     toggleFavorite(id);
@@ -93,7 +92,7 @@ function AppContent() {
 
   const handleProductClick = (id: string) => {
     setSelectedProductId(id);
-    setCurrentPage('product');
+    setLocation(`/product/${id}`);
   };
 
   const handleQuantityChange = (id: string, quantity: number) => {
@@ -143,116 +142,131 @@ function AppContent() {
     );
   }
 
-  if (currentPage === 'login') {
-    return (
-      <Login
-        onRegisterClick={() => setCurrentPage('register')}
-        onSuccess={() => {
-          if (!pendingAction) {
-            setCurrentPage('home');
-          }
-        }}
-      />
-    );
-  }
-
-  if (currentPage === 'register') {
-    return (
-      <Register
-        onLoginClick={() => setCurrentPage('login')}
-        onSuccess={() => {
-          if (!pendingAction) {
-            setCurrentPage('home');
-          }
-        }}
-      />
-    );
-  }
-
   const handleCartClick = () => {
     if (!user) {
       setPendingAction({ 
         type: 'navigate', 
-        targetPage: 'cart'
+        targetPath: '/cart'
       });
-      setCurrentPage('register');
+      setLocation('/registration');
       return;
     }
-    setCurrentPage('cart');
+    setLocation('/cart');
   };
 
   const handleFavoritesClick = () => {
     if (!user) {
       setPendingAction({ 
         type: 'navigate', 
-        targetPage: 'favorites'
+        targetPath: '/favorites'
       });
-      setCurrentPage('register');
+      setLocation('/registration');
       return;
     }
-    setCurrentPage('favorites');
+    setLocation('/favorites');
   };
 
   const handleAccountClick = () => {
     if (!user) {
-      setCurrentPage('login');
-    } else {
-      setCurrentPage('login');
+      setLocation('/login');
     }
   };
 
   return (
     <div className="w-full mx-auto bg-background min-h-screen">
       <div className="w-full">
-        {currentPage === 'home' && (
-          <Home
-            onCartClick={handleCartClick}
-            onFavoritesClick={handleFavoritesClick}
-            onAccountClick={handleAccountClick}
-            onProductClick={handleProductClick}
-            cartCount={cartCount}
-            favoritesCount={transformedFavoriteItems.length}
-            onAddToCart={handleAddToCart}
-            onToggleFavorite={handleToggleFavorite}
-            favoriteIds={favoriteIds}
-            cartItemIds={cartItemIds}
-          />
-        )}
-        
-        {currentPage === 'cart' && (
-          <Cart
-            items={transformedCartItems}
-            onBack={() => setCurrentPage('home')}
-            onQuantityChange={handleQuantityChange}
-            onRemoveItem={handleRemoveItem}
-            onClearCart={handleClearCart}
-          />
-        )}
-        
-        {currentPage === 'favorites' && (
-          <Favorites
-            items={transformedFavoriteItems}
-            onBack={() => setCurrentPage('home')}
-            onClearAll={() => {
-              favoriteIds.forEach(id => toggleFavorite(id));
+        <Switch>
+          <Route path="/login">
+            <Login
+              onRegisterClick={() => setLocation('/registration')}
+              onSuccess={() => {
+                if (!pendingAction) {
+                  setLocation('/');
+                }
+              }}
+            />
+          </Route>
+          
+          <Route path="/registration">
+            <Register
+              onLoginClick={() => setLocation('/login')}
+              onSuccess={() => {
+                if (!pendingAction) {
+                  setLocation('/');
+                }
+              }}
+            />
+          </Route>
+          
+          <Route path="/cart">
+            {user ? (
+              <Cart
+                items={transformedCartItems}
+                onBack={() => setLocation('/')}
+                onQuantityChange={handleQuantityChange}
+                onRemoveItem={handleRemoveItem}
+                onClearCart={handleClearCart}
+              />
+            ) : (
+              <Register
+                onLoginClick={() => setLocation('/login')}
+                onSuccess={() => setLocation('/cart')}
+              />
+            )}
+          </Route>
+          
+          <Route path="/favorites">
+            {user ? (
+              <Favorites
+                items={transformedFavoriteItems}
+                onBack={() => setLocation('/')}
+                onClearAll={() => {
+                  favoriteIds.forEach(id => toggleFavorite(id));
+                }}
+                onToggleFavorite={handleToggleFavorite}
+                onAddToCart={handleAddToCart}
+                onProductClick={handleProductClick}
+              />
+            ) : (
+              <Register
+                onLoginClick={() => setLocation('/login')}
+                onSuccess={() => setLocation('/favorites')}
+              />
+            )}
+          </Route>
+          
+          <Route path="/product/:id">
+            {(params) => {
+              const productId = params.id || selectedProductId;
+              return (
+                <Product
+                  productId={productId}
+                  onBack={() => setLocation('/')}
+                  onAddToCart={handleAddToCart}
+                  onToggleFavorite={handleToggleFavorite}
+                  isFavorite={favoriteIds.includes(productId)}
+                  isInCart={cartItemIds.includes(productId)}
+                  onCartClick={() => setLocation('/cart')}
+                />
+              );
             }}
-            onToggleFavorite={handleToggleFavorite}
-            onAddToCart={handleAddToCart}
-            onProductClick={handleProductClick}
-          />
-        )}
-        
-        {currentPage === 'product' && (
-          <Product
-            productId={selectedProductId}
-            onBack={() => setCurrentPage('home')}
-            onAddToCart={handleAddToCart}
-            onToggleFavorite={handleToggleFavorite}
-            isFavorite={favoriteIds.includes(selectedProductId)}
-            isInCart={cartItemIds.includes(selectedProductId)}
-            onCartClick={() => setCurrentPage('cart')}
-          />
-        )}
+          </Route>
+          
+          <Route path="/">
+            <Home
+              onCartClick={handleCartClick}
+              onFavoritesClick={handleFavoritesClick}
+              onAccountClick={handleAccountClick}
+              onProductClick={handleProductClick}
+              cartCount={cartCount}
+              favoritesCount={transformedFavoriteItems.length}
+              onAddToCart={handleAddToCart}
+              onToggleFavorite={handleToggleFavorite}
+              favoriteIds={favoriteIds}
+              cartItemIds={cartItemIds}
+            />
+          </Route>
+        </Switch>
       </div>
     </div>
   );
@@ -263,10 +277,12 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <ThemeApplier />
-          <FontLoader />
-          <AppContent />
-          <Toaster />
+          <Router>
+            <ThemeApplier />
+            <FontLoader />
+            <AppContent />
+            <Toaster />
+          </Router>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

@@ -5,7 +5,7 @@ import os
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__, static_folder='dist/public', static_url_path='')
+app = Flask(__name__, static_folder='dist/public', static_url_path='/static')
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
 
@@ -771,14 +771,19 @@ def api_create_order():
 # Register the API blueprint
 app.register_blueprint(api)
 
-# Serve React App - this must be the last route
+# Serve static assets (JS, CSS, images)
+@app.route('/assets/<path:filename>')
+def serve_assets(filename):
+    return send_from_directory(os.path.join(app.static_folder, 'assets'), filename)
+
+# Serve React App - catch-all route for SPA
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
-    # If path is a file and exists in static folder, serve it
-    if path and os.path.exists(os.path.join(app.static_folder, path)):
-        return send_from_directory(app.static_folder, path)
-    # Otherwise, serve index.html for SPA routing
+    # Skip API routes (handled by Blueprint)
+    if path.startswith('api/'):
+        return jsonify({'error': 'Not found'}), 404
+    # Serve index.html for all other routes (SPA routing)
     return send_from_directory(app.static_folder, 'index.html')
 
 # Initialize database tables on startup

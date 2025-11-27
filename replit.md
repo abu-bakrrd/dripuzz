@@ -34,6 +34,36 @@ The backend is a Flask 3.1.2 application, written in Python. It uses `psycopg2-b
 
 The system uses PostgreSQL (deployed on VPS). The database schema includes tables for `users`, `categories`, `products`, `favorites`, `cart`, `orders`, and `order_items`. Product details include colors (TEXT[] array) and up to two universal attributes (JSONB: name + values). UI/branding configurations reside in JSON files. User authentication uses email/password with secure password hashing. Orders are saved to the database for tracking and management. The system supports automatic database initialization on VPS deployment.
 
+### Admin Panel
+
+The system includes a comprehensive admin panel accessible at `/admin`:
+
+**Features:**
+- **Products Tab**: Add, edit, delete products with Cloudinary image upload support
+- **Categories Tab**: Full CRUD operations for product categories (stored in database)
+- **Orders Tab**: View all orders with customer info, product images, and status management
+- **Statistics Tab**: User counts, order metrics, revenue statistics, conversion rates
+
+**Admin API Endpoints:**
+- `POST /api/admin/login`: Admin authentication
+- `GET /api/admin/me`: Get admin user info
+- `GET/POST /api/admin/categories`: Category management
+- `PUT/DELETE /api/admin/categories/<id>`: Update/delete category
+- `GET/POST /api/admin/products`: Product management
+- `PUT/DELETE /api/admin/products/<id>`: Update/delete product
+- `GET /api/admin/orders`: Get all orders with filters
+- `PUT /api/admin/orders/<id>/status`: Update order status
+- `GET /api/admin/statistics`: Get shop statistics
+
+**Admin Setup:**
+1. Create a user account via registration on the main site
+2. Go to `/admin/login` - the system automatically detects if no admin exists
+3. If no admin exists, enter your credentials to become the first admin
+4. Alternatively, manually set admin via SQL:
+   ```sql
+   UPDATE users SET is_admin = TRUE WHERE email = 'your-admin@email.com';
+   ```
+
 ### Configuration
 
 All shop settings are centralized in `config/settings.json`, covering:

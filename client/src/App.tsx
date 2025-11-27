@@ -15,6 +15,8 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ThemeApplier from "@/components/ThemeApplier";
 import FontLoader from "@/components/FontLoader";
+import AdminLogin from "@/pages/admin/AdminLogin";
+import AdminLayout from "@/pages/admin/AdminLayout";
 
 interface PendingAction {
   type: 'addToCart' | 'toggleFavorite' | 'navigate';
@@ -176,6 +178,14 @@ function AppContent() {
     <div className="w-full mx-auto bg-background min-h-screen">
       <div className="w-full">
         <Switch>
+          <Route path="/admin/login">
+            <AdminLogin />
+          </Route>
+          
+          <Route path="/admin">
+            <AdminLayout />
+          </Route>
+          
           <Route path="/login">
             <Login
               onRegisterClick={() => setLocation('/registration')}

@@ -117,7 +117,22 @@ def init_db():
                           WHERE table_name='users' AND column_name='created_at') THEN
                 ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='users' AND column_name='is_admin') THEN
+                ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
+            END IF;
         END $$;
+    ''')
+    
+    # Create categories table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT NOT NULL,
+            icon TEXT,
+            sort_order INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     ''')
     
     # Create favorites table (many-to-many: users <-> products)
@@ -1377,6 +1392,586 @@ def get_user_orders():
         conn.close()
         
         return jsonify(orders), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# ADMIN API ENDPOINTS
+# ============================================================
+
+def require_admin():
+    """Check if current user is admin"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT is_admin FROM users WHERE id = %s', (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if user and user.get('is_admin'):
+        return user_id
+    return None
+
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    try:
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM users WHERE email = %s', (email,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if not user or not user.get('password_hash'):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        if not check_password_hash(user['password_hash'], password):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        if not user.get('is_admin'):
+            return jsonify({'error': 'Access denied. Admin privileges required.'}), 403
+        
+        session.permanent = True
+        session['user_id'] = user['id']
+        
+        return jsonify({
+            'user': {
+                'id': user['id'],
+                'email': user['email'],
+                'first_name': user.get('first_name'),
+                'is_admin': True
+            },
+            'message': 'Admin login successful'
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/setup', methods=['POST'])
+def admin_setup():
+    """One-time admin setup - promotes first user to admin if no admins exist"""
+    try:
+        data = request.json
+        email = data.get('email')
+        password = data.get('password')
+        
+        if not email or not password:
+            return jsonify({'error': 'Email and password are required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if any admin already exists
+        cur.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = TRUE')
+        admin_count = cur.fetchone()['count']
+        
+        if admin_count > 0:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Admin already exists. Use admin login instead.'}), 403
+        
+        # Verify user credentials
+        cur.execute('SELECT * FROM users WHERE email = %s', (email,))
+        user = cur.fetchone()
+        
+        if not user or not user.get('password_hash'):
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'User not found. Register first.'}), 404
+        
+        if not check_password_hash(user['password_hash'], password):
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Invalid credentials'}), 401
+        
+        # Promote user to admin
+        cur.execute('UPDATE users SET is_admin = TRUE WHERE id = %s RETURNING *', (user['id'],))
+        updated_user = cur.fetchone()
+        conn.commit()
+        
+        # Set session
+        session.permanent = True
+        session['user_id'] = updated_user['id']
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'user': {
+                'id': updated_user['id'],
+                'email': updated_user['email'],
+                'first_name': updated_user.get('first_name'),
+                'is_admin': True
+            },
+            'message': 'Admin setup successful. You are now the admin.'
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/check-setup', methods=['GET'])
+def admin_check_setup():
+    """Check if admin setup is needed"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = TRUE')
+        admin_count = cur.fetchone()['count']
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'needs_setup': admin_count == 0
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/me', methods=['GET'])
+def admin_me():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, email, first_name, last_name, is_admin FROM users WHERE id = %s', (admin_id,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'user': user}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Admin Categories API
+@app.route('/api/admin/categories', methods=['GET'])
+def admin_get_categories():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT * FROM categories ORDER BY sort_order, name')
+        categories = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(categories), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/categories', methods=['POST'])
+def admin_create_category():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        name = data.get('name')
+        icon = data.get('icon', '')
+        sort_order = data.get('sort_order', 0)
+        
+        if not name:
+            return jsonify({'error': 'Category name is required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'INSERT INTO categories (name, icon, sort_order) VALUES (%s, %s, %s) RETURNING *',
+            (name, icon, sort_order)
+        )
+        category = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify(category), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/categories/<category_id>', methods=['PUT'])
+def admin_update_category(category_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        name = data.get('name')
+        icon = data.get('icon', '')
+        sort_order = data.get('sort_order', 0)
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'UPDATE categories SET name = %s, icon = %s, sort_order = %s WHERE id = %s RETURNING *',
+            (name, icon, sort_order, category_id)
+        )
+        category = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if category:
+            return jsonify(category), 200
+        return jsonify({'error': 'Category not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/categories/<category_id>', methods=['DELETE'])
+def admin_delete_category(category_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM categories WHERE id = %s', (category_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Category deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Admin Products API
+@app.route('/api/admin/products', methods=['GET'])
+def admin_get_products():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        category = request.args.get('category')
+        search = request.args.get('search')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = 'SELECT * FROM products WHERE 1=1'
+        params = []
+        
+        if category:
+            query += ' AND category_id = %s'
+            params.append(category)
+        
+        if search:
+            query += ' AND name ILIKE %s'
+            params.append(f'%{search}%')
+        
+        query += ' ORDER BY name'
+        
+        cur.execute(query, params)
+        products = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(products), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/products', methods=['POST'])
+def admin_create_product():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        price = data.get('price')
+        images = data.get('images', [])
+        category_id = data.get('category_id')
+        colors = data.get('colors', [])
+        attributes = data.get('attributes')
+        
+        if not name or price is None:
+            return jsonify({'error': 'Name and price are required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            '''INSERT INTO products (name, description, price, images, category_id, colors, attributes) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING *''',
+            (name, description, price, images, category_id, colors, 
+             json.dumps(attributes) if attributes else None)
+        )
+        product = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify(product), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/products/<product_id>', methods=['PUT'])
+def admin_update_product(product_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        name = data.get('name')
+        description = data.get('description', '')
+        price = data.get('price')
+        images = data.get('images', [])
+        category_id = data.get('category_id')
+        colors = data.get('colors', [])
+        attributes = data.get('attributes')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            '''UPDATE products SET name = %s, description = %s, price = %s, images = %s, 
+               category_id = %s, colors = %s, attributes = %s WHERE id = %s RETURNING *''',
+            (name, description, price, images, category_id, colors, 
+             json.dumps(attributes) if attributes else None, product_id)
+        )
+        product = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if product:
+            return jsonify(product), 200
+        return jsonify({'error': 'Product not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/products/<product_id>', methods=['DELETE'])
+def admin_delete_product(product_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Product deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Admin Orders API
+@app.route('/api/admin/orders', methods=['GET'])
+def admin_get_orders():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        status = request.args.get('status')
+        limit = request.args.get('limit', 50, type=int)
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        query = '''
+            SELECT o.*, u.email as user_email, u.first_name, u.last_name, u.phone as user_phone
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.id
+            WHERE 1=1
+        '''
+        params = []
+        
+        if status:
+            query += ' AND o.status = %s'
+            params.append(status)
+        
+        query += ' ORDER BY o.created_at DESC LIMIT %s'
+        params.append(limit)
+        
+        cur.execute(query, params)
+        orders = cur.fetchall()
+        
+        # Get items for each order
+        for order in orders:
+            cur.execute('''
+                SELECT oi.*, p.images as product_images
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = %s
+            ''', (order['id'],))
+            order['items'] = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(orders), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/orders/<order_id>', methods=['GET'])
+def admin_get_order(order_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT o.*, u.email as user_email, u.first_name, u.last_name, u.phone as user_phone
+            FROM orders o
+            LEFT JOIN users u ON o.user_id = u.id
+            WHERE o.id = %s
+        ''', (order_id,))
+        order = cur.fetchone()
+        
+        if not order:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Order not found'}), 404
+        
+        cur.execute('''
+            SELECT oi.*, p.images as product_images
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = %s
+        ''', (order_id,))
+        order['items'] = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(order), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/orders/<order_id>/status', methods=['PUT'])
+def admin_update_order_status(order_id):
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        status = data.get('status')
+        
+        if not status:
+            return jsonify({'error': 'Status is required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'UPDATE orders SET status = %s WHERE id = %s RETURNING *',
+            (status, order_id)
+        )
+        order = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if order:
+            return jsonify(order), 200
+        return jsonify({'error': 'Order not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Admin Statistics API
+@app.route('/api/admin/statistics', methods=['GET'])
+def admin_get_statistics():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Total users
+        cur.execute('SELECT COUNT(*) as count FROM users')
+        total_users = cur.fetchone()['count']
+        
+        # Users with orders
+        cur.execute('SELECT COUNT(DISTINCT user_id) as count FROM orders')
+        users_with_orders = cur.fetchone()['count']
+        
+        # Total orders
+        cur.execute('SELECT COUNT(*) as count FROM orders')
+        total_orders = cur.fetchone()['count']
+        
+        # Total revenue
+        cur.execute("SELECT COALESCE(SUM(total), 0) as sum FROM orders WHERE status != 'cancelled'")
+        total_revenue = cur.fetchone()['sum']
+        
+        # Orders by status
+        cur.execute('''
+            SELECT status, COUNT(*) as count 
+            FROM orders 
+            GROUP BY status
+        ''')
+        orders_by_status = {row['status']: row['count'] for row in cur.fetchall()}
+        
+        # Total products
+        cur.execute('SELECT COUNT(*) as count FROM products')
+        total_products = cur.fetchone()['count']
+        
+        # Total categories
+        cur.execute('SELECT COUNT(*) as count FROM categories')
+        total_categories = cur.fetchone()['count']
+        
+        # Recent orders (last 7 days)
+        cur.execute('''
+            SELECT DATE(created_at) as date, COUNT(*) as count, SUM(total) as revenue
+            FROM orders 
+            WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'
+            GROUP BY DATE(created_at)
+            ORDER BY date
+        ''')
+        recent_orders = cur.fetchall()
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'total_users': total_users,
+            'users_with_orders': users_with_orders,
+            'total_orders': total_orders,
+            'total_revenue': total_revenue,
+            'orders_by_status': orders_by_status,
+            'total_products': total_products,
+            'total_categories': total_categories,
+            'recent_orders': recent_orders
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Public categories API (for frontend)
+@app.route('/api/categories', methods=['GET'])
+def get_categories():
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, name, icon FROM categories ORDER BY sort_order, name')
+        categories = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(categories), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

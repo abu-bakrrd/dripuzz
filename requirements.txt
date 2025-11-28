@@ -25,3 +25,4 @@ pyTelegramBotAPI
 python-dotenv
 requests
 werkzeug
+cryptography

@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Package, FolderOpen, ShoppingCart, BarChart3, LogOut } from 'lucide-react';
+import { Package, FolderOpen, ShoppingCart, BarChart3, Settings, LogOut } from 'lucide-react';
 import AdminProducts from './AdminProducts';
 import AdminCategories from './AdminCategories';
 import AdminOrders from './AdminOrders';
 import AdminStatistics from './AdminStatistics';
+import AdminSettings from './AdminSettings';
 
 export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState('products');
@@ -66,7 +67,7 @@ export default function AdminLayout() {
 
       <div className="max-w-7xl mx-auto px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-5 mb-6">
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Товары</span>
@@ -83,12 +84,17 @@ export default function AdminLayout() {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Статистика</span>
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Настройки</span>
+            </TabsTrigger>
           </TabsList>
 
           {activeTab === 'products' && <AdminProducts />}
           {activeTab === 'categories' && <AdminCategories />}
           {activeTab === 'orders' && <AdminOrders />}
           {activeTab === 'statistics' && <AdminStatistics />}
+          {activeTab === 'settings' && <AdminSettings />}
         </Tabs>
       </div>
     </div>

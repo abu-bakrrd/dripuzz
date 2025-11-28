@@ -4,14 +4,39 @@ from psycopg2.extras import RealDictCursor
 import os
 import json
 import base64
+import hashlib
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
 import cloudinary.uploader
+from cryptography.fernet import Fernet
 
 app = Flask(__name__, static_folder='dist/public', static_url_path='/static')
 app.secret_key = os.environ.get("SESSION_SECRET")
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=30)
+
+# Encryption for sensitive settings
+def get_encryption_key():
+    key = os.environ.get("SETTINGS_ENCRYPTION_KEY")
+    if not key:
+        key = os.environ.get("SESSION_SECRET", "default-key-change-me")
+    key_bytes = hashlib.sha256(key.encode()).digest()
+    return base64.urlsafe_b64encode(key_bytes)
+
+def encrypt_value(value):
+    if not value:
+        return None
+    f = Fernet(get_encryption_key())
+    return f.encrypt(value.encode()).decode()
+
+def decrypt_value(encrypted_value):
+    if not encrypted_value:
+        return None
+    try:
+        f = Fernet(get_encryption_key())
+        return f.decrypt(encrypted_value.encode()).decode()
+    except Exception:
+        return None
 
 # Create API Blueprint with /api prefix for Render deployment
 api = Blueprint('api', __name__, url_prefix='/api')
@@ -250,9 +275,74 @@ def init_db():
         )
     ''')
     
+    # Create platform_settings table for storing encrypted settings
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS platform_settings (
+            key VARCHAR PRIMARY KEY,
+            value TEXT,
+            is_secret BOOLEAN DEFAULT FALSE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
+
+# Helper functions for platform settings
+def get_platform_setting(key):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT value, is_secret FROM platform_settings WHERE key = %s', (key,))
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        if result:
+            if result['is_secret']:
+                return decrypt_value(result['value'])
+            return result['value']
+        return None
+    except Exception:
+        return None
+
+def set_platform_setting(key, value, is_secret=False):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        stored_value = encrypt_value(value) if is_secret and value else value
+        cur.execute('''
+            INSERT INTO platform_settings (key, value, is_secret, updated_at)
+            VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (key) DO UPDATE SET 
+                value = EXCLUDED.value,
+                is_secret = EXCLUDED.is_secret,
+                updated_at = CURRENT_TIMESTAMP
+        ''', (key, stored_value, is_secret))
+        conn.commit()
+        cur.close()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+def get_cloudinary_config():
+    cloud_name = get_platform_setting('cloudinary_cloud_name')
+    api_key = get_platform_setting('cloudinary_api_key')
+    api_secret = get_platform_setting('cloudinary_api_secret')
+    
+    if not cloud_name:
+        cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
+    if not api_key:
+        api_key = os.getenv('CLOUDINARY_API_KEY')
+    if not api_secret:
+        api_secret = os.getenv('CLOUDINARY_API_SECRET')
+    
+    return {
+        'cloud_name': cloud_name,
+        'api_key': api_key,
+        'api_secret': api_secret
+    }
 
 # API Routes
 
@@ -2039,18 +2129,19 @@ def api_checkout_order():
 
 @app.route('/api/upload', methods=['POST'])
 def upload_image():
-    """Upload image to Cloudinary using server-side credentials"""
+    """Upload image to Cloudinary using server-side credentials from DB or env"""
     try:
         admin_id = require_admin()
         if not admin_id:
             return jsonify({'error': 'Доступ запрещён. Требуются права администратора.'}), 403
         
-        cloud_name = os.getenv('CLOUDINARY_CLOUD_NAME')
-        api_key = os.getenv('CLOUDINARY_API_KEY')
-        api_secret = os.getenv('CLOUDINARY_API_SECRET')
+        config = get_cloudinary_config()
+        cloud_name = config['cloud_name']
+        api_key = config['api_key']
+        api_secret = config['api_secret']
         
         if not all([cloud_name, api_key, api_secret]):
-            return jsonify({'error': 'Cloudinary не настроен. Добавьте CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET в переменные окружения.'}), 500
+            return jsonify({'error': 'Cloudinary не настроен. Настройте Cloudinary в разделе "Настройки" админ-панели.'}), 500
         
         cloudinary.config(
             cloud_name=cloud_name,
@@ -2078,6 +2169,67 @@ def upload_image():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Admin Settings API
+@app.route('/api/admin/settings/cloudinary', methods=['GET'])
+def admin_get_cloudinary_settings():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        config = get_cloudinary_config()
+        return jsonify({
+            'cloud_name': config['cloud_name'] or '',
+            'api_key': config['api_key'] or '',
+            'has_api_secret': bool(config['api_secret'])
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/settings/cloudinary', methods=['PUT'])
+def admin_update_cloudinary_settings():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        cloud_name = data.get('cloud_name', '')
+        api_key = data.get('api_key', '')
+        api_secret = data.get('api_secret')
+        
+        set_platform_setting('cloudinary_cloud_name', cloud_name, is_secret=False)
+        set_platform_setting('cloudinary_api_key', api_key, is_secret=False)
+        
+        if api_secret:
+            set_platform_setting('cloudinary_api_secret', api_secret, is_secret=True)
+        
+        return jsonify({'message': 'Настройки Cloudinary сохранены'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/settings/cloudinary/test', methods=['POST'])
+def admin_test_cloudinary():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        config = get_cloudinary_config()
+        if not all([config['cloud_name'], config['api_key'], config['api_secret']]):
+            return jsonify({'success': False, 'error': 'Не все настройки заполнены'}), 200
+        
+        cloudinary.config(
+            cloud_name=config['cloud_name'],
+            api_key=config['api_key'],
+            api_secret=config['api_secret']
+        )
+        
+        result = cloudinary.api.ping()
+        return jsonify({'success': True, 'message': 'Подключение успешно'}), 200
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 200
 
 # Register the API blueprint
 app.register_blueprint(api)

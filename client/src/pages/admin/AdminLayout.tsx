@@ -66,36 +66,38 @@ export default function AdminLayout() {
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 py-4">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className={`grid w-full mb-6 ${admin?.is_superadmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
-            <TabsTrigger value="products" className="flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              <span className="hidden sm:inline">Товары</span>
-            </TabsTrigger>
-            <TabsTrigger value="categories" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
-              <span className="hidden sm:inline">Категории</span>
-            </TabsTrigger>
-            <TabsTrigger value="orders" className="flex items-center gap-2">
-              <ShoppingCart className="h-4 w-4" />
-              <span className="hidden sm:inline">Заказы</span>
-            </TabsTrigger>
-            <TabsTrigger value="statistics" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Статистика</span>
-            </TabsTrigger>
-            {admin?.is_superadmin && (
-              <TabsTrigger value="managers" className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                <span className="hidden sm:inline">Админы</span>
+          <div className="overflow-x-auto -mx-2 px-2 mb-6">
+            <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-5 lg:grid-cols-6 gap-1">
+              <TabsTrigger value="products" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Package className="h-4 w-4 flex-shrink-0" />
+                <span>Товары</span>
               </TabsTrigger>
-            )}
-            <TabsTrigger value="settings" className="flex items-center gap-2">
-              <Settings className="h-4 w-4" />
-              <span className="hidden sm:inline">Настройки</span>
-            </TabsTrigger>
-          </TabsList>
+              <TabsTrigger value="categories" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                <span>Категории</span>
+              </TabsTrigger>
+              <TabsTrigger value="orders" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <ShoppingCart className="h-4 w-4 flex-shrink-0" />
+                <span>Заказы</span>
+              </TabsTrigger>
+              <TabsTrigger value="statistics" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <BarChart3 className="h-4 w-4 flex-shrink-0" />
+                <span>Статистика</span>
+              </TabsTrigger>
+              {admin?.is_superadmin && (
+                <TabsTrigger value="managers" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                  <Users className="h-4 w-4 flex-shrink-0" />
+                  <span>Админы</span>
+                </TabsTrigger>
+              )}
+              <TabsTrigger value="settings" className="flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap">
+                <Settings className="h-4 w-4 flex-shrink-0" />
+                <span>Настройки</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           {activeTab === 'products' && <AdminProducts />}
           {activeTab === 'categories' && <AdminCategories />}

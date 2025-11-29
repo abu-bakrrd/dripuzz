@@ -301,12 +301,14 @@ export default function AdminSettings() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="telegram" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="telegram">Telegram</TabsTrigger>
-          <TabsTrigger value="cloudinary">Cloudinary</TabsTrigger>
-          <TabsTrigger value="payments">Платежи</TabsTrigger>
-          <TabsTrigger value="maps">Карты</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-2 px-2">
+          <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-4 gap-1">
+            <TabsTrigger value="telegram" className="whitespace-nowrap px-3 text-xs sm:text-sm">Telegram</TabsTrigger>
+            <TabsTrigger value="cloudinary" className="whitespace-nowrap px-3 text-xs sm:text-sm">Cloudinary</TabsTrigger>
+            <TabsTrigger value="payments" className="whitespace-nowrap px-3 text-xs sm:text-sm">Платежи</TabsTrigger>
+            <TabsTrigger value="maps" className="whitespace-nowrap px-3 text-xs sm:text-sm">Карты</TabsTrigger>
+          </TabsList>
+        </div>
         
         <TabsContent value="telegram" className="space-y-4 mt-4">
           <Card>
@@ -511,7 +513,7 @@ export default function AdminSettings() {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Merchant ID</Label>
                   <Input

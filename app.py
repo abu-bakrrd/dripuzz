@@ -6,6 +6,11 @@ import json
 import base64
 import hashlib
 import requests
+import re
+import secrets
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import cloudinary
@@ -149,7 +154,23 @@ def init_db():
                           WHERE table_name='users' AND column_name='is_admin') THEN
                 ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE;
             END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='users' AND column_name='is_superadmin') THEN
+                ALTER TABLE users ADD COLUMN is_superadmin BOOLEAN DEFAULT FALSE;
+            END IF;
         END $$;
+    ''')
+    
+    # Create password_reset_tokens table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS password_reset_tokens (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+            token VARCHAR(64) UNIQUE NOT NULL,
+            expires_at TIMESTAMP NOT NULL,
+            used BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
     ''')
     
     # Create categories table
@@ -399,6 +420,134 @@ def get_payment_config(provider):
         }
     return {}
 
+# ============================================================
+# VALIDATION FUNCTIONS
+# ============================================================
+
+def validate_email(email):
+    """Validate email format"""
+    if not email:
+        return False, "Email обязателен"
+    
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, email):
+        return False, "Неверный формат email"
+    
+    return True, None
+
+def validate_phone(phone):
+    """Validate phone format - accepts various formats"""
+    if not phone:
+        return True, None  # Phone is optional
+    
+    # Remove all non-digit characters except +
+    cleaned = re.sub(r'[^\d+]', '', phone)
+    
+    # Check if it's a valid phone number (7-15 digits, optionally starting with +)
+    if cleaned.startswith('+'):
+        digits = cleaned[1:]
+    else:
+        digits = cleaned
+    
+    if len(digits) < 7 or len(digits) > 15:
+        return False, "Телефон должен содержать от 7 до 15 цифр"
+    
+    if not digits.isdigit():
+        return False, "Телефон должен содержать только цифры"
+    
+    return True, None
+
+# ============================================================
+# EMAIL FUNCTIONS (SMTP)
+# ============================================================
+
+def get_smtp_config():
+    """Get SMTP config from DB or env"""
+    return {
+        'host': get_platform_setting('smtp_host') or os.getenv('SMTP_HOST', ''),
+        'port': int(get_platform_setting('smtp_port') or os.getenv('SMTP_PORT', '587')),
+        'user': get_platform_setting('smtp_user') or os.getenv('SMTP_USER', ''),
+        'password': get_platform_setting('smtp_password') or os.getenv('SMTP_PASSWORD', ''),
+        'from_email': get_platform_setting('smtp_from_email') or os.getenv('SMTP_FROM_EMAIL', ''),
+        'from_name': get_platform_setting('smtp_from_name') or os.getenv('SMTP_FROM_NAME', 'Магазин'),
+        'use_tls': (get_platform_setting('smtp_use_tls') or os.getenv('SMTP_USE_TLS', 'true')).lower() == 'true'
+    }
+
+def send_email(to_email, subject, html_content, text_content=None):
+    """Send email via SMTP"""
+    try:
+        config = get_smtp_config()
+        
+        if not config['host'] or not config['user'] or not config['password']:
+            print("SMTP not configured")
+            return False
+        
+        msg = MIMEMultipart('alternative')
+        msg['Subject'] = subject
+        msg['From'] = f"{config['from_name']} <{config['from_email'] or config['user']}>"
+        msg['To'] = to_email
+        
+        if text_content:
+            msg.attach(MIMEText(text_content, 'plain', 'utf-8'))
+        msg.attach(MIMEText(html_content, 'html', 'utf-8'))
+        
+        if config['use_tls']:
+            server = smtplib.SMTP(config['host'], config['port'])
+            server.starttls()
+        else:
+            server = smtplib.SMTP_SSL(config['host'], config['port'])
+        
+        server.login(config['user'], config['password'])
+        server.send_message(msg)
+        server.quit()
+        
+        print(f"✅ Email sent to {to_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Email sending failed: {e}")
+        return False
+
+def send_password_reset_email(email, token, site_url):
+    """Send password reset email"""
+    reset_link = f"{site_url}/reset-password?token={token}"
+    
+    html_content = f"""
+    <html>
+    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h2 style="color: #333;">Сброс пароля</h2>
+        <p>Вы запросили сброс пароля. Нажмите на кнопку ниже, чтобы установить новый пароль:</p>
+        <p style="text-align: center; margin: 30px 0;">
+            <a href="{reset_link}" style="background-color: #4F46E5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                Сбросить пароль
+            </a>
+        </p>
+        <p style="color: #666; font-size: 14px;">
+            Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.
+        </p>
+        <p style="color: #666; font-size: 14px;">
+            Ссылка действительна в течение 1 часа.
+        </p>
+        <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+        <p style="color: #999; font-size: 12px;">
+            Или скопируйте эту ссылку: {reset_link}
+        </p>
+    </body>
+    </html>
+    """
+    
+    text_content = f"""
+    Сброс пароля
+    
+    Вы запросили сброс пароля. Перейдите по ссылке ниже, чтобы установить новый пароль:
+    
+    {reset_link}
+    
+    Если вы не запрашивали сброс пароля, просто проигнорируйте это письмо.
+    Ссылка действительна в течение 1 часа.
+    """
+    
+    return send_email(email, "Сброс пароля", html_content, text_content)
+
 # Telegram notification function
 def send_telegram_notification(order_data, order_items):
     """Send order notification to Telegram admin"""
@@ -606,18 +755,29 @@ def remove_from_favorites(user_id, product_id):
 def register():
     try:
         data = request.json
-        email = data.get('email')
+        email = data.get('email', '').strip().lower()
         password = data.get('password')
         first_name = data.get('first_name', '')
         last_name = data.get('last_name', '')
         phone = data.get('phone', '')
         telegram_username = data.get('telegram_username', '')
         
-        if not email or not password:
-            return jsonify({'error': 'Email and password are required'}), 400
+        # Validate email
+        is_valid, error_msg = validate_email(email)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate phone
+        is_valid, error_msg = validate_phone(phone)
+        if not is_valid:
+            return jsonify({'error': error_msg}), 400
+        
+        # Validate password
+        if not password:
+            return jsonify({'error': 'Пароль обязателен'}), 400
         
         if len(password) < 6:
-            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+            return jsonify({'error': 'Пароль должен быть не менее 6 символов'}), 400
         
         conn = get_db_connection()
         cur = conn.cursor()
@@ -629,7 +789,7 @@ def register():
         if existing_user:
             cur.close()
             conn.close()
-            return jsonify({'error': 'User with this email already exists'}), 400
+            return jsonify({'error': 'Пользователь с таким email уже существует'}), 400
         
         # Create new user
         password_hash = generate_password_hash(password)
@@ -647,7 +807,7 @@ def register():
         session.permanent = True
         session['user_id'] = new_user['id']
         
-        return jsonify({'user': new_user, 'message': 'Registration successful'}), 201
+        return jsonify({'user': new_user, 'message': 'Регистрация успешна'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -700,6 +860,150 @@ def login():
 def logout():
     session.clear()
     return jsonify({'message': 'Logged out successfully'}), 200
+
+# ============================================================
+# PASSWORD RESET API
+# ============================================================
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def forgot_password():
+    """Request password reset - sends email with reset link"""
+    try:
+        data = request.json
+        email = data.get('email', '').strip().lower()
+        
+        if not email:
+            return jsonify({'error': 'Email обязателен'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Find user by email
+        cur.execute('SELECT id, email FROM users WHERE email = %s', (email,))
+        user = cur.fetchone()
+        
+        if not user:
+            cur.close()
+            conn.close()
+            # Don't reveal if email exists
+            return jsonify({'message': 'Если аккаунт существует, на email будет отправлена ссылка для сброса пароля'}), 200
+        
+        # Generate secure token
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now() + timedelta(hours=1)
+        
+        # Delete any existing tokens for this user
+        cur.execute('DELETE FROM password_reset_tokens WHERE user_id = %s', (user['id'],))
+        
+        # Create new token
+        cur.execute(
+            'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (%s, %s, %s)',
+            (user['id'], token, expires_at)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        # Get site URL from request
+        site_url = request.headers.get('Origin') or request.host_url.rstrip('/')
+        
+        # Send email
+        email_sent = send_password_reset_email(email, token, site_url)
+        
+        if email_sent:
+            return jsonify({'message': 'Ссылка для сброса пароля отправлена на email'}), 200
+        else:
+            return jsonify({'error': 'Не удалось отправить email. Проверьте настройки SMTP.'}), 500
+            
+    except Exception as e:
+        print(f"Forgot password error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def reset_password():
+    """Reset password using token from email"""
+    try:
+        data = request.json
+        token = data.get('token')
+        new_password = data.get('password')
+        
+        if not token:
+            return jsonify({'error': 'Токен обязателен'}), 400
+        
+        if not new_password or len(new_password) < 6:
+            return jsonify({'error': 'Пароль должен быть не менее 6 символов'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Find valid token
+        cur.execute('''
+            SELECT t.*, u.email 
+            FROM password_reset_tokens t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.token = %s AND t.used = FALSE AND t.expires_at > NOW()
+        ''', (token,))
+        token_data = cur.fetchone()
+        
+        if not token_data:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Недействительная или просроченная ссылка. Запросите сброс пароля повторно.'}), 400
+        
+        # Update password
+        password_hash = generate_password_hash(new_password)
+        cur.execute(
+            'UPDATE users SET password_hash = %s WHERE id = %s',
+            (password_hash, token_data['user_id'])
+        )
+        
+        # Mark token as used
+        cur.execute(
+            'UPDATE password_reset_tokens SET used = TRUE WHERE id = %s',
+            (token_data['id'],)
+        )
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Пароль успешно изменён'}), 200
+        
+    except Exception as e:
+        print(f"Reset password error: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/auth/verify-reset-token', methods=['POST'])
+def verify_reset_token():
+    """Verify if password reset token is valid"""
+    try:
+        data = request.json
+        token = data.get('token')
+        
+        if not token:
+            return jsonify({'valid': False, 'error': 'Токен обязателен'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute('''
+            SELECT t.id, u.email 
+            FROM password_reset_tokens t
+            JOIN users u ON t.user_id = u.id
+            WHERE t.token = %s AND t.used = FALSE AND t.expires_at > NOW()
+        ''', (token,))
+        token_data = cur.fetchone()
+        
+        cur.close()
+        conn.close()
+        
+        if token_data:
+            return jsonify({'valid': True, 'email': token_data['email']}), 200
+        else:
+            return jsonify({'valid': False, 'error': 'Недействительная или просроченная ссылка'}), 400
+            
+    except Exception as e:
+        return jsonify({'valid': False, 'error': str(e)}), 500
 
 @app.route('/api/auth/me', methods=['GET'])
 def get_current_user():
@@ -1665,6 +1969,23 @@ def require_admin():
         return user_id
     return None
 
+def require_superadmin():
+    """Check if current user is superadmin (main admin)"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return None
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT is_admin, is_superadmin FROM users WHERE id = %s', (user_id,))
+    user = cur.fetchone()
+    cur.close()
+    conn.close()
+    
+    if user and user.get('is_superadmin'):
+        return user_id
+    return None
+
 @app.route('/api/admin/login', methods=['POST'])
 def admin_login():
     try:
@@ -1743,8 +2064,8 @@ def admin_setup():
             conn.close()
             return jsonify({'error': 'Invalid credentials'}), 401
         
-        # Promote user to admin
-        cur.execute('UPDATE users SET is_admin = TRUE WHERE id = %s RETURNING *', (user['id'],))
+        # Promote user to superadmin (first admin is always superadmin)
+        cur.execute('UPDATE users SET is_admin = TRUE, is_superadmin = TRUE WHERE id = %s RETURNING *', (user['id'],))
         updated_user = cur.fetchone()
         conn.commit()
         
@@ -1760,9 +2081,10 @@ def admin_setup():
                 'id': updated_user['id'],
                 'email': updated_user['email'],
                 'first_name': updated_user.get('first_name'),
-                'is_admin': True
+                'is_admin': True,
+                'is_superadmin': True
             },
-            'message': 'Admin setup successful. You are now the admin.'
+            'message': 'Admin setup successful. You are now the superadmin.'
         }), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -1793,12 +2115,159 @@ def admin_me():
         
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute('SELECT id, email, first_name, last_name, is_admin FROM users WHERE id = %s', (admin_id,))
+        cur.execute('SELECT id, email, first_name, last_name, is_admin, is_superadmin FROM users WHERE id = %s', (admin_id,))
         user = cur.fetchone()
         cur.close()
         conn.close()
         
         return jsonify({'user': user}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# ADMIN MANAGEMENT API (Superadmin only)
+# ============================================================
+
+@app.route('/api/admin/admins', methods=['GET'])
+def get_all_admins():
+    """Get list of all admins (superadmin only)"""
+    try:
+        superadmin_id = require_superadmin()
+        if not superadmin_id:
+            return jsonify({'error': 'Только главный администратор может управлять админами'}), 403
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT id, email, first_name, last_name, phone, is_admin, is_superadmin, created_at 
+            FROM users 
+            WHERE is_admin = TRUE 
+            ORDER BY is_superadmin DESC, created_at ASC
+        ''')
+        admins = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(admins), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/admins/users', methods=['GET'])
+def get_users_for_admin():
+    """Get list of regular users that can be promoted to admin"""
+    try:
+        superadmin_id = require_superadmin()
+        if not superadmin_id:
+            return jsonify({'error': 'Только главный администратор может управлять админами'}), 403
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT id, email, first_name, last_name, phone, created_at 
+            FROM users 
+            WHERE is_admin = FALSE OR is_admin IS NULL
+            ORDER BY created_at DESC
+        ''')
+        users = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(users), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/admins', methods=['POST'])
+def add_admin():
+    """Promote user to admin (superadmin only)"""
+    try:
+        superadmin_id = require_superadmin()
+        if not superadmin_id:
+            return jsonify({'error': 'Только главный администратор может добавлять админов'}), 403
+        
+        data = request.json
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'ID пользователя обязателен'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute('SELECT id, email, is_admin FROM users WHERE id = %s', (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Пользователь не найден'}), 404
+        
+        if user.get('is_admin'):
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Пользователь уже является администратором'}), 400
+        
+        # Promote to admin
+        cur.execute(
+            'UPDATE users SET is_admin = TRUE WHERE id = %s RETURNING id, email, first_name, last_name, is_admin, is_superadmin',
+            (user_id,)
+        )
+        updated_user = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'message': 'Пользователь назначен администратором',
+            'admin': updated_user
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/admins/<admin_id>', methods=['DELETE'])
+def remove_admin(admin_id):
+    """Remove admin privileges from user (superadmin only)"""
+    try:
+        superadmin_id = require_superadmin()
+        if not superadmin_id:
+            return jsonify({'error': 'Только главный администратор может удалять админов'}), 403
+        
+        # Prevent superadmin from removing themselves
+        if admin_id == superadmin_id:
+            return jsonify({'error': 'Нельзя удалить себя из администраторов'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check if target user exists and is admin
+        cur.execute('SELECT id, is_admin, is_superadmin FROM users WHERE id = %s', (admin_id,))
+        target_user = cur.fetchone()
+        
+        if not target_user:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Пользователь не найден'}), 404
+        
+        if target_user.get('is_superadmin'):
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Нельзя удалить главного администратора'}), 400
+        
+        if not target_user.get('is_admin'):
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Пользователь не является администратором'}), 400
+        
+        # Remove admin privileges
+        cur.execute(
+            'UPDATE users SET is_admin = FALSE WHERE id = %s',
+            (admin_id,)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Права администратора удалены'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

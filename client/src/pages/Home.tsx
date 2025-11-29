@@ -145,11 +145,14 @@ export default function Home({
         priceFrom={priceFrom}
         priceTo={priceTo}
         searchQuery={searchQuery}
+        products={products}
+        isLoadingProducts={isLoadingProducts}
         onCategoryChange={setSelectedCategory}
         onSortChange={setSelectedSort}
         onPriceFromChange={setPriceFrom}
         onPriceToChange={setPriceTo}
         onSearchChange={setSearchQuery}
+        onProductClick={onProductClick}
         onReset={handleResetFilters}
       />
 

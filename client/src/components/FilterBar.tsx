@@ -1,4 +1,4 @@
-import { X, Search } from "lucide-react";
+import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -7,6 +7,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import SearchWithSuggestions from "./SearchWithSuggestions";
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  images: string[];
+}
 
 interface FilterBarProps {
   categories?: { id: string; name: string; icon?: string }[];
@@ -15,11 +23,14 @@ interface FilterBarProps {
   priceFrom?: string;
   priceTo?: string;
   searchQuery?: string;
+  products?: Product[];
+  isLoadingProducts?: boolean;
   onCategoryChange?: (category: string) => void;
   onSortChange?: (sort: string) => void;
   onPriceFromChange?: (price: string) => void;
   onPriceToChange?: (price: string) => void;
   onSearchChange?: (query: string) => void;
+  onProductClick?: (id: string) => void;
   onReset?: () => void;
 }
 
@@ -37,11 +48,14 @@ export default function FilterBar({
   priceFrom = "",
   priceTo = "",
   searchQuery = "",
+  products = [],
+  isLoadingProducts = false,
   onCategoryChange,
   onSortChange,
   onPriceFromChange,
   onPriceToChange,
   onSearchChange,
+  onProductClick,
   onReset,
 }: FilterBarProps) {
 
@@ -50,16 +64,14 @@ export default function FilterBar({
   return (
     <div className="sticky top-[61px] md:top-[69px] z-40 bg-background border-b border-border py-3 md:py-4" data-testid="filter-bar">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        {/* Search Bar */}
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Поиск товаров..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange?.(e.target.value)}
-            className="w-full h-8 pl-9 pr-3 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-            data-testid="input-search"
+        {/* Search Bar with Suggestions */}
+        <div className="mb-3">
+          <SearchWithSuggestions
+            products={products}
+            searchQuery={searchQuery}
+            onSearchChange={(query) => onSearchChange?.(query)}
+            onProductClick={(id) => onProductClick?.(id)}
+            isLoading={isLoadingProducts}
           />
         </div>
 

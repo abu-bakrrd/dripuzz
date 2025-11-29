@@ -55,8 +55,11 @@ The system includes a comprehensive admin panel accessible at `/admin`:
 - `GET /api/admin/orders`: Get all orders with filters
 - `PUT /api/admin/orders/<id>/status`: Update order status
 - `GET /api/admin/statistics`: Get shop statistics
-- `GET/PUT /api/admin/settings/cloudinary`: Cloudinary configuration (encrypted storage)
+- `GET/PUT /api/admin/settings/cloudinary`: Cloudinary configuration (encrypted storage via Fernet)
 - `POST /api/admin/settings/cloudinary/test`: Test Cloudinary connection
+- `GET/PUT /api/admin/settings/payments`: Payment systems configuration
+- `GET/PUT /api/admin/settings/telegram`: Telegram notifications configuration
+- `GET/PUT /api/admin/settings/smtp`: SMTP email configuration
 
 **Admin Setup:**
 1. Create a user account via registration on the main site

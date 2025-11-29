@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Package, FolderOpen, ShoppingCart, BarChart3, Settings, LogOut } from 'lucide-react';
+import { Package, FolderOpen, ShoppingCart, BarChart3, Settings, LogOut, Users } from 'lucide-react';
 import AdminProducts from './AdminProducts';
 import AdminCategories from './AdminCategories';
 import AdminOrders from './AdminOrders';
 import AdminStatistics from './AdminStatistics';
 import AdminSettings from './AdminSettings';
+import AdminManagers from './AdminManagers';
 
 export default function AdminLayout() {
   const [activeTab, setActiveTab] = useState('products');
@@ -67,7 +68,7 @@ export default function AdminLayout() {
 
       <div className="max-w-7xl mx-auto px-4 py-4">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 mb-6">
+          <TabsList className={`grid w-full mb-6 ${admin?.is_superadmin ? 'grid-cols-6' : 'grid-cols-5'}`}>
             <TabsTrigger value="products" className="flex items-center gap-2">
               <Package className="h-4 w-4" />
               <span className="hidden sm:inline">Товары</span>
@@ -84,6 +85,12 @@ export default function AdminLayout() {
               <BarChart3 className="h-4 w-4" />
               <span className="hidden sm:inline">Статистика</span>
             </TabsTrigger>
+            {admin?.is_superadmin && (
+              <TabsTrigger value="managers" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                <span className="hidden sm:inline">Админы</span>
+              </TabsTrigger>
+            )}
             <TabsTrigger value="settings" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Настройки</span>
@@ -94,6 +101,7 @@ export default function AdminLayout() {
           {activeTab === 'categories' && <AdminCategories />}
           {activeTab === 'orders' && <AdminOrders />}
           {activeTab === 'statistics' && <AdminStatistics />}
+          {activeTab === 'managers' && admin?.is_superadmin && <AdminManagers />}
           {activeTab === 'settings' && <AdminSettings />}
         </Tabs>
       </div>

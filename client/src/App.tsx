@@ -13,6 +13,8 @@ import Favorites from "@/pages/Favorites";
 import Product from "@/pages/Product";
 import Login from "@/pages/Login";
 import Register from "@/pages/Register";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
 import ThemeApplier from "@/components/ThemeApplier";
 import FontLoader from "@/components/FontLoader";
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -206,6 +208,14 @@ function AppContent() {
                 }
               }}
             />
+          </Route>
+          
+          <Route path="/forgot-password">
+            <ForgotPassword />
+          </Route>
+          
+          <Route path="/reset-password">
+            <ResetPassword />
           </Route>
           
           <Route path="/cart">

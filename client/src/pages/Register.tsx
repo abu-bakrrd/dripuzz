@@ -3,11 +3,34 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { AlertCircle } from 'lucide-react';
 
 interface RegisterProps {
   onLoginClick: () => void;
   onSuccess: () => void;
 }
+
+const validateEmail = (email: string): { valid: boolean; error?: string } => {
+  if (!email) return { valid: false, error: 'Email обязателен' };
+  const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  if (!emailPattern.test(email)) {
+    return { valid: false, error: 'Неверный формат email' };
+  }
+  return { valid: true };
+};
+
+const validatePhone = (phone: string): { valid: boolean; error?: string } => {
+  if (!phone) return { valid: true }; // Phone is optional
+  const cleaned = phone.replace(/[^\d+]/g, '');
+  const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+  if (digits.length < 7 || digits.length > 15) {
+    return { valid: false, error: 'Телефон должен содержать от 7 до 15 цифр' };
+  }
+  if (!/^\d+$/.test(digits)) {
+    return { valid: false, error: 'Телефон должен содержать только цифры' };
+  }
+  return { valid: true };
+};
 
 export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
   const { register } = useAuth();
@@ -22,37 +45,57 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
     password: '',
     confirmPassword: '',
   });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const clearError = (field: string) => {
+    if (errors[field]) {
+      setErrors(prev => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    
+    // Validate email
+    const emailValidation = validateEmail(formData.email);
+    if (!emailValidation.valid) {
+      newErrors.email = emailValidation.error!;
+    }
+    
+    // Validate phone
+    const phoneValidation = validatePhone(formData.phone);
+    if (!phoneValidation.valid) {
+      newErrors.phone = phoneValidation.error!;
+    }
     
     if (formData.password !== formData.confirmPassword) {
-      toast({
-        title: 'Ошибка',
-        description: 'Пароли не совпадают',
-        variant: 'destructive',
-      });
-      return;
+      newErrors.confirmPassword = 'Пароли не совпадают';
     }
 
     if (formData.password.length < 6) {
-      toast({
-        title: 'Ошибка',
-        description: 'Пароль должен быть не менее 6 символов',
-        variant: 'destructive',
-      });
-      return;
+      newErrors.password = 'Пароль должен быть не менее 6 символов';
     }
 
     if (!formData.telegram_username) {
+      newErrors.telegram_username = 'Telegram username обязателен';
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       toast({
         title: 'Ошибка',
-        description: 'Telegram username обязателен',
+        description: Object.values(newErrors)[0],
         variant: 'destructive',
       });
       return;
     }
-
+    
+    setErrors({});
     setLoading(true);
     const result = await register({
       email: formData.email,
@@ -81,10 +124,12 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value,
+      [name]: value,
     });
+    clearError(name);
   };
 
   return (
@@ -128,21 +173,32 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
                 onChange={handleChange}
                 required
                 placeholder="example@email.com"
-                className="w-full"
+                className={`w-full ${errors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {errors.email && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.email}
+                </p>
+              )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Телефон *</label>
+              <label className="block text-sm font-medium mb-1.5">Телефон</label>
               <Input
                 type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                required
                 placeholder="+7 (999) 123-45-67"
-                className="w-full"
+                className={`w-full ${errors.phone ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {errors.phone && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.phone}
+                </p>
+              )}
             </div>
 
             <div>
@@ -154,8 +210,14 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
                 onChange={handleChange}
                 required
                 placeholder="@username"
-                className="w-full"
+                className={`w-full ${errors.telegram_username ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {errors.telegram_username && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.telegram_username}
+                </p>
+              )}
             </div>
 
             <div>
@@ -167,8 +229,14 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
                 onChange={handleChange}
                 required
                 placeholder="Минимум 6 символов"
-                className="w-full"
+                className={`w-full ${errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {errors.password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.password}
+                </p>
+              )}
             </div>
 
             <div>
@@ -180,8 +248,14 @@ export default function Register({ onLoginClick, onSuccess }: RegisterProps) {
                 onChange={handleChange}
                 required
                 placeholder="Повторите пароль"
-                className="w-full"
+                className={`w-full ${errors.confirmPassword ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
               />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {errors.confirmPassword}
+                </p>
+              )}
             </div>
 
             <Button

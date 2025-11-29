@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -68,7 +69,12 @@ export default function Login({ onRegisterClick, onSuccess }: LoginProps) {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1.5">Пароль</label>
+              <div className="flex justify-between items-center mb-1.5">
+                <label className="block text-sm font-medium">Пароль</label>
+                <Link href="/forgot-password" className="text-xs text-primary hover:underline">
+                  Забыли пароль?
+                </Link>
+              </div>
               <Input
                 type="password"
                 name="password"

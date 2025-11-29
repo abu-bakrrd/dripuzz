@@ -159,6 +159,60 @@ Each new order triggers a message containing:
 4. Set `adminChatId` in `config/settings.json`
 5. Set `enabled: true` in `telegramNotifications` config
 
+## Admin Management (Superadmin Only)
+
+The first admin created becomes the "superadmin" and can manage other administrators.
+
+### API Endpoints
+- `GET /api/admin/admins` - List all admins (superadmin only)
+- `GET /api/admin/admins/users` - List users that can be promoted to admin
+- `POST /api/admin/admins` - Add new admin (requires `user_id` in body)
+- `DELETE /api/admin/admins/<admin_id>` - Remove admin privileges
+
+### Features
+- Superadmin tab appears in admin panel for managing other admins
+- Regular admins cannot manage other admins
+- Superadmin cannot remove themselves
+- Other superadmins cannot be removed
+
+## Password Reset via Email (SMTP)
+
+Users can reset their password via email.
+
+### Frontend Routes
+- `/forgot-password` - Request password reset email
+- `/reset-password?token=xxx` - Reset password with token
+
+### API Endpoints
+- `POST /api/auth/forgot-password` - Request password reset (sends email)
+- `POST /api/auth/verify-reset-token` - Verify if token is valid
+- `POST /api/auth/reset-password` - Reset password with token
+
+### SMTP Configuration
+Environment variables or database settings:
+- `SMTP_HOST` - SMTP server (e.g., smtp.gmail.com)
+- `SMTP_PORT` - SMTP port (default: 587)
+- `SMTP_USER` - SMTP username/email
+- `SMTP_PASSWORD` - SMTP password
+- `SMTP_FROM_EMAIL` - Sender email address
+- `SMTP_FROM_NAME` - Sender name (default: "Магазин")
+- `SMTP_USE_TLS` - Use TLS (default: true)
+
+### Token Validity
+- Reset tokens expire after 1 hour
+- Tokens are single-use
+
+## Input Validation
+
+### Email Validation
+- Required field
+- Must match pattern: `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+
+### Phone Validation
+- Optional field
+- 7-15 digits allowed
+- Supports formats: +7999123456, 998901234567, etc.
+
 ## External Dependencies
 
 -   **Database:** PostgreSQL (self-hosted on VPS or cloud-hosted like Neon)
@@ -168,3 +222,4 @@ Each new order triggers a message containing:
 -   **Backend:** Flask 3.1.2 with Python 3
 -   **Payment Gateways:** Click, Payme, Uzum Bank (Uzbekistan)
 -   **Maps:** Yandex Maps API (for delivery address selection)
+-   **Email:** SMTP for password reset functionality

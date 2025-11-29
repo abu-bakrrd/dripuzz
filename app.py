@@ -1343,6 +1343,7 @@ def checkout_order():
         initial_status = 'pending'
         initial_payment_status = 'pending'
         if payment_method == 'card_transfer' and payment_receipt_url:
+            initial_status = 'reviewing'  # "Рассматривается" - awaiting admin verification
             initial_payment_status = 'awaiting_verification'
         
         # Create order in database with delivery info

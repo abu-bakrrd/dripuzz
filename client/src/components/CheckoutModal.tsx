@@ -583,10 +583,16 @@ export default function CheckoutModal({
             <div className="space-y-4">
               {orderSuccess ? (
                 <div className="text-center py-8">
-                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                  <h3 className="text-xl font-bold mb-2">Заказ оформлен!</h3>
-                  <p className="text-muted-foreground mb-4">
-                    Ваш заказ принят. После проверки оплаты мы свяжемся с вами.
+                  <div className="relative inline-block mb-4">
+                    <div className="absolute inset-0 bg-green-500/20 rounded-full animate-ping"></div>
+                    <CheckCircle className="w-16 h-16 text-green-500 relative" />
+                  </div>
+                  <h3 className="text-xl font-bold mb-2">Заказ принят!</h3>
+                  <p className="text-muted-foreground mb-2">
+                    Ваш заказ успешно оформлен и находится на рассмотрении.
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Вы можете отслеживать статус заказа в разделе "Мои заказы" в профиле.
                   </p>
                   <Button onClick={onClose} className="w-full">
                     Закрыть

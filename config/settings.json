@@ -1,6 +1,6 @@
 {
   "shopName": "Monvoir",
-  "description": "Your online store description",
+  "description": "Будь в стиле. Будь с Monvoir",
   "logo": "/config/logo.svg",
   "currency": {
     "symbol": "UZS",
@@ -11,19 +11,25 @@
 "colorScheme": {
   "background": "#FEFEFE",
   "foreground": "#1A1A1A",
+
   "card": "#FFFFFF",
   "cardForeground": "#1A1A1A",
-  "primary": "#3B82F6",
-  "primaryForeground": "#FFFFFF",
-  "secondary": "#6366F1",
+
+  "primary": "#EAB308",
+  "primaryForeground": "#1A1A1A",
+
+  "secondary": "#B98A00",
   "secondaryForeground": "#FFFFFF",
+
   "muted": "#F5F5F5",
   "mutedForeground": "#737373",
+
   "accent": "#FACC15",
   "accentForeground": "#1A1A1A",
+
   "border": "#E5E5E5",
   "input": "#E5E5E5",
-  "ring": "#E5E7EB"
+  "ring": "#EAB308"
 },
   "sortOptions": [
     {
@@ -77,28 +83,28 @@
   },
   "payment": {
     "click": {
-      "enabled": true,
+      "enabled": false,
       "merchantId": "",
       "serviceId": ""
     },
     "payme": {
-      "enabled": true,
+      "enabled": false,
       "merchantId": ""
     },
     "uzum": {
-      "enabled": true,
+      "enabled": false,
       "merchantId": ""
     },
     "cardTransfer": {
       "enabled": true,
-      "cardNumber": "",
-      "cardHolder": "",
-      "bankName": ""
+      "cardNumber": "9860160602358923",
+      "cardHolder": "Zolola Gayupova",
+      "bankName": "Hamkor Bankx"
     }
   },
   "telegramNotifications": {
-    "enabled": false,
-    "adminChatId": ""
+    "enabled": true,
+    "adminChatId": "5644397480"
   },
   "yandexMaps": {
     "apiKey": "48108220-010b-4516-939f-dcdc2bb3d7bd",

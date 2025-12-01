@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   DropdownMenu,
@@ -12,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { User, Package, LogOut, Edit, Save, X } from 'lucide-react';
+import { User, Package, LogOut, Edit, Save, X, ExternalLink } from 'lucide-react';
 import { useConfig } from '@/hooks/useConfig';
 import { useToast } from '@/hooks/use-toast';
 
@@ -32,6 +33,7 @@ interface Order {
 }
 
 export default function ProfileDropdown() {
+  const [, navigate] = useLocation();
   const { user, logout, checkAuth } = useAuth();
   const { config } = useConfig();
   const { toast } = useToast();
@@ -303,7 +305,7 @@ export default function ProfileDropdown() {
           </TabsContent>
           
           <TabsContent value="orders" className="px-2 pb-2">
-            <ScrollArea className="h-[300px]">
+            <ScrollArea className="h-[280px]">
               {loadingOrders ? (
                 <div className="flex items-center justify-center h-32">
                   <p className="text-sm text-muted-foreground">Загрузка...</p>
@@ -315,10 +317,11 @@ export default function ProfileDropdown() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {orders.map((order) => (
+                  {orders.slice(0, 3).map((order) => (
                     <div key={order.id} className="border border-border rounded-lg p-3">
                       <div className="flex justify-between items-start mb-2">
                         <div>
+                          <p className="text-xs font-mono text-muted-foreground">#{order.id}</p>
                           <p className="text-xs text-muted-foreground">
                             {formatDate(order.created_at)}
                           </p>
@@ -326,13 +329,19 @@ export default function ProfileDropdown() {
                             {formatPrice(order.total)}
                           </p>
                         </div>
-                        <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                          order.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          order.status === 'shipped' ? 'bg-purple-100 text-purple-800' :
+                          order.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
                           {getStatusLabel(order.status)}
                         </span>
                       </div>
                       
-                      <div className="space-y-1.5">
-                        {order.items.map((item, index) => (
+                      <div className="space-y-1">
+                        {order.items.slice(0, 2).map((item, index) => (
                           <div key={index} className="text-xs text-muted-foreground">
                             <span className="font-medium text-foreground">{item.name}</span>
                             {item.selected_color && (
@@ -341,12 +350,29 @@ export default function ProfileDropdown() {
                             <span className="ml-1">× {item.quantity}</span>
                           </div>
                         ))}
+                        {order.items.length > 2 && (
+                          <p className="text-xs text-muted-foreground">
+                            +{order.items.length - 2} ещё
+                          </p>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
             </ScrollArea>
+            
+            {orders.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-3"
+                onClick={() => navigate('/orders')}
+              >
+                <ExternalLink className="h-3 w-3 mr-2" />
+                Все заказы ({orders.length})
+              </Button>
+            )}
           </TabsContent>
         </Tabs>
         

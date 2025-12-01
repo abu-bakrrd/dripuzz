@@ -15,6 +15,7 @@ import Login from "@/pages/Login";
 import Register from "@/pages/Register";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
+import Orders from "@/pages/Orders";
 import ThemeApplier from "@/components/ThemeApplier";
 import FontLoader from "@/components/FontLoader";
 import AdminLogin from "@/pages/admin/AdminLogin";
@@ -251,6 +252,17 @@ function AppContent() {
               <Register
                 onLoginClick={() => setLocation('/login')}
                 onSuccess={() => setLocation('/favorites')}
+              />
+            )}
+          </Route>
+          
+          <Route path="/orders">
+            {user ? (
+              <Orders />
+            ) : (
+              <Register
+                onLoginClick={() => setLocation('/login')}
+                onSuccess={() => setLocation('/orders')}
               />
             )}
           </Route>

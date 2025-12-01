@@ -1932,22 +1932,26 @@ def get_user_orders():
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Get last 5 orders for user
+        # Get all orders for user (increased limit for full orders page)
         cur.execute('''
-            SELECT id, user_id, total, status, created_at 
+            SELECT id, user_id, total, status, created_at, customer_name, customer_phone, 
+                   delivery_address, payment_method
             FROM orders 
             WHERE user_id = %s 
             ORDER BY created_at DESC
-            LIMIT 5
+            LIMIT 50
         ''', (user_id,))
         orders = cur.fetchall()
         
-        # Get items for each order
+        # Get items for each order with product images
         for order in orders:
             cur.execute('''
-                SELECT id, product_id, name, price, quantity, selected_color, selected_attributes 
-                FROM order_items 
-                WHERE order_id = %s
+                SELECT oi.id, oi.product_id, oi.name, oi.price, oi.quantity, 
+                       oi.selected_color, oi.selected_attributes,
+                       p.image_url
+                FROM order_items oi
+                LEFT JOIN products p ON oi.product_id = p.id
+                WHERE oi.order_id = %s
             ''', (order['id'],))
             order['items'] = cur.fetchall()
         

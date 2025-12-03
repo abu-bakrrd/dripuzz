@@ -84,7 +84,7 @@ export default function AdminManagers() {
       const response = await fetch('/api/admin/admins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user_id: parseInt(selectedUserId) })
+        body: JSON.stringify({ user_id: selectedUserId })
       });
 
       const data = await response.json();

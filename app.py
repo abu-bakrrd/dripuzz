@@ -1948,7 +1948,7 @@ def get_user_orders():
             cur.execute('''
                 SELECT oi.id, oi.product_id, oi.name, oi.price, oi.quantity, 
                        oi.selected_color, oi.selected_attributes,
-                       p.image_url
+                       p.images[1] as image_url
                 FROM order_items oi
                 LEFT JOIN products p ON oi.product_id = p.id
                 WHERE oi.order_id = %s
@@ -3301,6 +3301,61 @@ def admin_update_yandex_maps_settings():
         return jsonify({'message': 'Настройки Яндекс.Карт сохранены'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/settings/yandex_maps/test', methods=['POST'])
+def admin_test_yandex_maps():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        config = get_yandex_maps_config()
+        api_key = config.get('api_key')
+        
+        if not api_key:
+            return jsonify({
+                'success': False,
+                'error': 'API ключ не настроен'
+            }), 200
+        
+        test_url = f"https://geocode-maps.yandex.ru/1.x/?apikey={api_key}&geocode=Москва&format=json&results=1"
+        
+        response = requests.get(test_url, timeout=10)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if 'response' in data:
+                return jsonify({
+                    'success': True,
+                    'message': 'Подключение к Яндекс.Картам успешно!'
+                }), 200
+            elif 'error' in data:
+                error_msg = data.get('error', {}).get('message', 'Неизвестная ошибка')
+                return jsonify({
+                    'success': False,
+                    'error': f'Ошибка API: {error_msg}'
+                }), 200
+        elif response.status_code == 403:
+            return jsonify({
+                'success': False,
+                'error': 'Неверный API ключ или доступ запрещён'
+            }), 200
+        else:
+            return jsonify({
+                'success': False,
+                'error': f'Ошибка сервера Яндекс: {response.status_code}'
+            }), 200
+            
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'success': False,
+            'error': 'Превышено время ожидания ответа от Яндекс'
+        }), 200
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 200
 
 # Register the API blueprint
 app.register_blueprint(api)

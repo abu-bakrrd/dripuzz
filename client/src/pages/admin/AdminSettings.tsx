@@ -314,6 +314,20 @@ export default function AdminSettings() {
     }
   };
 
+  const handleTestYandexMaps = async () => {
+    setTesting('yandex');
+    setTestResult(null);
+    try {
+      const response = await fetch('/api/admin/settings/yandex_maps/test', { method: 'POST' });
+      const data = await response.json();
+      setTestResult({ key: 'yandex', success: data.success, message: data.success ? data.message : data.error });
+    } catch (error) {
+      setTestResult({ key: 'yandex', success: false, message: 'Ошибка проверки' });
+    } finally {
+      setTesting(null);
+    }
+  };
+
   const handleSaveSmtp = async () => {
     setSaving('smtp');
     try {
@@ -1030,14 +1044,26 @@ export default function AdminSettings() {
                 </div>
               </div>
               
-              <Button onClick={handleSaveYandexMaps} disabled={saving === 'yandex'}>
-                {saving === 'yandex' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Сохранение...</> : 'Сохранить'}
-              </Button>
+              <div className="flex gap-3 pt-4">
+                <Button onClick={handleSaveYandexMaps} disabled={saving === 'yandex'}>
+                  {saving === 'yandex' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Сохранение...</> : 'Сохранить'}
+                </Button>
+                <Button variant="outline" onClick={handleTestYandexMaps} disabled={testing === 'yandex'}>
+                  {testing === 'yandex' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Проверка...</> : 'Проверить подключение'}
+                </Button>
+              </div>
               
               {saveMessage?.key === 'yandex' && (
                 <p className={`text-sm ${saveMessage.message.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
                   {saveMessage.message}
                 </p>
+              )}
+              
+              {testResult?.key === 'yandex' && (
+                <div className={`flex items-center gap-2 p-3 rounded-md ${testResult.success ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                  {testResult.success ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                  <span className="text-sm">{testResult.message}</span>
+                </div>
               )}
             </CardContent>
           </Card>

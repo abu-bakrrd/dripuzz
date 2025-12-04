@@ -152,44 +152,54 @@ export default function CheckoutModal({
     const defaultCenter = config?.yandexMaps?.defaultCenter || [41.311081, 69.240562];
     const defaultZoom = config?.yandexMaps?.defaultZoom || 12;
 
-    try {
-      if (mapInstanceRef.current) {
-        try {
-          mapInstanceRef.current.destroy();
-        } catch (e) {}
+    setTimeout(() => {
+      try {
+        if (mapInstanceRef.current) {
+          try {
+            mapInstanceRef.current.destroy();
+          } catch (e) {}
+        }
+
+        if (!mapContainerRef.current) return;
+
+        mapInstanceRef.current = new window.ymaps.Map(mapContainerRef.current, {
+          center: defaultCenter,
+          zoom: defaultZoom,
+          controls: ['zoomControl', 'geolocationControl'],
+        });
+
+        placemarkerRef.current = new window.ymaps.Placemark(
+          defaultCenter,
+          { hintContent: 'Переместите маркер на адрес доставки' },
+          { draggable: true, preset: 'islands#redDotIcon' }
+        );
+
+        mapInstanceRef.current.geoObjects.add(placemarkerRef.current);
+
+        placemarkerRef.current.events.add('dragend', async function () {
+          const coords = placemarkerRef.current.geometry.getCoordinates();
+          await geocodeCoords(coords);
+        });
+
+        mapInstanceRef.current.events.add('click', async function (e: any) {
+          const coords = e.get('coords');
+          placemarkerRef.current.geometry.setCoordinates(coords);
+          await geocodeCoords(coords);
+        });
+
+        setTimeout(() => {
+          if (mapInstanceRef.current) {
+            mapInstanceRef.current.container.fitToViewport();
+          }
+        }, 100);
+
+        setMapError(null);
+        setMapLoaded(true);
+      } catch (error) {
+        console.error('Map initialization error:', error);
+        setMapError('Ошибка инициализации карты. Введите адрес вручную.');
       }
-
-      mapInstanceRef.current = new window.ymaps.Map(mapContainerRef.current, {
-        center: defaultCenter,
-        zoom: defaultZoom,
-        controls: ['zoomControl', 'geolocationControl'],
-      });
-
-      placemarkerRef.current = new window.ymaps.Placemark(
-        defaultCenter,
-        { hintContent: 'Переместите маркер на адрес доставки' },
-        { draggable: true, preset: 'islands#redDotIcon' }
-      );
-
-      mapInstanceRef.current.geoObjects.add(placemarkerRef.current);
-
-      placemarkerRef.current.events.add('dragend', async function () {
-        const coords = placemarkerRef.current.geometry.getCoordinates();
-        await geocodeCoords(coords);
-      });
-
-      mapInstanceRef.current.events.add('click', async function (e: any) {
-        const coords = e.get('coords');
-        placemarkerRef.current.geometry.setCoordinates(coords);
-        await geocodeCoords(coords);
-      });
-
-      setMapError(null);
-      setMapLoaded(true);
-    } catch (error) {
-      console.error('Map initialization error:', error);
-      setMapError('Ошибка инициализации карты. Введите адрес вручную.');
-    }
+    }, 300);
   };
 
   const geocodeCoords = async (coords: [number, number]) => {

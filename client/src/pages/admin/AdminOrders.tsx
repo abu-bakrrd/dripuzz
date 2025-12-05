@@ -50,14 +50,21 @@ const DEFAULT_STATUSES = [
 
 const STATUS_ORDER = ['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
 
-const LEGACY_STATUS_MAP: Record<string, string> = {
-  'new': 'reviewing',
-  'confirmed': 'reviewing',
-  'pending': 'reviewing',
+const STATUS_LABELS: Record<string, string> = {
+  'new': 'Новый',
+  'confirmed': 'Подтверждён',
+  'pending': 'В ожидании',
+  'reviewing': 'Рассматривается',
+  'awaiting_payment': 'Ожидает оплаты',
+  'paid': 'Оплачен',
+  'processing': 'Собирается',
+  'shipped': 'В пути',
+  'delivered': 'Доставлен',
+  'cancelled': 'Отменён',
 };
 
-const normalizeStatus = (status: string): string => {
-  return LEGACY_STATUS_MAP[status] || status;
+const getStatusLabel = (status: string): string => {
+  return STATUS_LABELS[status] || status;
 };
 
 export default function AdminOrders() {
@@ -176,11 +183,12 @@ export default function AdminOrders() {
   };
 
   const getStatusBadge = (status: string) => {
-    const normalized = normalizeStatus(status);
-    const statusConfig = orderStatuses.find(s => s.value === normalized);
-    const label = statusConfig?.label || normalized;
+    const label = getStatusLabel(status);
     
     const colors: Record<string, string> = {
+      new: 'bg-blue-100 text-blue-800',
+      confirmed: 'bg-cyan-100 text-cyan-800',
+      pending: 'bg-yellow-100 text-yellow-800',
       reviewing: 'bg-slate-100 text-slate-800',
       awaiting_payment: 'bg-amber-100 text-amber-800',
       paid: 'bg-emerald-100 text-emerald-800',
@@ -191,7 +199,7 @@ export default function AdminOrders() {
     };
 
     return (
-      <Badge className={colors[normalized] || 'bg-gray-100 text-gray-800'}>
+      <Badge className={colors[status] || 'bg-gray-100 text-gray-800'}>
         {label}
       </Badge>
     );

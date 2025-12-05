@@ -34,6 +34,9 @@ interface Order {
 }
 
 const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  new: { label: 'Новый', icon: Sparkles, color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  confirmed: { label: 'Подтверждён', icon: CheckCircle2, color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  pending: { label: 'В ожидании', icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   reviewing: { label: 'Рассматривается', icon: Clock, color: 'bg-slate-100 text-slate-800 border-slate-200' },
   awaiting_payment: { label: 'Ожидает оплаты', icon: Wallet, color: 'bg-amber-100 text-amber-800 border-amber-200' },
   paid: { label: 'Оплачен', icon: FileCheck, color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
@@ -44,20 +47,6 @@ const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: s
 };
 
 const STATUS_ORDER = ['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered'];
-
-const VALID_STATUSES = new Set(['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']);
-
-const LEGACY_STATUS_MAP: Record<string, string> = {
-  'new': 'reviewing',
-  'confirmed': 'reviewing',
-  'pending': 'reviewing',
-};
-
-const normalizeStatus = (status: string): string => {
-  if (VALID_STATUSES.has(status)) return status;
-  if (LEGACY_STATUS_MAP[status]) return LEGACY_STATUS_MAP[status];
-  return 'reviewing';
-};
 
 const getStatusSteps = (orderStatuses: Record<string, string>) => {
   return STATUS_ORDER.map(key => ({
@@ -124,20 +113,17 @@ export default function Orders() {
 
   const getStatusIndex = useCallback((status: string): number => {
     if (status === 'cancelled') return -1;
-    const normalizedStatus = normalizeStatus(status);
-    const index = statusSteps.findIndex(s => s.key === normalizedStatus);
+    const index = statusSteps.findIndex(s => s.key === status);
     return index >= 0 ? index : 0;
   }, [statusSteps]);
 
   const getStatusColor = (status: string): string => {
-    const normalizedStatus = normalizeStatus(status);
-    return DEFAULT_STATUS_CONFIG[normalizedStatus]?.color || 'bg-gray-100 text-gray-800 border-gray-200';
+    return DEFAULT_STATUS_CONFIG[status]?.color || 'bg-gray-100 text-gray-800 border-gray-200';
   };
 
   const getStatusLabel = (status: string): string => {
-    const normalizedStatus = normalizeStatus(status);
-    if (orderStatuses[normalizedStatus]) return orderStatuses[normalizedStatus];
-    return DEFAULT_STATUS_CONFIG[normalizedStatus]?.label || status;
+    if (orderStatuses[status]) return orderStatuses[status];
+    return DEFAULT_STATUS_CONFIG[status]?.label || status;
   };
 
   const filteredOrders = useMemo(() => {

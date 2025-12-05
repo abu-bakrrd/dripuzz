@@ -34,6 +34,7 @@ interface Order {
 }
 
 const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
+  reviewing: { label: 'Рассматривается', icon: Clock, color: 'bg-slate-100 text-slate-800 border-slate-200' },
   awaiting_payment: { label: 'Ожидает оплаты', icon: Wallet, color: 'bg-amber-100 text-amber-800 border-amber-200' },
   paid: { label: 'Оплачен', icon: FileCheck, color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   processing: { label: 'Собирается', icon: Package, color: 'bg-blue-100 text-blue-800 border-blue-200' },
@@ -42,20 +43,20 @@ const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: s
   cancelled: { label: 'Отменён', icon: Ban, color: 'bg-red-100 text-red-800 border-red-200' },
 };
 
-const STATUS_ORDER = ['awaiting_payment', 'paid', 'processing', 'shipped', 'delivered'];
+const STATUS_ORDER = ['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered'];
 
-const VALID_STATUSES = new Set(['awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']);
+const VALID_STATUSES = new Set(['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled']);
 
 const LEGACY_STATUS_MAP: Record<string, string> = {
-  'new': 'awaiting_payment',
-  'confirmed': 'awaiting_payment',
-  'pending': 'awaiting_payment',
+  'new': 'reviewing',
+  'confirmed': 'reviewing',
+  'pending': 'reviewing',
 };
 
 const normalizeStatus = (status: string): string => {
   if (VALID_STATUSES.has(status)) return status;
   if (LEGACY_STATUS_MAP[status]) return LEGACY_STATUS_MAP[status];
-  return 'awaiting_payment';
+  return 'reviewing';
 };
 
 const getStatusSteps = (orderStatuses: Record<string, string>) => {

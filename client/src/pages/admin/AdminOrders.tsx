@@ -39,6 +39,7 @@ interface Order {
 }
 
 const DEFAULT_STATUSES = [
+  { value: 'reviewing', label: 'Рассматривается' },
   { value: 'awaiting_payment', label: 'Ожидает оплаты' },
   { value: 'paid', label: 'Оплачен' },
   { value: 'processing', label: 'Собирается' },
@@ -47,7 +48,7 @@ const DEFAULT_STATUSES = [
   { value: 'cancelled', label: 'Отменён' },
 ];
 
-const STATUS_ORDER = ['awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_ORDER = ['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -169,6 +170,7 @@ export default function AdminOrders() {
     const label = statusConfig?.label || status;
     
     const colors: Record<string, string> = {
+      reviewing: 'bg-slate-100 text-slate-800',
       awaiting_payment: 'bg-amber-100 text-amber-800',
       paid: 'bg-emerald-100 text-emerald-800',
       processing: 'bg-blue-100 text-blue-800',

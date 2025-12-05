@@ -652,6 +652,38 @@ def get_config():
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
         
+        # Override payment settings from database (admin panel settings take priority)
+        try:
+            click_config = get_payment_config('click')
+            payme_config = get_payment_config('payme')
+            uzum_config = get_payment_config('uzum')
+            card_config = get_payment_config('card_transfer')
+            
+            config['payment'] = {
+                'click': {
+                    'enabled': click_config.get('enabled', False),
+                    'merchantId': click_config.get('merchant_id', ''),
+                    'serviceId': click_config.get('service_id', '')
+                },
+                'payme': {
+                    'enabled': payme_config.get('enabled', False),
+                    'merchantId': payme_config.get('merchant_id', '')
+                },
+                'uzum': {
+                    'enabled': uzum_config.get('enabled', False),
+                    'merchantId': uzum_config.get('merchant_id', ''),
+                    'serviceId': uzum_config.get('service_id', '')
+                },
+                'cardTransfer': {
+                    'enabled': card_config.get('enabled', False),
+                    'cardNumber': card_config.get('card_number', ''),
+                    'cardHolder': card_config.get('card_holder', ''),
+                    'bankName': card_config.get('bank_name', '')
+                }
+            }
+        except Exception as e:
+            print(f"Warning: Could not load payment config from database: {e}")
+        
         # Add Yandex Maps settings from database
         try:
             yandex_config = get_yandex_maps_config()

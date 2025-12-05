@@ -45,13 +45,13 @@ export default function Header({
             <ProfileDropdown />
           ) : (
             <Button
-              size="icon"
-              variant="ghost"
+              variant="outline"
+              size="sm"
               onClick={onAccountClick}
-              className="relative"
+              className="px-4 font-medium"
               data-testid="button-account"
             >
-              <User className="w-5 h-5" />
+              Войти
             </Button>
           )}
           

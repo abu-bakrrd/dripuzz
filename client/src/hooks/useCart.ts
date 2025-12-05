@@ -146,7 +146,7 @@ export function useCart() {
   const clearCart = useMutation({
     mutationFn: async () => {
       if (!userId) throw new Error('User not authenticated');
-      return apiRequest(`/api/cart/${userId}`, {
+      return apiRequest(`/api/cart/clear/${userId}`, {
         method: 'DELETE',
       });
     },

@@ -1245,7 +1245,7 @@ def remove_from_cart(cart_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/api/cart/<user_id>', methods=['DELETE'])
+@app.route('/api/cart/clear/<user_id>', methods=['DELETE'])
 def clear_cart(user_id):
     try:
         conn = get_db_connection()
@@ -2814,7 +2814,7 @@ def api_update_cart():
 def api_remove_from_cart(user_id, product_id):
     return remove_from_cart(user_id, product_id)
 
-@api.route('/cart/<user_id>', methods=['DELETE'])
+@api.route('/cart/clear/<user_id>', methods=['DELETE'])
 def api_clear_cart(user_id):
     return clear_cart(user_id)
 

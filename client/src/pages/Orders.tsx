@@ -35,18 +35,16 @@ interface Order {
 
 const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
   new: { label: 'Новый', icon: Sparkles, color: 'bg-blue-100 text-blue-800 border-blue-200' },
-  pending: { label: 'Ожидает оплаты', icon: Clock, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-  awaiting_payment: { label: 'Ожидает оплаты', icon: Wallet, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   confirmed: { label: 'Подтверждён', icon: CheckCircle2, color: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  awaiting_payment: { label: 'Ожидает оплаты', icon: Wallet, color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
   paid: { label: 'Оплачен', icon: FileCheck, color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
-  reviewing: { label: 'Рассматривается', icon: PackageOpen, color: 'bg-orange-100 text-orange-800 border-orange-200' },
   processing: { label: 'Собирается', icon: Package, color: 'bg-amber-100 text-amber-800 border-amber-200' },
   shipped: { label: 'В пути', icon: Truck, color: 'bg-purple-100 text-purple-800 border-purple-200' },
   delivered: { label: 'Доставлен', icon: PackageCheck, color: 'bg-green-100 text-green-800 border-green-200' },
   cancelled: { label: 'Отменён', icon: Ban, color: 'bg-red-100 text-red-800 border-red-200' },
 };
 
-const STATUS_ORDER = ['new', 'pending', 'awaiting_payment', 'confirmed', 'paid', 'reviewing', 'processing', 'shipped', 'delivered'];
+const STATUS_ORDER = ['new', 'confirmed', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered'];
 
 const getStatusSteps = (orderStatuses: Record<string, string>) => {
   const configKeys = Object.keys(orderStatuses).filter(k => k !== 'cancelled');
@@ -233,9 +231,35 @@ export default function Orders() {
     setIsRepeating(true);
     
     try {
-      let addedCount = 0;
+      const productIds = order.items.map(item => String(item.product_id));
       
-      for (const item of order.items) {
+      const checkResponse = await fetch('/api/products/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ product_ids: productIds })
+      });
+      
+      if (!checkResponse.ok) {
+        throw new Error('Не удалось проверить товары');
+      }
+      
+      const { existing, missing } = await checkResponse.json();
+      
+      if (existing.length === 0) {
+        toast({
+          title: 'Товары недоступны',
+          description: 'К сожалению, все товары из этого заказа больше недоступны',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      let addedCount = 0;
+      const availableItems = order.items.filter(item => 
+        existing.includes(String(item.product_id))
+      );
+      
+      for (const item of availableItems) {
         for (let i = 0; i < item.quantity; i++) {
           addToCart(
             String(item.product_id), 
@@ -246,13 +270,21 @@ export default function Orders() {
         }
       }
       
-      toast({
-        title: 'Товары добавлены в корзину',
-        description: `${order.items.length} товар(ов) из заказа #${order.id}`,
-      });
+      if (missing.length > 0) {
+        toast({
+          title: 'Часть товаров недоступна',
+          description: `Добавлено ${availableItems.length} из ${order.items.length} товаров. ${missing.length} товар(ов) больше недоступны.`,
+        });
+      } else {
+        toast({
+          title: 'Товары добавлены в корзину',
+          description: `${availableItems.length} товар(ов) из заказа #${order.id}`,
+        });
+      }
       
       navigate('/cart');
     } catch (error) {
+      console.error('Error repeating order:', error);
       toast({
         title: 'Ошибка',
         description: 'Не удалось добавить товары в корзину',
@@ -397,30 +429,52 @@ export default function Orders() {
                     </div>
 
                     {!isExpanded && (
-                      <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
-                        {order.items.slice(0, 4).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="flex-shrink-0 w-12 h-12 rounded-md bg-muted overflow-hidden"
-                          >
-                            {item.image_url ? (
-                              <img
-                                src={item.image_url}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ImageIcon className="h-5 w-5 text-muted-foreground" />
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {order.items.length > 4 && (
-                          <div className="flex-shrink-0 w-12 h-12 rounded-md bg-muted flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground">+{order.items.length - 4}</span>
-                          </div>
-                        )}
+                      <div className="mt-3 space-y-3">
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                          {order.items.slice(0, 4).map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="flex-shrink-0 w-12 h-12 rounded-md bg-muted overflow-hidden"
+                            >
+                              {item.image_url ? (
+                                <img
+                                  src={item.image_url}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                          {order.items.length > 4 && (
+                            <div className="flex-shrink-0 w-12 h-12 rounded-md bg-muted flex items-center justify-center">
+                              <span className="text-xs text-muted-foreground">+{order.items.length - 4}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                          {order.delivery_address && (
+                            <div className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate max-w-[150px]">{order.delivery_address}</span>
+                            </div>
+                          )}
+                          {order.payment_method && (
+                            <div className="flex items-center gap-1">
+                              <CreditCard className="h-3 w-3" />
+                              <span>{getPaymentMethodLabel(order.payment_method)}</span>
+                            </div>
+                          )}
+                          {order.customer_phone && (
+                            <div className="flex items-center gap-1">
+                              <Phone className="h-3 w-3" />
+                              <span>{order.customer_phone}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -431,49 +485,49 @@ export default function Orders() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.2 }}
+                        transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
                       >
                         <Separator />
                         <CardContent className="p-4 space-y-5">
                           {order.status !== 'cancelled' && statusSteps.length > 0 && (
                             <div className="bg-muted/50 rounded-lg p-4">
                               <p className="text-sm font-medium mb-4">Статус заказа</p>
-                              <div className="relative">
-                                <div className="flex justify-between">
+                              <div className="relative overflow-x-auto pb-2 -mx-1 px-1">
+                                <div className="flex min-w-max sm:min-w-0">
                                   {statusSteps.map((step, index) => {
                                     const Icon = step.icon;
                                     const isCompleted = index <= statusIndex;
                                     const isCurrent = index === statusIndex;
+                                    const isLast = index === statusSteps.length - 1;
                                     
                                     return (
-                                      <div key={step.key} className="flex flex-col items-center relative z-10 flex-1">
-                                        <div
-                                          className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
-                                            isCompleted
-                                              ? 'bg-primary text-primary-foreground'
-                                              : 'bg-muted-foreground/20 text-muted-foreground'
-                                          } ${isCurrent ? 'ring-4 ring-primary/30 scale-110' : ''}`}
-                                        >
-                                          {isCompleted && index < statusIndex ? (
-                                            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
-                                          ) : (
-                                            <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-                                          )}
+                                      <div key={step.key} className="flex items-center">
+                                        <div className="flex flex-col items-center relative z-10">
+                                          <div
+                                            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-all ${
+                                              isCompleted
+                                                ? 'bg-primary text-primary-foreground'
+                                                : 'bg-muted-foreground/20 text-muted-foreground'
+                                            } ${isCurrent ? 'ring-4 ring-primary/30 scale-110' : ''}`}
+                                          >
+                                            {isCompleted && index < statusIndex ? (
+                                              <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5" />
+                                            ) : (
+                                              <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+                                            )}
+                                          </div>
+                                          <span className={`text-[10px] sm:text-xs mt-1.5 text-center leading-tight whitespace-nowrap max-w-[60px] sm:max-w-[80px] truncate ${isCompleted ? 'font-medium' : 'text-muted-foreground'}`}>
+                                            {step.label}
+                                          </span>
                                         </div>
-                                        <span className={`text-[10px] sm:text-xs mt-2 text-center leading-tight ${isCompleted ? 'font-medium' : 'text-muted-foreground'}`}>
-                                          {step.label}
-                                        </span>
+                                        {!isLast && (
+                                          <div className={`w-6 sm:w-8 h-0.5 mx-0.5 sm:mx-1 mt-[-18px] ${
+                                            index < statusIndex ? 'bg-primary' : 'bg-muted-foreground/20'
+                                          }`} />
+                                        )}
                                       </div>
                                     );
                                   })}
-                                </div>
-                                <div className="absolute top-4 sm:top-5 left-[10%] right-[10%] h-0.5 bg-muted-foreground/20 -z-0">
-                                  <motion.div
-                                    className="h-full bg-primary"
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${statusIndex >= 0 ? (statusIndex / (statusSteps.length - 1)) * 100 : 0}%` }}
-                                    transition={{ duration: 0.5, ease: 'easeOut' }}
-                                  />
                                 </div>
                               </div>
                             </div>

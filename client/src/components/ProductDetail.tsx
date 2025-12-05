@@ -285,25 +285,55 @@ export default function ProductDetail({
           )}
 
           {/* Action Button */}
-          <Button
-            onClick={handleCartAction}
-            className="w-full gap-2 h-12"
-            size="lg"
-            variant={isInCart ? "default" : "default"}
-            data-testid="button-add-to-cart-detail"
-          >
-            {isInCart ? (
-              <>
-                <Check className="w-5 h-5" />
-                Перейти в корзину
-              </>
-            ) : (
-              <>
-                <ShoppingCart className="w-5 h-5" />
-                Добавить в корзину
-              </>
-            )}
-          </Button>
+          {(() => {
+            const hasColors = colors && colors.length > 0;
+            const hasAttributes = attributes && attributes.length > 0;
+            const colorSelected = !hasColors || selectedColor;
+            const allAttributesSelected = !hasAttributes || 
+              attributes.every(attr => selectedAttributes[attr.name]);
+            const canAddToCart = colorSelected && allAttributesSelected;
+            
+            const getMissingSelections = () => {
+              const missing = [];
+              if (hasColors && !selectedColor) missing.push('цвет');
+              if (hasAttributes) {
+                attributes.forEach(attr => {
+                  if (!selectedAttributes[attr.name]) missing.push(attr.name.toLowerCase());
+                });
+              }
+              return missing;
+            };
+            
+            return (
+              <div className="space-y-2">
+                <Button
+                  onClick={handleCartAction}
+                  className="w-full gap-2 h-12"
+                  size="lg"
+                  variant={isInCart ? "default" : "default"}
+                  disabled={!isInCart && !canAddToCart}
+                  data-testid="button-add-to-cart-detail"
+                >
+                  {isInCart ? (
+                    <>
+                      <Check className="w-5 h-5" />
+                      Перейти в корзину
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-5 h-5" />
+                      Добавить в корзину
+                    </>
+                  )}
+                </Button>
+                {!isInCart && !canAddToCart && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Выберите: {getMissingSelections().join(', ')}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

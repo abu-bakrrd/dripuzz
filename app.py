@@ -334,10 +334,14 @@ def get_platform_setting(key):
         conn.close()
         if result:
             if result['is_secret']:
-                return decrypt_value(result['value'])
+                decrypted = decrypt_value(result['value'])
+                if decrypted is None:
+                    print(f"⚠️ Warning: Failed to decrypt setting '{key}'")
+                return decrypted
             return result['value']
         return None
-    except Exception:
+    except Exception as e:
+        print(f"❌ Error getting platform setting '{key}': {e}")
         return None
 
 def set_platform_setting(key, value, is_secret=False):
@@ -560,16 +564,23 @@ def send_password_reset_email(email, token, site_url):
 def send_telegram_notification(order_data, order_items):
     """Send order notification to Telegram admin"""
     try:
+        order_id = str(order_data.get('id', 'unknown'))[:8]
+        print(f"📱 Attempting to send Telegram notification for order {order_id}...")
+        
         tg_config = get_telegram_config()
+        print(f"   - notifications_enabled: {tg_config.get('notifications_enabled')}")
+        print(f"   - has_bot_token: {bool(tg_config.get('bot_token'))}")
+        print(f"   - has_admin_chat_id: {bool(tg_config.get('admin_chat_id'))}")
         
         if not tg_config.get('notifications_enabled'):
+            print("   ⏭️ Telegram notifications disabled - skipping")
             return False
         
         bot_token = tg_config.get('bot_token')
         admin_chat_id = tg_config.get('admin_chat_id')
         
         if not bot_token or not admin_chat_id:
-            print("Telegram notification: bot_token or admin_chat_id not configured")
+            print(f"   ❌ Telegram notification: bot_token={bool(bot_token)}, admin_chat_id={bool(admin_chat_id)}")
             return False
         
         # Format order items
@@ -591,7 +602,7 @@ def send_telegram_notification(order_data, order_items):
         # Build message
         message = f"""🛒 <b>Новый заказ!</b>
 
-📋 <b>Заказ #{order_data['id'][:8]}</b>
+📋 <b>Заказ #{order_id}</b>
 
 👤 <b>Клиент:</b> {order_data.get('customer_name', 'Не указано')}
 📞 <b>Телефон:</b> {order_data.get('customer_phone', 'Не указан')}
@@ -620,7 +631,7 @@ def send_telegram_notification(order_data, order_items):
         response = requests.post(url, json=payload, timeout=10)
         
         if response.status_code == 200:
-            print(f"✅ Telegram notification sent for order {order_data['id'][:8]}")
+            print(f"✅ Telegram notification sent for order {order_id}")
             return True
         else:
             print(f"❌ Telegram notification failed: {response.text}")
@@ -720,6 +731,36 @@ def get_product(product_id):
         if product:
             return jsonify(product)
         return jsonify({'error': 'Product not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/check', methods=['POST'])
+def check_products_exist():
+    """Check which products from the list still exist in the database"""
+    try:
+        data = request.json
+        product_ids = data.get('product_ids', [])
+        
+        if not product_ids:
+            return jsonify({'existing': [], 'missing': []})
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Check which products exist
+        placeholders = ','.join(['%s'] * len(product_ids))
+        cur.execute(f'SELECT id FROM products WHERE id IN ({placeholders})', tuple(product_ids))
+        existing_products = cur.fetchall()
+        existing_ids = [p['id'] for p in existing_products]
+        missing_ids = [pid for pid in product_ids if pid not in existing_ids]
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'existing': existing_ids,
+            'missing': missing_ids
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

@@ -49,6 +49,8 @@ const DEFAULT_STATUSES = [
   { value: 'cancelled', label: 'Отменён' },
 ];
 
+const STATUS_ORDER = ['new', 'confirmed', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
+
 export default function AdminOrders() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -100,10 +102,13 @@ export default function AdminOrders() {
       const response = await fetch('/api/config');
       const config = await response.json();
       if (config.orderStatuses) {
-        const statuses = Object.entries(config.orderStatuses).map(([value, label]) => ({
-          value,
-          label: label as string,
-        }));
+        const statusesMap = config.orderStatuses as Record<string, string>;
+        const statuses = STATUS_ORDER
+          .filter(key => statusesMap[key] || DEFAULT_STATUSES.find(s => s.value === key))
+          .map(key => ({
+            value: key,
+            label: statusesMap[key] || DEFAULT_STATUSES.find(s => s.value === key)?.label || key,
+          }));
         setOrderStatuses(statuses);
       }
     } catch (error) {

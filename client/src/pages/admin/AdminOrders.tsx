@@ -40,7 +40,6 @@ interface Order {
 
 const DEFAULT_STATUSES = [
   { value: 'reviewing', label: 'Рассматривается' },
-  { value: 'awaiting_payment', label: 'Ожидает оплаты' },
   { value: 'paid', label: 'Оплачен' },
   { value: 'processing', label: 'Собирается' },
   { value: 'shipped', label: 'В пути' },
@@ -48,7 +47,7 @@ const DEFAULT_STATUSES = [
   { value: 'cancelled', label: 'Отменён' },
 ];
 
-const STATUS_ORDER = ['reviewing', 'awaiting_payment', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_ORDER = ['reviewing', 'paid', 'processing', 'shipped', 'delivered', 'cancelled'];
 
 const STATUS_LABELS: Record<string, string> = {
   'new': 'Новый',

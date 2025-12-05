@@ -477,36 +477,36 @@ export default function Orders() {
                         <Separator />
                         <CardContent className="p-4 space-y-5">
                           {order.status !== 'cancelled' && statusSteps.length > 0 && (
-                            <div className="bg-gradient-to-br from-muted/60 to-muted/30 rounded-xl p-4 border border-border/50">
-                              <p className="text-sm font-medium mb-4 text-foreground/80">Статус заказа</p>
+                            <div className="bg-gradient-to-br from-muted/60 to-muted/30 rounded-xl p-3 sm:p-4 border border-border/50">
+                              <p className="text-xs sm:text-sm font-medium mb-3 sm:mb-4 text-foreground/80">Статус заказа</p>
                               <div className="relative">
-                                <div className="absolute top-4 left-0 right-0 h-0.5 bg-muted-foreground/20" />
+                                <div className="absolute top-3 sm:top-4 left-[10%] right-[10%] h-0.5 bg-muted-foreground/20" />
                                 <div 
-                                  className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500"
-                                  style={{ width: `${(statusIndex / (statusSteps.length - 1)) * 100}%` }}
+                                  className="absolute top-3 sm:top-4 left-[10%] h-0.5 bg-primary transition-all duration-500"
+                                  style={{ width: `${(statusIndex / (statusSteps.length - 1)) * 80}%` }}
                                 />
-                                <div className="flex justify-between relative">
+                                <div className="flex justify-between relative px-0">
                                   {statusSteps.map((step, index) => {
                                     const Icon = step.icon;
                                     const isCompleted = index <= statusIndex;
                                     const isCurrent = index === statusIndex;
                                     
                                     return (
-                                      <div key={step.key} className="flex flex-col items-center flex-1">
+                                      <div key={step.key} className="flex flex-col items-center" style={{ width: '20%' }}>
                                         <div
-                                          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
+                                          className={`w-6 h-6 sm:w-8 sm:h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                                             isCompleted
                                               ? 'bg-primary text-primary-foreground shadow-md'
                                               : 'bg-background border-2 border-muted-foreground/30 text-muted-foreground'
-                                          } ${isCurrent ? 'ring-4 ring-primary/20 scale-110' : ''}`}
+                                          } ${isCurrent ? 'ring-2 sm:ring-4 ring-primary/20 scale-105 sm:scale-110' : ''}`}
                                         >
                                           {isCompleted && index < statusIndex ? (
-                                            <CheckCircle2 className="h-4 w-4" />
+                                            <CheckCircle2 className="h-3 w-3 sm:h-4 sm:w-4" />
                                           ) : (
-                                            <Icon className="h-4 w-4" />
+                                            <Icon className="h-3 w-3 sm:h-4 sm:w-4" />
                                           )}
                                         </div>
-                                        <span className={`text-[9px] sm:text-[10px] mt-2 text-center leading-tight max-w-[50px] sm:max-w-[60px] ${isCompleted ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                                        <span className={`text-[8px] sm:text-[10px] mt-1.5 sm:mt-2 text-center leading-tight ${isCompleted ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                                           {step.label}
                                         </span>
                                       </div>

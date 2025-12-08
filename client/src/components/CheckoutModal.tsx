@@ -684,22 +684,25 @@ export default function CheckoutModal({
                           alt="Чек оплаты"
                           className="w-full h-48 object-cover rounded-lg border"
                         />
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="absolute top-2 right-2"
-                          onClick={() => {
-                            setReceiptUrl(null);
-                            if (fileInputRef.current) {
-                              fileInputRef.current.value = '';
-                            }
-                          }}
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                        <div className="absolute bottom-2 left-2 bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                          <CheckCircle className="w-3 h-3" />
-                          Загружено
+                        <div className="absolute top-2 right-2 left-2 flex items-center justify-between">
+                          <div className="bg-green-500 text-white text-xs px-2 py-1 rounded flex items-center gap-1 shadow-md">
+                            <CheckCircle className="w-3 h-3" />
+                            Загружено
+                          </div>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            className="shadow-md"
+                            onClick={() => {
+                              setReceiptUrl(null);
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = '';
+                              }
+                            }}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Убрать
+                          </Button>
                         </div>
                       </div>
                     ) : (

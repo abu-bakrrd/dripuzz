@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* LIGHT MODE */
+/* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -32,15 +32,15 @@
 
   --sidebar-border: 0 0% 92%;
 
-  --sidebar-primary: 290 44% 91%;
+  --sidebar-primary: 0 0% 90%;
 
   --sidebar-primary-foreground: 0 0% 18%;
 
-  --sidebar-accent: 290 44% 91%;
+  --sidebar-accent: 0 0% 90%;
 
   --sidebar-accent-foreground: 0 0% 18%;
 
-  --sidebar-ring: 290 44% 91%;
+  --sidebar-ring: 0 0% 90%;
 
   --popover: 0 0% 99%;
 
@@ -48,7 +48,7 @@
 
   --popover-border: 0 0% 92%;
 
-  --primary: 290 44% 91%;
+  --primary: 0 0% 90%;
 
   --primary-foreground: 0 0% 18%;
 
@@ -60,7 +60,7 @@
 
   --muted-foreground: 0 0% 48%;
 
-  --accent: 170 38% 91%;
+  --accent: 0 0% 90%;
 
   --accent-foreground: 0 0% 18%;
 
@@ -69,12 +69,12 @@
   --destructive-foreground: 0 0% 99%;
 
   --input: 0 0% 92%;
-  --ring: 290 44% 91%;
-  --chart-1: 290 45% 35%;
-  --chart-2: 170 45% 32%;
-  --chart-3: 340 45% 38%;
-  --chart-4: 200 45% 35%;
-  --chart-5: 30 45% 35%;
+  --ring: 0 0% 90%;
+  --chart-1: 0 0% 35%;
+  --chart-2: 0 0% 45%;
+  --chart-3: 0 0% 55%;
+  --chart-4: 0 0% 40%;
+  --chart-5: 0 0% 50%;
 
   --font-sans: Inter, Poppins, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-serif: Georgia, serif;
@@ -150,15 +150,15 @@
 
   --sidebar-border: 0 0% 16%;
 
-  --sidebar-primary: 290 35% 28%;
+  --sidebar-primary: 0 0% 28%;
 
-  --sidebar-primary-foreground: 290 35% 96%;
+  --sidebar-primary-foreground: 0 0% 96%;
 
   --sidebar-accent: 0 0% 16%;
 
   --sidebar-accent-foreground: 0 0% 92%;
 
-  --sidebar-ring: 290 35% 65%;
+  --sidebar-ring: 0 0% 65%;
 
   --popover: 0 0% 14%;
 
@@ -166,9 +166,9 @@
 
   --popover-border: 0 0% 18%;
 
-  --primary: 290 35% 28%;
+  --primary: 0 0% 28%;
 
-  --primary-foreground: 290 35% 96%;
+  --primary-foreground: 0 0% 96%;
 
   --secondary: 0 0% 18%;
 
@@ -178,21 +178,21 @@
 
   --muted-foreground: 0 0% 75%;
 
-  --accent: 170 15% 18%;
+  --accent: 0 0% 18%;
 
-  --accent-foreground: 170 15% 90%;
+  --accent-foreground: 0 0% 90%;
 
   --destructive: 0 72% 32%;
 
   --destructive-foreground: 0 72% 96%;
 
   --input: 0 0% 28%;
-  --ring: 290 35% 65%;
-  --chart-1: 290 55% 75%;
-  --chart-2: 170 55% 72%;
-  --chart-3: 340 55% 75%;
-  --chart-4: 200 55% 75%;
-  --chart-5: 30 55% 72%;
+  --ring: 0 0% 65%;
+  --chart-1: 0 0% 75%;
+  --chart-2: 0 0% 72%;
+  --chart-3: 0 0% 78%;
+  --chart-4: 0 0% 70%;
+  --chart-5: 0 0% 68%;
 
   --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.20);
   --shadow-xs: 0px 1px 3px 0px hsl(0 0% 0% / 0.30);

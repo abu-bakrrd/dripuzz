@@ -641,6 +641,15 @@ def send_telegram_notification(order_data, order_items):
         print(f"❌ Error sending Telegram notification: {str(e)}")
         return False
 
+# Helper function to load config from settings.json
+def load_config():
+    config_path = os.path.join(os.path.dirname(__file__), 'config', 'settings.json')
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
 # API Routes
 
 @app.route('/api/config', methods=['GET'])

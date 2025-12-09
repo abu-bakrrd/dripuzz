@@ -88,8 +88,11 @@ export default function AdminSettings() {
     card_transfer: { card_number: '', card_holder: '', bank_name: '', enabled: false }
   });
   const [clickSecretKey, setClickSecretKey] = useState('');
+  const [showClickSecret, setShowClickSecret] = useState(false);
   const [paymeKey, setPaymeKey] = useState('');
+  const [showPaymeKey, setShowPaymeKey] = useState(false);
   const [uzumSecretKey, setUzumSecretKey] = useState('');
+  const [showUzumSecret, setShowUzumSecret] = useState(false);
   
   const [yandexMaps, setYandexMaps] = useState<YandexMapsSettings>({
     api_key: '',
@@ -771,12 +774,23 @@ export default function AdminSettings() {
                   Secret Key
                   {payments.click.has_secret_key && <span className="ml-2 text-xs text-green-600">(установлен)</span>}
                 </Label>
-                <Input
-                  type="password"
-                  value={clickSecretKey}
-                  onChange={(e) => setClickSecretKey(e.target.value)}
-                  placeholder={payments.click.has_secret_key ? '••••••••' : 'Secret Key'}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type={showClickSecret ? 'text' : 'password'}
+                    value={clickSecretKey}
+                    onChange={(e) => setClickSecretKey(e.target.value)}
+                    placeholder={payments.click.has_secret_key ? '••••••••' : 'Secret Key'}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowClickSecret(!showClickSecret)}
+                  >
+                    {showClickSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               
               <Button onClick={() => handleSavePayment('click')} disabled={saving === 'click'}>
@@ -827,12 +841,23 @@ export default function AdminSettings() {
                   Secret Key
                   {payments.payme.has_key && <span className="ml-2 text-xs text-green-600">(установлен)</span>}
                 </Label>
-                <Input
-                  type="password"
-                  value={paymeKey}
-                  onChange={(e) => setPaymeKey(e.target.value)}
-                  placeholder={payments.payme.has_key ? '••••••••' : 'Secret Key'}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type={showPaymeKey ? 'text' : 'password'}
+                    value={paymeKey}
+                    onChange={(e) => setPaymeKey(e.target.value)}
+                    placeholder={payments.payme.has_key ? '••••••••' : 'Secret Key'}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowPaymeKey(!showPaymeKey)}
+                  >
+                    {showPaymeKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               
               <Button onClick={() => handleSavePayment('payme')} disabled={saving === 'payme'}>
@@ -898,12 +923,23 @@ export default function AdminSettings() {
                   Secret Key
                   {payments.uzum.has_secret_key && <span className="ml-2 text-xs text-green-600">(установлен)</span>}
                 </Label>
-                <Input
-                  type="password"
-                  value={uzumSecretKey}
-                  onChange={(e) => setUzumSecretKey(e.target.value)}
-                  placeholder={payments.uzum.has_secret_key ? '••••••••' : 'Secret Key'}
-                />
+                <div className="flex gap-2">
+                  <Input
+                    type={showUzumSecret ? 'text' : 'password'}
+                    value={uzumSecretKey}
+                    onChange={(e) => setUzumSecretKey(e.target.value)}
+                    placeholder={payments.uzum.has_secret_key ? '••••••••' : 'Secret Key'}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowUzumSecret(!showUzumSecret)}
+                  >
+                    {showUzumSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
               </div>
               
               <Button onClick={() => handleSavePayment('uzum')} disabled={saving === 'uzum'}>

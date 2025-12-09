@@ -132,11 +132,29 @@ export default function AdminSettings() {
         fetch('/api/admin/settings/smtp')
       ]);
       
-      if (cloudinaryRes.ok) setCloudinary(await cloudinaryRes.json());
-      if (telegramRes.ok) setTelegram(await telegramRes.json());
-      if (paymentsRes.ok) setPayments(await paymentsRes.json());
+      if (cloudinaryRes.ok) {
+        const data = await cloudinaryRes.json();
+        setCloudinary(data);
+        setCloudinarySecret(data.api_secret || '');
+      }
+      if (telegramRes.ok) {
+        const data = await telegramRes.json();
+        setTelegram(data);
+        setTelegramToken(data.bot_token || '');
+      }
+      if (paymentsRes.ok) {
+        const data = await paymentsRes.json();
+        setPayments(data);
+        setClickSecretKey(data.click?.secret_key || '');
+        setPaymeKey(data.payme?.key || '');
+        setUzumSecretKey(data.uzum?.secret_key || '');
+      }
       if (yandexRes.ok) setYandexMaps(await yandexRes.json());
-      if (smtpRes.ok) setSmtp(await smtpRes.json());
+      if (smtpRes.ok) {
+        const data = await smtpRes.json();
+        setSmtp(data);
+        setSmtpPassword(data.password || '');
+      }
     } catch (error) {
       console.error('Failed to load settings:', error);
     } finally {
@@ -166,7 +184,6 @@ export default function AdminSettings() {
       
       if (response.ok) {
         showSaveMessage('cloudinary', 'Настройки сохранены');
-        setCloudinarySecret('');
         loadAllSettings();
       } else {
         const data = await response.json();
@@ -210,7 +227,6 @@ export default function AdminSettings() {
       
       if (response.ok) {
         showSaveMessage('telegram', 'Настройки сохранены');
-        setTelegramToken('');
         loadAllSettings();
       } else {
         const data = await response.json();
@@ -280,9 +296,6 @@ export default function AdminSettings() {
       
       if (response.ok) {
         showSaveMessage(provider, 'Настройки сохранены');
-        setClickSecretKey('');
-        setPaymeKey('');
-        setUzumSecretKey('');
         loadAllSettings();
       } else {
         const data = await response.json();
@@ -352,7 +365,6 @@ export default function AdminSettings() {
       
       if (response.ok) {
         showSaveMessage('smtp', 'Настройки сохранены');
-        setSmtpPassword('');
         loadAllSettings();
       } else {
         const data = await response.json();

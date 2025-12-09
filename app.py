@@ -2978,6 +2978,7 @@ def admin_get_cloudinary_settings():
         return jsonify({
             'cloud_name': config['cloud_name'] or '',
             'api_key': config['api_key'] or '',
+            'api_secret': config['api_secret'] or '',
             'has_api_secret': bool(config['api_secret'])
         }), 200
     except Exception as e:
@@ -3064,6 +3065,7 @@ def admin_get_telegram_settings():
         
         config = get_telegram_config()
         return jsonify({
+            'bot_token': config['bot_token'] or '',
             'has_bot_token': bool(config['bot_token']),
             'admin_chat_id': config['admin_chat_id'] or '',
             'notifications_enabled': config['notifications_enabled']
@@ -3140,6 +3142,7 @@ def admin_get_smtp_settings():
             'host': config['host'],
             'port': str(config['port']),
             'user': config['user'],
+            'password': config['password'] or '',
             'has_password': bool(config['password']),
             'from_email': config['from_email'],
             'from_name': config['from_name'],
@@ -3241,17 +3244,20 @@ def admin_get_payment_settings():
             'click': {
                 'merchant_id': click_config['merchant_id'],
                 'service_id': click_config['service_id'],
+                'secret_key': click_config['secret_key'] or '',
                 'has_secret_key': bool(click_config['secret_key']),
                 'enabled': click_config['enabled']
             },
             'payme': {
                 'merchant_id': payme_config['merchant_id'],
+                'key': payme_config['key'] or '',
                 'has_key': bool(payme_config['key']),
                 'enabled': payme_config['enabled']
             },
             'uzum': {
                 'merchant_id': uzum_config['merchant_id'],
                 'service_id': uzum_config['service_id'],
+                'secret_key': uzum_config['secret_key'] or '',
                 'has_secret_key': bool(uzum_config['secret_key']),
                 'enabled': uzum_config['enabled']
             },

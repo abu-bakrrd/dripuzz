@@ -309,10 +309,10 @@ function TitleUpdater() {
   const { config } = useConfig();
   
   useEffect(() => {
-    if (config?.shopName) {
-      document.title = config.shopName;
+    if (config?.description) {
+      document.title = config.description;
     }
-  }, [config?.shopName]);
+  }, [config?.description]);
   
   return null;
 }

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { useCart } from "@/hooks/useCart";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useConfig } from "@/hooks/useConfig";
 import Home from "@/pages/Home";
 import Cart from "@/pages/Cart";
 import Favorites from "@/pages/Favorites";
@@ -304,12 +305,25 @@ function AppContent() {
   );
 }
 
+function TitleUpdater() {
+  const { config } = useConfig();
+  
+  useEffect(() => {
+    if (config?.shopName) {
+      document.title = config.shopName;
+    }
+  }, [config?.shopName]);
+  
+  return null;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
           <Router>
+            <TitleUpdater />
             <ThemeApplier />
             <FontLoader />
             <AppContent />

@@ -3458,19 +3458,180 @@ def admin_test_yandex_maps():
 # Register the API blueprint
 app.register_blueprint(api)
 
+# SEO: Sitemap.xml
+@app.route('/sitemap.xml')
+def sitemap():
+    conn = None
+    try:
+        host = request.host_url.rstrip('/')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute('SELECT id FROM products')
+        products = cur.fetchall()
+        
+        categories = []
+        try:
+            cur.execute('SELECT id FROM categories')
+            categories = cur.fetchall()
+        except Exception:
+            pass
+        
+        cur.close()
+        
+        xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        
+        xml += f'  <url>\n    <loc>{host}/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n'
+        
+        for cat in categories:
+            xml += f'  <url>\n    <loc>{host}/?category={cat["id"]}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n'
+        
+        for product in products:
+            xml += f'  <url>\n    <loc>{host}/product/{product["id"]}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.7</priority>\n  </url>\n'
+        
+        xml += '</urlset>'
+        
+        response = app.response_class(response=xml, status=200, mimetype='application/xml')
+        return response
+    except Exception as e:
+        print(f"Sitemap error: {e}")
+        return '', 500
+    finally:
+        if conn:
+            conn.close()
+
+# SEO: Robots.txt
+@app.route('/robots.txt')
+def robots():
+    host = request.host_url.rstrip('/')
+    content = f"""User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /cart
+Disallow: /favorites
+Disallow: /orders
+Disallow: /login
+Disallow: /registration
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /api/
+
+Sitemap: {host}/sitemap.xml
+"""
+    return app.response_class(response=content, status=200, mimetype='text/plain')
+
 # Serve static assets (JS, CSS, images)
 @app.route('/assets/<path:filename>')
 def serve_assets(filename):
     return send_from_directory(os.path.join(app.static_folder, 'assets'), filename)
 
+# SEO: Generate HTML with meta tags for product pages
+def get_seo_html(product=None):
+    try:
+        with open(os.path.join(app.static_folder, 'index.html'), 'r', encoding='utf-8') as f:
+            html = f.read()
+    except Exception:
+        return None
+    
+    config = load_config()
+    host = request.host_url.rstrip('/')
+    shop_name = config.get('shopName', 'Shop')
+    shop_desc = config.get('description', '')
+    logo = config.get('logo', '/config/logo.svg')
+    logo_url = logo if logo.startswith('http') else f"{host}{logo}"
+    
+    if product:
+        title = f"{product['name']} | {shop_name}"
+        description = product.get('description', shop_desc)[:160]
+        image = product['images'][0] if product.get('images') else logo_url
+        image_url = image if image.startswith('http') else f"{host}{image}"
+        url = f"{host}/product/{product['id']}"
+        
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": product['name'],
+            "description": product.get('description', ''),
+            "image": [img if img.startswith('http') else f"{host}{img}" for img in product.get('images', [])],
+            "offers": {
+                "@type": "Offer",
+                "price": product['price'],
+                "priceCurrency": config.get('currency', {}).get('code', 'UZS'),
+                "availability": "https://schema.org/InStock",
+                "url": url
+            }
+        }
+    else:
+        title = shop_desc or shop_name
+        description = shop_desc
+        image_url = logo_url
+        url = host
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": shop_name,
+            "description": shop_desc,
+            "url": host,
+            "logo": logo_url
+        }
+    
+    meta_tags = f'''
+    <title>{title}</title>
+    <meta name="description" content="{description}">
+    <meta property="og:title" content="{title}">
+    <meta property="og:description" content="{description}">
+    <meta property="og:image" content="{image_url}">
+    <meta property="og:url" content="{url}">
+    <meta property="og:type" content="{'product' if product else 'website'}">
+    <meta property="og:site_name" content="{shop_name}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{title}">
+    <meta name="twitter:description" content="{description}">
+    <meta name="twitter:image" content="{image_url}">
+    <link rel="canonical" href="{url}">
+    <script type="application/ld+json">{json.dumps(schema)}</script>
+    '''
+    
+    html = html.replace('<title>Загрузка...</title>', meta_tags)
+    html = html.replace('Cache-Control', 'X-Original-Cache-Control')
+    
+    response = app.response_class(response=html, status=200, mimetype='text/html')
+    response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return response
+
 # Serve React App - catch-all route for SPA
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
-    # Skip API routes (handled by Blueprint)
     if path.startswith('api/'):
         return jsonify({'error': 'Not found'}), 404
-    # Serve index.html for all other routes (SPA routing)
+    
+    if path.startswith('product/'):
+        product_id = path.replace('product/', '')
+        conn = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute('SELECT id, name, description, price, images FROM products WHERE id = %s', (product_id,))
+            product = cur.fetchone()
+            cur.close()
+            if product:
+                result = get_seo_html(product)
+                if result:
+                    return result
+        except Exception as e:
+            print(f"SEO product error: {e}")
+        finally:
+            if conn:
+                conn.close()
+    
+    if path == '' or path == '/':
+        result = get_seo_html()
+        if result:
+            return result
+    
     return send_from_directory(app.static_folder, 'index.html')
 
 # Initialize database tables on startup

@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import FilterBar from "@/components/FilterBar";
 import ProductGrid from "@/components/ProductGrid";
 import Pagination from "@/components/Pagination";
+import SEO from "@/components/SEO";
 
 interface Product {
   id: string;
@@ -130,6 +131,7 @@ export default function Home({
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO />
       <Header
         onCartClick={onCartClick}
         onFavoritesClick={onFavoritesClick}

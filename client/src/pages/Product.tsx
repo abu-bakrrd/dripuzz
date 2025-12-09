@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import ProductDetail from "@/components/ProductDetail";
+import SEO, { BreadcrumbSchema } from "@/components/SEO";
 
 interface Attribute {
   name: string;
@@ -72,6 +73,25 @@ export default function Product({
   
   return (
     <div className="min-h-screen bg-background pb-6">
+      <SEO 
+        title={product.name}
+        description={product.description}
+        image={product.images?.[0]}
+        type="product"
+        product={{
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          images: product.images,
+          availability: 'InStock'
+        }}
+      />
+      <BreadcrumbSchema 
+        items={[
+          { name: 'Главная', url: '/' },
+          { name: product.name, url: `/product/${product.id}` }
+        ]}
+      />
       <ProductDetail
         id={product.id}
         name={product.name}

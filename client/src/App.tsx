@@ -19,6 +19,7 @@ import ResetPassword from "@/pages/ResetPassword";
 import Orders from "@/pages/Orders";
 import ThemeApplier from "@/components/ThemeApplier";
 import FontLoader from "@/components/FontLoader";
+import { OrganizationSchema } from "@/components/SEO";
 import AdminLogin from "@/pages/admin/AdminLogin";
 import AdminLayout from "@/pages/admin/AdminLayout";
 
@@ -326,6 +327,7 @@ function App() {
             <TitleUpdater />
             <ThemeApplier />
             <FontLoader />
+            <OrganizationSchema />
             <AppContent />
             <Toaster />
           </Router>

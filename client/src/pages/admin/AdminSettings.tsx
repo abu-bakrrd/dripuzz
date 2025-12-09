@@ -427,22 +427,23 @@ export default function AdminSettings() {
                     <span className="ml-2 text-xs text-green-600">(установлен)</span>
                   )}
                 </Label>
-                <div className="relative">
+                <div className="flex gap-2">
                   <Input
                     id="bot_token"
                     type={showTelegramToken ? 'text' : 'password'}
                     value={telegramToken}
                     onChange={(e) => setTelegramToken(e.target.value)}
                     placeholder={telegram.has_bot_token ? '••••••••••••••••' : 'Bot Token от @BotFather'}
-                    className="pr-10"
+                    className="flex-1"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    variant="outline"
+                    size="icon"
                     onClick={() => setShowTelegramToken(!showTelegramToken)}
                   >
                     {showTelegramToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
               
@@ -535,22 +536,23 @@ export default function AdminSettings() {
                     <span className="ml-2 text-xs text-green-600">(установлен)</span>
                   )}
                 </Label>
-                <div className="relative">
+                <div className="flex gap-2">
                   <Input
                     id="smtp_password"
                     type={showSmtpPassword ? 'text' : 'password'}
                     value={smtpPassword}
                     onChange={(e) => setSmtpPassword(e.target.value)}
                     placeholder={smtp.has_password ? '••••••••••••••••' : 'Пароль приложения'}
-                    className="pr-10"
+                    className="flex-1"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    variant="outline"
+                    size="icon"
                     onClick={() => setShowSmtpPassword(!showSmtpPassword)}
                   >
                     {showSmtpPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
               
@@ -663,22 +665,23 @@ export default function AdminSettings() {
                     <span className="ml-2 text-xs text-green-600">(установлен)</span>
                   )}
                 </Label>
-                <div className="relative">
+                <div className="flex gap-2">
                   <Input
                     id="api_secret"
                     type={showCloudinarySecret ? 'text' : 'password'}
                     value={cloudinarySecret}
                     onChange={(e) => setCloudinarySecret(e.target.value)}
                     placeholder={cloudinary.has_api_secret ? '••••••••••••••••' : 'API Secret'}
-                    className="pr-10"
+                    className="flex-1"
                   />
-                  <button
+                  <Button
                     type="button"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    variant="outline"
+                    size="icon"
                     onClick={() => setShowCloudinarySecret(!showCloudinarySecret)}
                   >
                     {showCloudinarySecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
+                  </Button>
                 </div>
               </div>
               

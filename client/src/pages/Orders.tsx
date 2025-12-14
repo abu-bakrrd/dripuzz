@@ -371,11 +371,26 @@ export default function Orders() {
                     onClick={() => toggleOrder(order.id)}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex gap-1.5 flex-shrink-0">
-                        {order.items.slice(0, 2).map((item, idx) => (
+                      <div className="flex gap-1 flex-shrink-0">
+                        {order.items.length === 1 && (
+                          <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                            {order.items[0].image_url ? (
+                              <img
+                                src={order.items[0].image_url}
+                                alt={order.items[0].name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {order.items.length === 2 && order.items.slice(0, 2).map((item, idx) => (
                           <div
                             key={idx}
-                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden"
+                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0"
                           >
                             {item.image_url ? (
                               <img
@@ -391,26 +406,41 @@ export default function Orders() {
                           </div>
                         ))}
                         {order.items.length > 2 && (
-                          <div className="w-10 h-10 rounded-lg bg-muted/70 flex items-center justify-center">
-                            <span className="text-[10px] font-medium text-muted-foreground">+{order.items.length - 2}</span>
-                          </div>
+                          <>
+                            <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                              {order.items[0].image_url ? (
+                                <img
+                                  src={order.items[0].image_url}
+                                  alt={order.items[0].name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center">
+                                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="w-10 h-10 rounded-lg bg-muted/70 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[10px] font-medium text-muted-foreground">+{order.items.length - 1}</span>
+                            </div>
+                          </>
                         )}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant="outline" className={`${getStatusColor(order.status)} text-[10px] font-medium px-1.5 py-0`}>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <Badge variant="outline" className={`${getStatusColor(order.status)} text-[10px] font-medium px-1.5 py-0 whitespace-nowrap`}>
                             {getStatusLabel(order.status)}
                           </Badge>
                           {isNew && (
-                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1 py-0 animate-pulse">
+                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1 py-0 animate-pulse whitespace-nowrap">
                               Новый
                             </Badge>
                           )}
                         </div>
                         <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
-                          <Clock className="h-2.5 w-2.5" />
-                          {formatRelativeDate(order.created_at)}
+                          <Clock className="h-2.5 w-2.5 flex-shrink-0" />
+                          <span className="truncate">{formatRelativeDate(order.created_at)}</span>
                         </p>
                       </div>
                       
@@ -431,18 +461,14 @@ export default function Orders() {
                     </div>
                   </div>
 
-                  <motion.div
-                    initial={false}
-                    animate={{ 
-                      height: isExpanded ? 'auto' : 0,
+                  <div
+                    className="grid transition-all duration-300 ease-out"
+                    style={{
+                      gridTemplateRows: isExpanded ? '1fr' : '0fr',
                       opacity: isExpanded ? 1 : 0
                     }}
-                    transition={{ 
-                      height: { duration: 0.35, ease: [0.4, 0, 0.2, 1] },
-                      opacity: { duration: 0.25, delay: isExpanded ? 0.1 : 0 }
-                    }}
-                    className="overflow-hidden"
                   >
+                    <div className="overflow-hidden">
                         <Separator />
                         <CardContent className="p-3 sm:p-4 space-y-4">
                           {order.status !== 'cancelled' && statusSteps.length > 0 && (
@@ -627,7 +653,8 @@ export default function Orders() {
                             )}
                           </div>
                         </CardContent>
-                  </motion.div>
+                    </div>
+                  </div>
                 </Card>
               );
             })}

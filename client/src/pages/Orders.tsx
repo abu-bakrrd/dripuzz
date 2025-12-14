@@ -371,9 +371,9 @@ export default function Orders() {
                     onClick={() => toggleOrder(order.id)}
                   >
                     <div className="flex items-start gap-2">
-                      <div className="flex gap-1 flex-shrink-0 pt-0.5">
-                        {order.items.length === 1 && (
-                          <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden">
+                      <div className="relative flex-shrink-0 pt-0.5" style={{ width: order.items.length > 1 ? '52px' : '40px', height: '40px' }}>
+                        {order.items.length === 1 ? (
+                          <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden shadow-sm">
                             {order.items[0].image_url ? (
                               <img
                                 src={order.items[0].image_url}
@@ -386,28 +386,34 @@ export default function Orders() {
                               </div>
                             )}
                           </div>
-                        )}
-                        {order.items.length === 2 && order.items.slice(0, 2).map((item, idx) => (
-                          <div
-                            key={idx}
-                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden"
-                          >
-                            {item.image_url ? (
-                              <img
-                                src={item.image_url}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
+                        ) : (
+                          <>
+                            {/* Задние карточки - выглядывающие уголки */}
+                            {order.items.length >= 3 && (
+                              <div 
+                                className="absolute w-10 h-10 rounded-lg bg-muted/50 border border-border/30"
+                                style={{ left: '12px', top: '0px', zIndex: 1 }}
                               />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                            )}
+                            {order.items.length >= 2 && (
+                              <div 
+                                className="absolute w-10 h-10 rounded-lg bg-muted/70 border border-border/40 overflow-hidden"
+                                style={{ left: '6px', top: '0px', zIndex: 2 }}
+                              >
+                                {order.items[1]?.image_url && (
+                                  <img
+                                    src={order.items[1].image_url}
+                                    alt=""
+                                    className="w-full h-full object-cover opacity-60"
+                                  />
+                                )}
                               </div>
                             )}
-                          </div>
-                        ))}
-                        {order.items.length > 2 && (
-                          <>
-                            <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden">
+                            {/* Главное фото на переднем плане */}
+                            <div 
+                              className="absolute w-10 h-10 rounded-lg bg-muted overflow-hidden shadow-md border border-border/50"
+                              style={{ left: '0px', top: '0px', zIndex: 3 }}
+                            >
                               {order.items[0].image_url ? (
                                 <img
                                   src={order.items[0].image_url}
@@ -419,9 +425,13 @@ export default function Orders() {
                                   <ImageIcon className="h-4 w-4 text-muted-foreground" />
                                 </div>
                               )}
-                            </div>
-                            <div className="w-10 h-10 rounded-lg bg-muted/70 flex items-center justify-center">
-                              <span className="text-[10px] font-medium text-muted-foreground">+{order.items.length - 1}</span>
+                              {/* Бейдж с количеством */}
+                              <div 
+                                className="absolute -bottom-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center px-1 shadow-sm border-2 border-background"
+                                style={{ zIndex: 4 }}
+                              >
+                                {order.items.length}
+                              </div>
                             </div>
                           </>
                         )}

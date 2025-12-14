@@ -370,10 +370,10 @@ export default function Orders() {
                     className="p-3 cursor-pointer hover:bg-muted/20 transition-colors duration-200"
                     onClick={() => toggleOrder(order.id)}
                   >
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1 flex-shrink-0">
+                    <div className="flex items-start gap-2">
+                      <div className="flex gap-1 flex-shrink-0 pt-0.5">
                         {order.items.length === 1 && (
-                          <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden">
                             {order.items[0].image_url ? (
                               <img
                                 src={order.items[0].image_url}
@@ -390,7 +390,7 @@ export default function Orders() {
                         {order.items.length === 2 && order.items.slice(0, 2).map((item, idx) => (
                           <div
                             key={idx}
-                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0"
+                            className="w-10 h-10 rounded-lg bg-muted overflow-hidden"
                           >
                             {item.image_url ? (
                               <img
@@ -407,7 +407,7 @@ export default function Orders() {
                         ))}
                         {order.items.length > 2 && (
                           <>
-                            <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-muted overflow-hidden">
                               {order.items[0].image_url ? (
                                 <img
                                   src={order.items[0].image_url}
@@ -420,38 +420,39 @@ export default function Orders() {
                                 </div>
                               )}
                             </div>
-                            <div className="w-10 h-10 rounded-lg bg-muted/70 flex items-center justify-center flex-shrink-0">
+                            <div className="w-10 h-10 rounded-lg bg-muted/70 flex items-center justify-center">
                               <span className="text-[10px] font-medium text-muted-foreground">+{order.items.length - 1}</span>
                             </div>
                           </>
                         )}
                       </div>
                       
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <Badge variant="outline" className={`${getStatusColor(order.status)} text-[10px] font-medium px-1.5 py-0 whitespace-nowrap`}>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant="outline" className={`${getStatusColor(order.status)} text-[10px] font-medium px-1.5 py-0 truncate max-w-[120px]`}>
                             {getStatusLabel(order.status)}
                           </Badge>
                           {isNew && (
-                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1 py-0 animate-pulse whitespace-nowrap">
+                            <Badge className="bg-primary text-primary-foreground text-[9px] px-1 py-0 animate-pulse flex-shrink-0">
                               Новый
                             </Badge>
                           )}
                         </div>
-                        <p className="text-[10px] text-muted-foreground mt-0.5 flex items-center gap-1">
+                        <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                           <Clock className="h-2.5 w-2.5 flex-shrink-0" />
                           <span className="truncate">{formatRelativeDate(order.created_at)}</span>
                         </p>
                       </div>
                       
-                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div className="flex items-start gap-1.5 flex-shrink-0">
                         <div className="text-right">
-                          <p className="font-bold text-sm">{formatPrice(order.total)}</p>
+                          <p className="font-bold text-sm whitespace-nowrap">{formatPrice(order.total)}</p>
                           <p className="text-[9px] text-muted-foreground">
                             {order.items.length} шт.
                           </p>
                         </div>
                         <motion.div
+                          className="mt-0.5"
                           animate={{ rotate: isExpanded ? 180 : 0 }}
                           transition={{ duration: 0.25, ease: "easeOut" }}
                         >

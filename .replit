@@ -39,7 +39,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python start_server.py"
+args = "cd /home/runner/workspace && python -c \"from app import app; app.run(host='0.0.0.0', port=5000, debug=True)\""
 waitForPort = 5000
 
 [agent]

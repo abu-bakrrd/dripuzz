@@ -334,7 +334,7 @@ def init_db():
         )
     ''')
     
-    # Add new columns to orders table for backorder tracking
+    # Add new columns to orders table for backorder tracking and delivery estimation
     cur.execute('''
         DO $$ 
         BEGIN 
@@ -345,6 +345,10 @@ def init_db():
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                           WHERE table_name='orders' AND column_name='backorder_delivery_date') THEN
                 ALTER TABLE orders ADD COLUMN backorder_delivery_date TIMESTAMP;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='estimated_delivery_days') THEN
+                ALTER TABLE orders ADD COLUMN estimated_delivery_days INTEGER;
             END IF;
         END $$;
     ''')
@@ -1669,6 +1673,7 @@ def checkout_order():
                 # No inventory record - treat as backorder (not tracked)
                 availability_status = 'backorder'
                 has_backorder = True
+                # For not-tracked items, we'll use default delivery days
             
             order_items_with_status.append({
                 **dict(item),
@@ -1676,10 +1681,24 @@ def checkout_order():
                 'backorder_lead_time_days': backorder_lead_time_days
             })
         
+        # Get default delivery days setting
+        default_delivery_days_setting = get_platform_setting('default_delivery_days')
+        default_delivery_days = int(default_delivery_days_setting) if default_delivery_days_setting else 3
+        
         # Calculate backorder delivery date if needed
         backorder_delivery_date = None
-        if has_backorder and max_backorder_days > 0:
-            backorder_delivery_date = datetime.now() + timedelta(days=max_backorder_days)
+        if has_backorder:
+            # Use max_backorder_days if any item has specific lead time, otherwise use default
+            effective_days = max_backorder_days if max_backorder_days > 0 else default_delivery_days
+            backorder_delivery_date = datetime.now() + timedelta(days=effective_days)
+        
+        # Calculate estimated delivery days
+        # If there's backorder, use max of (max_backorder_days, default_delivery_days)
+        # If no backorder, use default_delivery_days (for in-stock items)
+        if has_backorder:
+            estimated_delivery_days = max(default_delivery_days, max_backorder_days) if max_backorder_days > 0 else default_delivery_days
+        else:
+            estimated_delivery_days = default_delivery_days
         
         # Determine initial status for new orders
         initial_status = 'reviewing'  # All orders start as "Рассматривается"
@@ -1692,11 +1711,11 @@ def checkout_order():
         cur.execute(
             '''INSERT INTO orders (user_id, total, status, payment_method, payment_status, 
                delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, 
-               payment_receipt_url, has_backorder, backorder_delivery_date) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *''',
+               payment_receipt_url, has_backorder, backorder_delivery_date, estimated_delivery_days) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *''',
             (user_id, total, initial_status, payment_method, initial_payment_status,
              delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, 
-             payment_receipt_url, has_backorder, backorder_delivery_date)
+             payment_receipt_url, has_backorder, backorder_delivery_date, estimated_delivery_days)
         )
         order = cur.fetchone()
         order_id = order['id']
@@ -4002,6 +4021,38 @@ def admin_test_yandex_maps():
             'success': False,
             'error': str(e)
         }), 200
+
+# Delivery settings API
+@app.route('/api/admin/settings/delivery', methods=['GET'])
+def admin_get_delivery_settings():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        default_delivery_days = get_platform_setting('default_delivery_days')
+        
+        return jsonify({
+            'default_delivery_days': int(default_delivery_days) if default_delivery_days else 3
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/settings/delivery', methods=['POST'])
+def admin_update_delivery_settings():
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        default_delivery_days = data.get('default_delivery_days', 3)
+        
+        set_platform_setting('default_delivery_days', str(default_delivery_days), is_secret=False)
+        
+        return jsonify({'message': 'Настройки доставки сохранены'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # Register the API blueprint
 app.register_blueprint(api)

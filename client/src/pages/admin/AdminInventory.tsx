@@ -212,6 +212,8 @@ export default function AdminInventory() {
 
   const colorNameToHex = (colorName: string | null | undefined): string => {
     if (!colorName) return '#6b7280';
+    // If already a HEX code, return it directly
+    if (colorName.startsWith('#')) return colorName;
     const colors: Record<string, string> = {
       'красный': '#ef4444', 'red': '#ef4444',
       'синий': '#3b82f6', 'blue': '#3b82f6',

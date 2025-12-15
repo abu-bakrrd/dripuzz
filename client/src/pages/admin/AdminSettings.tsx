@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Cloud, Eye, EyeOff, Check, X, Loader2, Send, CreditCard, MapPin, Mail } from 'lucide-react';
+import { Cloud, Eye, EyeOff, Check, X, Loader2, Send, CreditCard, MapPin, Mail, Truck } from 'lucide-react';
 
 interface CloudinarySettings {
   cloud_name: string;
@@ -113,6 +113,8 @@ export default function AdminSettings() {
   const [smtpPassword, setSmtpPassword] = useState('');
   const [showSmtpPassword, setShowSmtpPassword] = useState(false);
   
+  const [deliveryDays, setDeliveryDays] = useState<number>(3);
+  
   const [saving, setSaving] = useState<string | null>(null);
   const [testing, setTesting] = useState<string | null>(null);
   const [testResult, setTestResult] = useState<{ key: string; success: boolean; message: string } | null>(null);
@@ -124,12 +126,13 @@ export default function AdminSettings() {
 
   const loadAllSettings = async () => {
     try {
-      const [cloudinaryRes, telegramRes, paymentsRes, yandexRes, smtpRes] = await Promise.all([
+      const [cloudinaryRes, telegramRes, paymentsRes, yandexRes, smtpRes, deliveryRes] = await Promise.all([
         fetch('/api/admin/settings/cloudinary'),
         fetch('/api/admin/settings/telegram'),
         fetch('/api/admin/settings/payments'),
         fetch('/api/admin/settings/yandex_maps'),
-        fetch('/api/admin/settings/smtp')
+        fetch('/api/admin/settings/smtp'),
+        fetch('/api/admin/settings/delivery')
       ]);
       
       if (cloudinaryRes.ok) {
@@ -154,6 +157,10 @@ export default function AdminSettings() {
         const data = await smtpRes.json();
         setSmtp(data);
         setSmtpPassword(data.password || '');
+      }
+      if (deliveryRes.ok) {
+        const data = await deliveryRes.json();
+        setDeliveryDays(data.default_delivery_days || 3);
       }
     } catch (error) {
       console.error('Failed to load settings:', error);
@@ -377,6 +384,28 @@ export default function AdminSettings() {
     }
   };
 
+  const handleSaveDelivery = async () => {
+    setSaving('delivery');
+    try {
+      const response = await fetch('/api/admin/settings/delivery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ default_delivery_days: deliveryDays })
+      });
+      
+      if (response.ok) {
+        showSaveMessage('delivery', 'Настройки доставки сохранены');
+      } else {
+        const data = await response.json();
+        showSaveMessage('delivery', data.error, true);
+      }
+    } catch (error) {
+      showSaveMessage('delivery', 'Ошибка сохранения', true);
+    } finally {
+      setSaving(null);
+    }
+  };
+
   const handleTestSmtp = async () => {
     setTesting('smtp');
     setTestResult(null);
@@ -403,12 +432,13 @@ export default function AdminSettings() {
     <div className="space-y-6 overflow-hidden">
       <Tabs defaultValue="telegram" className="w-full overflow-hidden">
         <div className="overflow-x-auto -mx-2 px-2">
-          <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-5 gap-1">
+          <TabsList className="inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-6 gap-1">
             <TabsTrigger value="telegram" className="whitespace-nowrap px-3 text-xs sm:text-sm">Telegram</TabsTrigger>
             <TabsTrigger value="smtp" className="whitespace-nowrap px-3 text-xs sm:text-sm">SMTP</TabsTrigger>
             <TabsTrigger value="cloudinary" className="whitespace-nowrap px-3 text-xs sm:text-sm">Cloudinary</TabsTrigger>
             <TabsTrigger value="payments" className="whitespace-nowrap px-3 text-xs sm:text-sm">Платежи</TabsTrigger>
             <TabsTrigger value="maps" className="whitespace-nowrap px-3 text-xs sm:text-sm">Карты</TabsTrigger>
+            <TabsTrigger value="delivery" className="whitespace-nowrap px-3 text-xs sm:text-sm">Доставка</TabsTrigger>
           </TabsList>
         </div>
         
@@ -1122,6 +1152,50 @@ export default function AdminSettings() {
               <p>2. Создайте новый проект</p>
               <p>3. Подключите API JavaScript Карты</p>
               <p>4. Скопируйте API ключ</p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="delivery" className="space-y-4 mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Truck className="h-5 w-5" />
+                Настройки доставки
+              </CardTitle>
+              <CardDescription>
+                Срок доставки по умолчанию для заказов
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="delivery_days">Срок доставки по умолчанию (дней)</Label>
+                <Input
+                  id="delivery_days"
+                  type="number"
+                  min="1"
+                  max="90"
+                  value={deliveryDays}
+                  onChange={(e) => setDeliveryDays(parseInt(e.target.value) || 3)}
+                  placeholder="3"
+                  className="w-32"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Этот срок будет использоваться для товаров "Под заказ", если не указан индивидуальный срок
+                </p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4">
+                <Button onClick={handleSaveDelivery} disabled={saving === 'delivery'} className="w-full sm:w-auto">
+                  {saving === 'delivery' ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Сохранение...</> : 'Сохранить'}
+                </Button>
+              </div>
+              
+              {saveMessage?.key === 'delivery' && (
+                <p className={`text-sm ${saveMessage.message.includes('Ошибка') ? 'text-red-600' : 'text-green-600'}`}>
+                  {saveMessage.message}
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

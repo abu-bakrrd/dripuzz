@@ -206,26 +206,24 @@ export default function ProductCard({
           {name}
         </h3>
         
-        {availability && availability.status !== 'not_tracked' && (
-          <div className="mb-2">
-            {availability.in_stock ? (
-              <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
-                <Package className="w-3 h-3" />
-                <span>В наличии</span>
+        <div className="mb-2">
+          {availability?.in_stock ? (
+            <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+              <Package className="w-3 h-3" />
+              <span>В наличии</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+              <Clock className="w-3 h-3" />
+              <span>
+                Под заказ
+                {availability?.backorder_lead_time_days && (
+                  <span className="ml-1">({availability.backorder_lead_time_days} дн.)</span>
+                )}
               </span>
-            ) : (
-              <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                <Clock className="w-3 h-3" />
-                <span>
-                  Под заказ
-                  {availability.backorder_lead_time_days && (
-                    <span className="ml-1">({availability.backorder_lead_time_days} дн.)</span>
-                  )}
-                </span>
-              </span>
-            )}
-          </div>
-        )}
+            </span>
+          )}
+        </div>
         
         <div className="flex items-center justify-between">
           <p 

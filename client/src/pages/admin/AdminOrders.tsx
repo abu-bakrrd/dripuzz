@@ -40,6 +40,7 @@ interface Order {
   items: OrderItem[];
   has_backorder?: boolean;
   backorder_delivery_date?: string;
+  estimated_delivery_days?: number;
 }
 
 const DEFAULT_STATUSES = [
@@ -260,6 +261,12 @@ export default function AdminOrders() {
                         Под заказ
                       </Badge>
                     )}
+                    {order.estimated_delivery_days && (
+                      <Badge variant="outline" className="text-blue-600 border-blue-300">
+                        <Clock className="h-3 w-3 mr-1" />
+                        {order.estimated_delivery_days} дн.
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
@@ -319,6 +326,16 @@ export default function AdminOrders() {
                 </div>
               </div>
 
+              {selectedOrder.estimated_delivery_days && (
+                <div className="bg-blue-50 border border-blue-200 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 text-blue-800">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">Срок доставки:</span>
+                    <span>{selectedOrder.estimated_delivery_days} дней</span>
+                  </div>
+                </div>
+              )}
+              
               {selectedOrder.has_backorder && selectedOrder.backorder_delivery_date && (
                 <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-orange-800">

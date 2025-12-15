@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,12 +25,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, Download, Upload, Pencil, Trash2, Package } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Download, Upload, Pencil, Trash2, Package, Image as ImageIcon, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   id: string;
   name: string;
+  images?: string[];
   colors?: string[];
   attributes?: { name: string; values: string[] }[];
 }
@@ -79,6 +81,7 @@ export default function AdminInventory() {
   });
 
   const selectedProduct = products.find(p => p.id === formData.product_id);
+  const filterProduct = products.find(p => p.id === selectedProductId);
 
   const addMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
@@ -202,48 +205,89 @@ export default function AdminInventory() {
     return parts.length > 0 ? parts.join(" / ") : "Без вариантов";
   };
 
+  const getProductImage = (productId: string) => {
+    const product = products.find(p => p.id === productId);
+    return product?.images?.[0];
+  };
+
+  const colorNameToHex = (colorName: string | null | undefined): string => {
+    if (!colorName) return '#6b7280';
+    const colors: Record<string, string> = {
+      'красный': '#ef4444', 'red': '#ef4444',
+      'синий': '#3b82f6', 'blue': '#3b82f6',
+      'зеленый': '#22c55e', 'зелёный': '#22c55e', 'green': '#22c55e',
+      'желтый': '#eab308', 'жёлтый': '#eab308', 'yellow': '#eab308',
+      'оранжевый': '#f97316', 'orange': '#f97316',
+      'фиолетовый': '#a855f7', 'purple': '#a855f7',
+      'розовый': '#ec4899', 'pink': '#ec4899',
+      'черный': '#1f2937', 'чёрный': '#1f2937', 'black': '#1f2937',
+      'белый': '#f3f4f6', 'white': '#f3f4f6',
+      'серый': '#6b7280', 'gray': '#6b7280', 'grey': '#6b7280',
+      'коричневый': '#92400e', 'brown': '#92400e',
+      'бежевый': '#d4b896', 'beige': '#d4b896',
+      'голубой': '#38bdf8', 'light blue': '#38bdf8',
+      'бирюзовый': '#14b8a6', 'teal': '#14b8a6', 'turquoise': '#14b8a6',
+      'золотой': '#fbbf24', 'gold': '#fbbf24',
+      'серебряный': '#9ca3af', 'silver': '#9ca3af',
+    };
+    return colors[colorName.toLowerCase()] || '#6b7280';
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Package className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Остатки товаров</h1>
+          <h1 className="text-xl md:text-2xl font-bold">Остатки товаров</h1>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport} className="flex-1 sm:flex-none">
             <Download className="h-4 w-4 mr-2" />
-            Экспорт CSV
+            <span className="hidden sm:inline">Экспорт</span>
+            <span className="sm:hidden">CSV</span>
           </Button>
-          <Label className="cursor-pointer">
-            <Button variant="outline" asChild>
+          <Label className="cursor-pointer flex-1 sm:flex-none">
+            <Button variant="outline" size="sm" asChild className="w-full">
               <span>
                 <Upload className="h-4 w-4 mr-2" />
-                Импорт CSV
+                <span className="hidden sm:inline">Импорт</span>
+                <span className="sm:hidden">CSV</span>
               </span>
             </Button>
             <input type="file" accept=".csv" className="hidden" onChange={handleImport} />
           </Label>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => { resetForm(); setIsAddDialogOpen(true); }}>
+              <Button size="sm" onClick={() => { resetForm(); setIsAddDialogOpen(true); }} className="flex-1 sm:flex-none">
                 <Plus className="h-4 w-4 mr-2" />
                 Добавить
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Добавить остаток</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
                   <Label>Товар</Label>
-                  <Select value={formData.product_id} onValueChange={(v) => setFormData({ ...formData, product_id: v })}>
+                  <Select value={formData.product_id} onValueChange={(v) => setFormData({ ...formData, product_id: v, color: "", attribute1_value: "", attribute2_value: "" })}>
                     <SelectTrigger>
                       <SelectValue placeholder="Выберите товар" />
                     </SelectTrigger>
                     <SelectContent>
                       {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        <SelectItem key={p.id} value={p.id}>
+                          <div className="flex items-center gap-2">
+                            {p.images?.[0] ? (
+                              <img src={p.images[0]} alt="" className="w-6 h-6 object-cover rounded" />
+                            ) : (
+                              <div className="w-6 h-6 bg-muted rounded flex items-center justify-center">
+                                <ImageIcon className="w-3 h-3 text-muted-foreground" />
+                              </div>
+                            )}
+                            <span className="truncate">{p.name}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -251,41 +295,78 @@ export default function AdminInventory() {
                 
                 {selectedProduct?.colors && selectedProduct.colors.length > 0 && (
                   <div>
-                    <Label>Цвет</Label>
-                    <Select value={formData.color || "__none__"} onValueChange={(v) => setFormData({ ...formData, color: v === "__none__" ? "" : v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Выберите цвет" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Без цвета</SelectItem>
-                        {selectedProduct.colors.map((c) => (
-                          <SelectItem key={c} value={c}>{c}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="mb-2 block">Цвет</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, color: "" })}
+                        className={`px-3 py-2 text-sm rounded-md border transition-all ${
+                          formData.color === "" 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        Без цвета
+                      </button>
+                      {selectedProduct.colors.map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setFormData({ ...formData, color: c })}
+                          className={`flex items-center gap-2 px-3 py-2 text-sm rounded-md border transition-all ${
+                            formData.color === c 
+                              ? "border-primary ring-2 ring-primary/20" 
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          <span 
+                            className="w-4 h-4 rounded-full border border-black/10" 
+                            style={{ backgroundColor: colorNameToHex(c) }}
+                          />
+                          <span>{c}</span>
+                          {formData.color === c && <Check className="w-3 h-3 text-primary" />}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
                 
                 {selectedProduct?.attributes?.map((attr, idx) => (
                   <div key={attr.name}>
-                    <Label>{attr.name}</Label>
-                    <Select 
-                      value={(idx === 0 ? formData.attribute1_value : formData.attribute2_value) || "__none__"}
-                      onValueChange={(v) => setFormData({ 
-                        ...formData, 
-                        [idx === 0 ? 'attribute1_value' : 'attribute2_value']: v === "__none__" ? "" : v 
-                      })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder={`Выберите ${attr.name}`} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__none__">Не выбрано</SelectItem>
-                        {attr.values.map((v) => (
-                          <SelectItem key={v} value={v}>{v}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Label className="mb-2 block">{attr.name}</Label>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ 
+                          ...formData, 
+                          [idx === 0 ? 'attribute1_value' : 'attribute2_value']: "" 
+                        })}
+                        className={`px-3 py-2 text-sm rounded-md border transition-all ${
+                          (idx === 0 ? formData.attribute1_value : formData.attribute2_value) === "" 
+                            ? "border-primary bg-primary/10 text-primary" 
+                            : "border-border hover:border-primary/50"
+                        }`}
+                      >
+                        Не выбрано
+                      </button>
+                      {attr.values.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => setFormData({ 
+                            ...formData, 
+                            [idx === 0 ? 'attribute1_value' : 'attribute2_value']: v 
+                          })}
+                          className={`px-3 py-2 text-sm rounded-md border transition-all ${
+                            (idx === 0 ? formData.attribute1_value : formData.attribute2_value) === v 
+                              ? "border-primary bg-primary/10 text-primary" 
+                              : "border-border hover:border-primary/50"
+                          }`}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ))}
                 
@@ -310,7 +391,11 @@ export default function AdminInventory() {
                   />
                 </div>
                 
-                <Button onClick={() => addMutation.mutate(formData)} disabled={!formData.product_id}>
+                <Button 
+                  onClick={() => addMutation.mutate(formData)} 
+                  disabled={!formData.product_id}
+                  className="w-full"
+                >
                   Добавить
                 </Button>
               </div>
@@ -319,19 +404,37 @@ export default function AdminInventory() {
         </div>
       </div>
 
-      <div className="flex gap-4 items-center">
-        <Label>Фильтр по товару:</Label>
+      <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 sm:items-center">
+        <Label className="whitespace-nowrap">Фильтр по товару:</Label>
         <Select value={selectedProductId || "__all__"} onValueChange={(v) => setSelectedProductId(v === "__all__" ? "" : v)}>
-          <SelectTrigger className="w-64">
+          <SelectTrigger className="w-full sm:w-64">
             <SelectValue placeholder="Все товары" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__all__">Все товары</SelectItem>
             {products.map((p) => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+              <SelectItem key={p.id} value={p.id}>
+                <div className="flex items-center gap-2">
+                  {p.images?.[0] ? (
+                    <img src={p.images[0]} alt="" className="w-5 h-5 object-cover rounded" />
+                  ) : (
+                    <div className="w-5 h-5 bg-muted rounded flex items-center justify-center">
+                      <ImageIcon className="w-3 h-3 text-muted-foreground" />
+                    </div>
+                  )}
+                  <span className="truncate">{p.name}</span>
+                </div>
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
+        {filterProduct && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {filterProduct.images?.[0] && (
+              <img src={filterProduct.images[0]} alt="" className="w-8 h-8 object-cover rounded hidden sm:block" />
+            )}
+          </div>
+        )}
       </div>
 
       {isLoading ? (
@@ -341,56 +444,191 @@ export default function AdminInventory() {
           Нет данных об остатках. Добавьте первую запись.
         </div>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Товар</TableHead>
-              <TableHead>Комбинация</TableHead>
-              <TableHead>Количество</TableHead>
-              <TableHead>Срок доставки (дней)</TableHead>
-              <TableHead className="w-24">Действия</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-16"></TableHead>
+                  <TableHead>Товар</TableHead>
+                  <TableHead>Комбинация</TableHead>
+                  <TableHead>Количество</TableHead>
+                  <TableHead>Срок доставки (дней)</TableHead>
+                  <TableHead className="w-24">Действия</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {inventory.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      {getProductImage(item.product_id) ? (
+                        <img 
+                          src={getProductImage(item.product_id)} 
+                          alt="" 
+                          className="w-12 h-12 object-cover rounded"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 bg-muted rounded flex items-center justify-center">
+                          <ImageIcon className="w-5 h-5 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{item.product_name}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {item.color && (
+                          <span 
+                            className="w-4 h-4 rounded-full border border-black/10" 
+                            style={{ backgroundColor: colorNameToHex(item.color) }}
+                            title={item.color}
+                          />
+                        )}
+                        <span>{formatCombination(item)}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {editingItem?.id === item.id ? (
+                        <Input 
+                          type="number"
+                          className="w-24"
+                          value={editingItem.quantity}
+                          onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 0 })}
+                        />
+                      ) : (
+                        <span className={item.quantity === 0 ? "text-destructive font-semibold" : ""}>
+                          {item.quantity === 0 ? "Под заказ" : item.quantity}
+                        </span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {editingItem?.id === item.id ? (
+                        <Input 
+                          type="number"
+                          className="w-24"
+                          value={editingItem.backorder_lead_time_days || ""}
+                          onChange={(e) => setEditingItem({ 
+                            ...editingItem, 
+                            backorder_lead_time_days: e.target.value ? parseInt(e.target.value) : null 
+                          })}
+                        />
+                      ) : (
+                        item.backorder_lead_time_days || "—"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {editingItem?.id === item.id ? (
+                          <>
+                            <Button 
+                              size="sm" 
+                              onClick={() => updateMutation.mutate({ 
+                                id: item.id, 
+                                data: { 
+                                  quantity: editingItem.quantity, 
+                                  backorder_lead_time_days: editingItem.backorder_lead_time_days?.toString() || "" 
+                                } 
+                              })}
+                            >
+                              Сохранить
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                              Отмена
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button size="icon" variant="ghost" onClick={() => setEditingItem(item)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(item.id)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
             {inventory.map((item) => (
-              <TableRow key={item.id}>
-                <TableCell className="font-medium">{item.product_name}</TableCell>
-                <TableCell>{formatCombination(item)}</TableCell>
-                <TableCell>
-                  {editingItem?.id === item.id ? (
-                    <Input 
-                      type="number"
-                      className="w-24"
-                      value={editingItem.quantity}
-                      onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 0 })}
-                    />
-                  ) : (
-                    <span className={item.quantity === 0 ? "text-destructive font-semibold" : ""}>
-                      {item.quantity === 0 ? "Под заказ" : item.quantity}
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {editingItem?.id === item.id ? (
-                    <Input 
-                      type="number"
-                      className="w-24"
-                      value={editingItem.backorder_lead_time_days || ""}
-                      onChange={(e) => setEditingItem({ 
-                        ...editingItem, 
-                        backorder_lead_time_days: e.target.value ? parseInt(e.target.value) : null 
-                      })}
-                    />
-                  ) : (
-                    item.backorder_lead_time_days || "—"
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex gap-1">
+              <Card key={item.id}>
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    {getProductImage(item.product_id) ? (
+                      <img 
+                        src={getProductImage(item.product_id)} 
+                        alt="" 
+                        className="w-16 h-16 object-cover rounded flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 bg-muted rounded flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="w-6 h-6 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-sm truncate">{item.product_name}</h3>
+                      <div className="flex items-center gap-1 mt-1">
+                        {item.color && (
+                          <span 
+                            className="w-3 h-3 rounded-full border border-black/10" 
+                            style={{ backgroundColor: colorNameToHex(item.color) }}
+                          />
+                        )}
+                        <span className="text-xs text-muted-foreground truncate">
+                          {formatCombination(item)}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Кол-во: </span>
+                            {editingItem?.id === item.id ? (
+                              <Input 
+                                type="number"
+                                className="w-16 h-7 text-sm inline-block"
+                                value={editingItem.quantity}
+                                onChange={(e) => setEditingItem({ ...editingItem, quantity: parseInt(e.target.value) || 0 })}
+                              />
+                            ) : (
+                              <span className={`font-medium ${item.quantity === 0 ? "text-destructive" : ""}`}>
+                                {item.quantity === 0 ? "Под заказ" : item.quantity}
+                              </span>
+                            )}
+                          </div>
+                          {(item.backorder_lead_time_days || editingItem?.id === item.id) && (
+                            <div>
+                              <span className="text-xs text-muted-foreground">Дней: </span>
+                              {editingItem?.id === item.id ? (
+                                <Input 
+                                  type="number"
+                                  className="w-16 h-7 text-sm inline-block"
+                                  value={editingItem.backorder_lead_time_days || ""}
+                                  onChange={(e) => setEditingItem({ 
+                                    ...editingItem, 
+                                    backorder_lead_time_days: e.target.value ? parseInt(e.target.value) : null 
+                                  })}
+                                />
+                              ) : (
+                                <span className="font-medium">{item.backorder_lead_time_days || "—"}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3 pt-3 border-t">
                     {editingItem?.id === item.id ? (
                       <>
                         <Button 
                           size="sm" 
+                          className="flex-1"
                           onClick={() => updateMutation.mutate({ 
                             id: item.id, 
                             data: { 
@@ -401,26 +639,27 @@ export default function AdminInventory() {
                         >
                           Сохранить
                         </Button>
-                        <Button size="sm" variant="outline" onClick={() => setEditingItem(null)}>
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingItem(null)}>
                           Отмена
                         </Button>
                       </>
                     ) : (
                       <>
-                        <Button size="icon" variant="ghost" onClick={() => setEditingItem(item)}>
-                          <Pencil className="h-4 w-4" />
+                        <Button size="sm" variant="outline" className="flex-1" onClick={() => setEditingItem(item)}>
+                          <Pencil className="h-4 w-4 mr-2" />
+                          Изменить
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(item.id)}>
+                        <Button size="sm" variant="outline" className="text-destructive" onClick={() => deleteMutation.mutate(item.id)}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </>
                     )}
                   </div>
-                </TableCell>
-              </TableRow>
+                </CardContent>
+              </Card>
             ))}
-          </TableBody>
-        </Table>
+          </div>
+        </>
       )}
     </div>
   );

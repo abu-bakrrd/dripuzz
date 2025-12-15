@@ -820,6 +820,116 @@ def get_product(product_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/products/<product_id>/availability', methods=['GET'])
+def get_product_availability(product_id):
+    """Get availability status for a product"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Get all inventory records for this product
+        cur.execute('''
+            SELECT quantity, backorder_lead_time_days
+            FROM product_inventory
+            WHERE product_id = %s
+        ''', (product_id,))
+        
+        inventory_records = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not inventory_records:
+            # No inventory records - product not tracked
+            return jsonify({
+                'status': 'not_tracked',
+                'in_stock': False,
+                'total_quantity': 0,
+                'backorder_lead_time_days': None
+            })
+        
+        total_quantity = sum(r['quantity'] for r in inventory_records)
+        
+        # Get the maximum backorder lead time
+        lead_times = [r['backorder_lead_time_days'] for r in inventory_records if r['backorder_lead_time_days']]
+        max_lead_time = max(lead_times) if lead_times else None
+        
+        if total_quantity > 0:
+            return jsonify({
+                'status': 'in_stock',
+                'in_stock': True,
+                'total_quantity': total_quantity,
+                'backorder_lead_time_days': None
+            })
+        else:
+            return jsonify({
+                'status': 'backorder',
+                'in_stock': False,
+                'total_quantity': 0,
+                'backorder_lead_time_days': max_lead_time
+            })
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/availability', methods=['POST'])
+def get_products_availability():
+    """Get availability status for multiple products at once"""
+    try:
+        data = request.json
+        product_ids = data.get('product_ids', [])
+        
+        if not product_ids:
+            return jsonify({})
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        result = {}
+        
+        for product_id in product_ids:
+            cur.execute('''
+                SELECT quantity, backorder_lead_time_days
+                FROM product_inventory
+                WHERE product_id = %s
+            ''', (product_id,))
+            
+            inventory_records = cur.fetchall()
+            
+            if not inventory_records:
+                result[product_id] = {
+                    'status': 'not_tracked',
+                    'in_stock': False,
+                    'total_quantity': 0,
+                    'backorder_lead_time_days': None
+                }
+            else:
+                total_quantity = sum(r['quantity'] for r in inventory_records)
+                lead_times = [r['backorder_lead_time_days'] for r in inventory_records if r['backorder_lead_time_days']]
+                max_lead_time = max(lead_times) if lead_times else None
+                
+                if total_quantity > 0:
+                    result[product_id] = {
+                        'status': 'in_stock',
+                        'in_stock': True,
+                        'total_quantity': total_quantity,
+                        'backorder_lead_time_days': None
+                    }
+                else:
+                    result[product_id] = {
+                        'status': 'backorder',
+                        'in_stock': False,
+                        'total_quantity': 0,
+                        'backorder_lead_time_days': max_lead_time
+                    }
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify(result)
+            
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/products/check', methods=['POST'])
 def check_products_exist():
     """Check which products from the list still exist in the database"""

@@ -10,6 +10,13 @@ interface Product {
   isFavorite?: boolean;
 }
 
+interface AvailabilityData {
+  status: 'in_stock' | 'backorder' | 'not_tracked';
+  in_stock: boolean;
+  total_quantity: number;
+  backorder_lead_time_days: number | null;
+}
+
 interface ProductGridProps {
   products: Product[];
   onToggleFavorite?: (id: string) => void;
@@ -18,6 +25,7 @@ interface ProductGridProps {
   favoriteIds?: string[];
   cartItemIds?: string[];
   onCartClick?: () => void;
+  availabilityData?: Record<string, AvailabilityData>;
 }
 
 export default function ProductGrid({
@@ -28,6 +36,7 @@ export default function ProductGrid({
   favoriteIds = [],
   cartItemIds = [],
   onCartClick,
+  availabilityData = {},
 }: ProductGridProps) {
   const [quickAddProductId, setQuickAddProductId] = useState<string | null>(null);
 
@@ -63,6 +72,7 @@ export default function ProductGrid({
             {...product}
             isFavorite={favoriteIds.includes(product.id)}
             isInCart={cartItemIds.includes(product.id)}
+            availability={availabilityData[product.id]}
             onToggleFavorite={onToggleFavorite}
             onAddToCart={handleAddToCart}
             onClick={onProductClick}

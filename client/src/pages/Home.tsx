@@ -23,6 +23,13 @@ interface Category {
   icon?: string;
 }
 
+interface AvailabilityData {
+  status: 'in_stock' | 'backorder' | 'not_tracked';
+  in_stock: boolean;
+  total_quantity: number;
+  backorder_lead_time_days: number | null;
+}
+
 interface HomeProps {
   onCartClick: () => void;
   onFavoritesClick: () => void;
@@ -145,6 +152,23 @@ export default function Home({
   // Fetch products from API
   const { data: products = [], isLoading: isLoadingProducts } = useQuery<Product[]>({
     queryKey: ["/api/products"],
+  });
+
+  // Fetch availability data for all products
+  const productIds = products.map(p => p.id);
+  const { data: availabilityData = {} } = useQuery<Record<string, AvailabilityData>>({
+    queryKey: ["/api/products/availability", productIds],
+    queryFn: async () => {
+      if (productIds.length === 0) return {};
+      const response = await fetch("/api/products/availability", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_ids: productIds }),
+      });
+      if (!response.ok) return {};
+      return response.json();
+    },
+    enabled: productIds.length > 0,
   });
 
   const handleResetFilters = () => {
@@ -272,6 +296,7 @@ export default function Home({
             favoriteIds={favoriteIds}
             cartItemIds={cartItemIds}
             onCartClick={onCartClick}
+            availabilityData={availabilityData}
           />
 
           <Pagination

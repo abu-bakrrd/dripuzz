@@ -815,12 +815,28 @@ def get_product(product_id):
         cur = conn.cursor()
         cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
         product = cur.fetchone()
+        
+        if not product:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'Product not found'}), 404
+        
+        # Get inventory for this product
+        cur.execute('''
+            SELECT color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days
+            FROM product_inventory
+            WHERE product_id = %s
+        ''', (product_id,))
+        inventory = cur.fetchall()
+        
         cur.close()
         conn.close()
         
-        if product:
-            return jsonify(product)
-        return jsonify({'error': 'Product not found'}), 404
+        # Add inventory to product response
+        product_data = dict(product)
+        product_data['inventory'] = inventory
+        
+        return jsonify(product_data)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

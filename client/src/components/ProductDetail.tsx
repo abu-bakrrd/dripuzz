@@ -1,4 +1,4 @@
-import { Heart, ShoppingCart, ArrowLeft, Check, Image as ImageIcon } from "lucide-react";
+import { Heart, ShoppingCart, ArrowLeft, Check, Image as ImageIcon, Package, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef } from "react";
 import { useConfig } from "@/hooks/useConfig";
@@ -267,12 +267,24 @@ export default function ProductDetail({
               {formatPrice(price)}
             </p>
             {hasInventoryTracking && currentInventory && (
-              <p className={`text-sm mt-1 ${currentInventory.quantity > 0 ? 'text-green-600' : 'text-orange-500'}`}>
-                {currentInventory.quantity > 0 
-                  ? `Осталось ${currentInventory.quantity} шт` 
-                  : `Под заказ${currentInventory.backorder_lead_time_days ? ` (~${currentInventory.backorder_lead_time_days} дн.)` : ''}`
-                }
-              </p>
+              <div className="mt-2">
+                {currentInventory.quantity > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                    <Package className="w-3 h-3" />
+                    <span>В наличии</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                    <Clock className="w-3 h-3" />
+                    <span>
+                      Под заказ
+                      {currentInventory.backorder_lead_time_days && (
+                        <span className="ml-1">({currentInventory.backorder_lead_time_days} дн.)</span>
+                      )}
+                    </span>
+                  </span>
+                )}
+              </div>
             )}
           </div>
 

@@ -1,11 +1,19 @@
 import { useState, useEffect } from "react";
-import { X, ShoppingCart, Check, Loader2 } from "lucide-react";
+import { X, ShoppingCart, Check, Loader2, Package, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useConfig } from "@/hooks/useConfig";
 
 interface Attribute {
   name: string;
   values: string[];
+}
+
+interface InventoryItem {
+  color: string | null;
+  attribute1_value: string | null;
+  attribute2_value: string | null;
+  quantity: number;
+  backorder_lead_time_days: number | null;
 }
 
 interface Product {
@@ -15,6 +23,7 @@ interface Product {
   images: string[];
   colors?: string[];
   attributes?: Attribute[];
+  inventory?: InventoryItem[];
 }
 
 interface QuickAddModalProps {
@@ -103,6 +112,23 @@ export default function QuickAddModal({
 
   const hasOptions = (product?.colors && product.colors.length > 0) || 
                      (product?.attributes && product.attributes.length > 0);
+
+  const getCurrentInventory = (): InventoryItem | undefined => {
+    if (!product?.inventory || product.inventory.length === 0) return undefined;
+    
+    const attrValues = Object.values(selectedAttributes);
+    const attr1 = attrValues[0] || null;
+    const attr2 = attrValues[1] || null;
+    
+    return product.inventory.find(inv => 
+      (inv.color === selectedColor || (inv.color === null && !selectedColor)) &&
+      (inv.attribute1_value === attr1 || (inv.attribute1_value === null && !attr1)) &&
+      (inv.attribute2_value === attr2 || (inv.attribute2_value === null && !attr2))
+    );
+  };
+
+  const currentInventory = getCurrentInventory();
+  const hasInventoryTracking = product?.inventory && product.inventory.length > 0;
 
   if (!isOpen) return null;
 
@@ -199,6 +225,27 @@ export default function QuickAddModal({
                 <p className="text-sm text-muted-foreground text-center py-2">
                   Дополнительные опции не требуются
                 </p>
+              )}
+
+              {hasInventoryTracking && currentInventory && (
+                <div className="pt-2">
+                  {currentInventory.quantity > 0 ? (
+                    <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
+                      <Package className="w-3 h-3" />
+                      <span>В наличии</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
+                      <Clock className="w-3 h-3" />
+                      <span>
+                        Под заказ
+                        {currentInventory.backorder_lead_time_days && (
+                          <span className="ml-1">({currentInventory.backorder_lead_time_days} дн.)</span>
+                        )}
+                      </span>
+                    </span>
+                  )}
+                </div>
               )}
             </>
           ) : (

@@ -7,6 +7,24 @@ interface Attribute {
   values: string[];
 }
 
+interface InventoryItemAPI {
+  id: number;
+  product_id: string;
+  color: string | null;
+  attribute1_value: string | null;
+  attribute2_value: string | null;
+  quantity: number;
+  backorder_lead_time_days: number | null;
+}
+
+interface InventoryItem {
+  color: string | null;
+  attribute1_value: string | null;
+  attribute2_value: string | null;
+  quantity: number;
+  backorder_lead_time_days: number | null;
+}
+
 interface ProductData {
   id: string;
   name: string;
@@ -45,6 +63,24 @@ export default function Product({
       if (!response.ok) throw new Error('Product not found');
       return response.json();
     }
+  });
+
+  // Load inventory for product
+  const { data: inventory } = useQuery<InventoryItem[]>({
+    queryKey: ["/api/products", productId, "inventory"],
+    queryFn: async () => {
+      const response = await fetch(`/api/products/${productId}/inventory`);
+      if (!response.ok) return [];
+      const data: InventoryItemAPI[] = await response.json();
+      return data.map(item => ({
+        color: item.color,
+        attribute1_value: item.attribute1_value,
+        attribute2_value: item.attribute2_value,
+        quantity: item.quantity,
+        backorder_lead_time_days: item.backorder_lead_time_days
+      }));
+    },
+    enabled: !!productId
   });
   
   if (isLoading) {
@@ -100,6 +136,7 @@ export default function Product({
         images={product.images}
         colors={product.colors}
         attributes={product.attributes}
+        inventory={inventory}
         isFavorite={isFavorite}
         isInCart={isInCart}
         onToggleFavorite={onToggleFavorite}

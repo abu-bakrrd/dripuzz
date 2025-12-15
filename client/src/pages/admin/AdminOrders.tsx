@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Eye, Package, User, MapPin, Phone, Calendar, CreditCard, Receipt, X, ExternalLink, Search } from 'lucide-react';
+import { Eye, Package, User, MapPin, Phone, Calendar, CreditCard, Receipt, X, ExternalLink, Search, Clock } from 'lucide-react';
 
 interface OrderItem {
   id: string;
@@ -18,6 +18,8 @@ interface OrderItem {
   selected_color: string;
   selected_attributes: any;
   product_images: string[];
+  availability_status?: string;
+  backorder_lead_time_days?: number;
 }
 
 interface Order {
@@ -36,6 +38,8 @@ interface Order {
   first_name: string;
   last_name: string;
   items: OrderItem[];
+  has_backorder?: boolean;
+  backorder_delivery_date?: string;
 }
 
 const DEFAULT_STATUSES = [
@@ -247,9 +251,15 @@ export default function AdminOrders() {
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row gap-4 justify-between">
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-mono text-sm">#{order.id.slice(0, 8)}</span>
                     {getStatusBadge(order.status)}
+                    {order.has_backorder && (
+                      <Badge className="bg-orange-100 text-orange-800">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Под заказ
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
@@ -293,13 +303,31 @@ export default function AdminOrders() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label className="text-muted-foreground">Статус</Label>
-                  <div className="mt-1">{getStatusBadge(selectedOrder.status)}</div>
+                  <div className="mt-1 flex items-center gap-2 flex-wrap">
+                    {getStatusBadge(selectedOrder.status)}
+                    {selectedOrder.has_backorder && (
+                      <Badge className="bg-orange-100 text-orange-800">
+                        <Clock className="h-3 w-3 mr-1" />
+                        Под заказ
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <Label className="text-muted-foreground">Дата</Label>
                   <p className="mt-1">{formatDate(selectedOrder.created_at)}</p>
                 </div>
               </div>
+
+              {selectedOrder.has_backorder && selectedOrder.backorder_delivery_date && (
+                <div className="bg-orange-50 border border-orange-200 p-3 rounded-lg">
+                  <div className="flex items-center gap-2 text-orange-800">
+                    <Clock className="h-4 w-4" />
+                    <span className="font-medium">Ожидаемая дата доставки под заказ:</span>
+                    <span>{formatDate(selectedOrder.backorder_delivery_date).split(',')[0]}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Изменить статус</Label>
@@ -435,7 +463,15 @@ export default function AdminOrders() {
                         </div>
                       )}
                       <div className="flex-1">
-                        <h4 className="font-medium">{item.name}</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="font-medium">{item.name}</h4>
+                          {item.availability_status === 'backorder' && (
+                            <Badge variant="outline" className="text-orange-600 border-orange-300 text-xs">
+                              <Clock className="h-3 w-3 mr-1" />
+                              {item.backorder_lead_time_days ? `~${item.backorder_lead_time_days} дн.` : 'Под заказ'}
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-sm text-muted-foreground">
                           {formatPrice(item.price)} x {item.quantity}
                         </p>

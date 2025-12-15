@@ -319,6 +319,51 @@ def init_db():
         )
     ''')
     
+    # Create product_inventory table for tracking stock by product combination
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS product_inventory (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
+            color TEXT,
+            attribute1_value TEXT,
+            attribute2_value TEXT,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            backorder_lead_time_days INTEGER,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(product_id, color, attribute1_value, attribute2_value)
+        )
+    ''')
+    
+    # Add new columns to orders table for backorder tracking
+    cur.execute('''
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='has_backorder') THEN
+                ALTER TABLE orders ADD COLUMN has_backorder BOOLEAN DEFAULT FALSE;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='orders' AND column_name='backorder_delivery_date') THEN
+                ALTER TABLE orders ADD COLUMN backorder_delivery_date TIMESTAMP;
+            END IF;
+        END $$;
+    ''')
+    
+    # Add new columns to order_items table for stock status tracking
+    cur.execute('''
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='order_items' AND column_name='availability_status') THEN
+                ALTER TABLE order_items ADD COLUMN availability_status TEXT DEFAULT 'in_stock';
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='order_items' AND column_name='backorder_lead_time_days') THEN
+                ALTER TABLE order_items ADD COLUMN backorder_lead_time_days INTEGER;
+            END IF;
+        END $$;
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -1446,6 +1491,86 @@ def checkout_order():
         
         print(f"Total (calculated from DB): {total}")
         
+        # Process inventory and determine availability status for each item
+        import json as json_lib
+        has_backorder = False
+        max_backorder_days = 0
+        order_items_with_status = []
+        
+        for item in cart_items:
+            # Parse selected_attributes to get attribute values
+            selected_attrs = item.get('selected_attributes')
+            if isinstance(selected_attrs, str):
+                selected_attrs = json_lib.loads(selected_attrs) if selected_attrs else {}
+            elif selected_attrs is None:
+                selected_attrs = {}
+            
+            # Extract attribute values (assuming attributes are stored as {attr_name: value})
+            attr1_value = None
+            attr2_value = None
+            if selected_attrs:
+                attr_values = list(selected_attrs.values())
+                if len(attr_values) > 0:
+                    attr1_value = attr_values[0]
+                if len(attr_values) > 1:
+                    attr2_value = attr_values[1]
+            
+            selected_color = item.get('selected_color')
+            
+            # Check inventory for this combination
+            cur.execute('''
+                SELECT id, quantity, backorder_lead_time_days
+                FROM product_inventory
+                WHERE product_id = %s 
+                AND (color = %s OR (color IS NULL AND %s IS NULL))
+                AND (attribute1_value = %s OR (attribute1_value IS NULL AND %s IS NULL))
+                AND (attribute2_value = %s OR (attribute2_value IS NULL AND %s IS NULL))
+                FOR UPDATE
+            ''', (item['product_id'], selected_color, selected_color, 
+                  attr1_value, attr1_value, attr2_value, attr2_value))
+            
+            inventory = cur.fetchone()
+            
+            availability_status = 'in_stock'
+            backorder_lead_time_days = None
+            
+            if inventory:
+                if inventory['quantity'] >= item['quantity']:
+                    # Enough stock - decrement
+                    new_quantity = inventory['quantity'] - item['quantity']
+                    cur.execute(
+                        'UPDATE product_inventory SET quantity = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                        (new_quantity, inventory['id'])
+                    )
+                else:
+                    # Not enough stock - backorder
+                    availability_status = 'backorder'
+                    backorder_lead_time_days = inventory.get('backorder_lead_time_days')
+                    has_backorder = True
+                    if backorder_lead_time_days and backorder_lead_time_days > max_backorder_days:
+                        max_backorder_days = backorder_lead_time_days
+                    # Decrement what we have
+                    if inventory['quantity'] > 0:
+                        cur.execute(
+                            'UPDATE product_inventory SET quantity = 0, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+                            (inventory['id'],)
+                        )
+            else:
+                # No inventory record - treat as backorder (not tracked)
+                availability_status = 'backorder'
+                has_backorder = True
+            
+            order_items_with_status.append({
+                **dict(item),
+                'availability_status': availability_status,
+                'backorder_lead_time_days': backorder_lead_time_days
+            })
+        
+        # Calculate backorder delivery date if needed
+        backorder_delivery_date = None
+        if has_backorder and max_backorder_days > 0:
+            backorder_delivery_date = datetime.now() + timedelta(days=max_backorder_days)
+        
         # Determine initial status for new orders
         initial_status = 'reviewing'  # All orders start as "Рассматривается"
         initial_payment_status = 'pending'
@@ -1453,26 +1578,29 @@ def checkout_order():
             initial_status = 'reviewing'  # Still "Рассматривается" but with receipt uploaded
             initial_payment_status = 'awaiting_verification'
         
-        # Create order in database with delivery info
+        # Create order in database with delivery info and backorder status
         cur.execute(
             '''INSERT INTO orders (user_id, total, status, payment_method, payment_status, 
-               delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, payment_receipt_url) 
-               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *''',
+               delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, 
+               payment_receipt_url, has_backorder, backorder_delivery_date) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING *''',
             (user_id, total, initial_status, payment_method, initial_payment_status,
-             delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, payment_receipt_url)
+             delivery_address, delivery_lat, delivery_lng, customer_phone, customer_name, 
+             payment_receipt_url, has_backorder, backorder_delivery_date)
         )
         order = cur.fetchone()
         order_id = order['id']
         
-        # Insert order items from database cart data
-        import json as json_lib
-        for item in cart_items:
+        # Insert order items with availability status
+        for item in order_items_with_status:
             cur.execute(
-                '''INSERT INTO order_items (order_id, product_id, name, price, quantity, selected_color, selected_attributes) 
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)''',
+                '''INSERT INTO order_items (order_id, product_id, name, price, quantity, 
+                   selected_color, selected_attributes, availability_status, backorder_lead_time_days) 
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)''',
                 (order_id, item['product_id'], item['name'], item['price'], 
                  item['quantity'], item.get('selected_color'),
-                 json_lib.dumps(item.get('selected_attributes')) if item.get('selected_attributes') else None)
+                 json_lib.dumps(item.get('selected_attributes')) if item.get('selected_attributes') else None,
+                 item['availability_status'], item.get('backorder_lead_time_days'))
             )
         
         conn.commit()
@@ -2733,6 +2861,301 @@ def admin_update_order_status(order_id):
         if order:
             return jsonify(order), 200
         return jsonify({'error': 'Order not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================
+# INVENTORY MANAGEMENT API
+# ============================================================
+
+def get_inventory_signature(color, attr1_value, attr2_value):
+    """Generate a unique signature for inventory combination"""
+    parts = [
+        color or '',
+        attr1_value or '',
+        attr2_value or ''
+    ]
+    return '|'.join(parts)
+
+@app.route('/api/admin/inventory', methods=['GET'])
+def admin_get_inventory():
+    """Get all inventory items with product info"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        product_id = request.args.get('product_id')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        if product_id:
+            cur.execute('''
+                SELECT i.*, p.name as product_name, p.attributes
+                FROM product_inventory i
+                JOIN products p ON i.product_id = p.id
+                WHERE i.product_id = %s
+                ORDER BY i.color, i.attribute1_value, i.attribute2_value
+            ''', (product_id,))
+        else:
+            cur.execute('''
+                SELECT i.*, p.name as product_name, p.attributes
+                FROM product_inventory i
+                JOIN products p ON i.product_id = p.id
+                ORDER BY p.name, i.color, i.attribute1_value, i.attribute2_value
+            ''')
+        
+        inventory = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(inventory), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/inventory', methods=['POST'])
+def admin_add_inventory():
+    """Add or update inventory for a product combination"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        product_id = data.get('product_id')
+        color = data.get('color') or None
+        attribute1_value = data.get('attribute1_value') or None
+        attribute2_value = data.get('attribute2_value') or None
+        quantity = data.get('quantity', 0)
+        backorder_lead_time_days = data.get('backorder_lead_time_days')
+        
+        if not product_id:
+            return jsonify({'error': 'Product ID is required'}), 400
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        # Upsert inventory record
+        cur.execute('''
+            INSERT INTO product_inventory (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+            ON CONFLICT (product_id, color, attribute1_value, attribute2_value) 
+            DO UPDATE SET 
+                quantity = EXCLUDED.quantity,
+                backorder_lead_time_days = EXCLUDED.backorder_lead_time_days,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        ''', (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days))
+        
+        inventory = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify(inventory), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/inventory/<inventory_id>', methods=['PUT'])
+def admin_update_inventory(inventory_id):
+    """Update inventory quantity"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        data = request.json
+        quantity = data.get('quantity')
+        backorder_lead_time_days = data.get('backorder_lead_time_days')
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        if quantity is not None and backorder_lead_time_days is not None:
+            cur.execute(
+                'UPDATE product_inventory SET quantity = %s, backorder_lead_time_days = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *',
+                (quantity, backorder_lead_time_days, inventory_id)
+            )
+        elif quantity is not None:
+            cur.execute(
+                'UPDATE product_inventory SET quantity = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *',
+                (quantity, inventory_id)
+            )
+        elif backorder_lead_time_days is not None:
+            cur.execute(
+                'UPDATE product_inventory SET backorder_lead_time_days = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *',
+                (backorder_lead_time_days, inventory_id)
+            )
+        else:
+            cur.close()
+            conn.close()
+            return jsonify({'error': 'No data to update'}), 400
+        
+        inventory = cur.fetchone()
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        if inventory:
+            return jsonify(inventory), 200
+        return jsonify({'error': 'Inventory not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/inventory/<inventory_id>', methods=['DELETE'])
+def admin_delete_inventory(inventory_id):
+    """Delete inventory record"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('DELETE FROM product_inventory WHERE id = %s', (inventory_id,))
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({'message': 'Inventory deleted'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/inventory/export', methods=['GET'])
+def admin_export_inventory():
+    """Export inventory to CSV"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT p.id as product_id, p.name as product_name, 
+                   i.color, i.attribute1_value, i.attribute2_value, 
+                   i.quantity, i.backorder_lead_time_days
+            FROM product_inventory i
+            JOIN products p ON i.product_id = p.id
+            ORDER BY p.name, i.color, i.attribute1_value, i.attribute2_value
+        ''')
+        inventory = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        # Generate CSV
+        import io
+        import csv
+        
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(['product_id', 'product_name', 'color', 'attribute1_value', 'attribute2_value', 'quantity', 'backorder_lead_time_days'])
+        
+        for item in inventory:
+            writer.writerow([
+                item['product_id'],
+                item['product_name'],
+                item['color'] or '',
+                item['attribute1_value'] or '',
+                item['attribute2_value'] or '',
+                item['quantity'],
+                item['backorder_lead_time_days'] or ''
+            ])
+        
+        csv_content = output.getvalue()
+        output.close()
+        
+        from flask import Response
+        return Response(
+            csv_content,
+            mimetype='text/csv',
+            headers={'Content-Disposition': 'attachment; filename=inventory.csv'}
+        )
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/admin/inventory/import', methods=['POST'])
+def admin_import_inventory():
+    """Import inventory from CSV"""
+    try:
+        admin_id = require_admin()
+        if not admin_id:
+            return jsonify({'error': 'Not authorized'}), 401
+        
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No file selected'}), 400
+        
+        import io
+        import csv
+        
+        stream = io.StringIO(file.stream.read().decode('utf-8'))
+        reader = csv.DictReader(stream)
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        imported_count = 0
+        errors = []
+        
+        for row in reader:
+            try:
+                product_id = row.get('product_id')
+                color = row.get('color') or None
+                attribute1_value = row.get('attribute1_value') or None
+                attribute2_value = row.get('attribute2_value') or None
+                quantity = int(row.get('quantity', 0))
+                backorder_lead_time_days = int(row.get('backorder_lead_time_days')) if row.get('backorder_lead_time_days') else None
+                
+                if not product_id:
+                    continue
+                
+                cur.execute('''
+                    INSERT INTO product_inventory (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days, updated_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (product_id, color, attribute1_value, attribute2_value) 
+                    DO UPDATE SET 
+                        quantity = EXCLUDED.quantity,
+                        backorder_lead_time_days = EXCLUDED.backorder_lead_time_days,
+                        updated_at = CURRENT_TIMESTAMP
+                ''', (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days))
+                
+                imported_count += 1
+            except Exception as row_error:
+                errors.append(f"Row error: {str(row_error)}")
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            'message': f'Imported {imported_count} inventory records',
+            'imported_count': imported_count,
+            'errors': errors
+        }), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/products/<product_id>/inventory', methods=['GET'])
+def get_product_inventory(product_id):
+    """Get inventory for a specific product (public API for product detail page)"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days
+            FROM product_inventory
+            WHERE product_id = %s
+        ''', (product_id,))
+        inventory = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return jsonify(inventory), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 

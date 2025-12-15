@@ -8,6 +8,14 @@ interface Attribute {
   values: string[];
 }
 
+interface InventoryItem {
+  color: string | null;
+  attribute1_value: string | null;
+  attribute2_value: string | null;
+  quantity: number;
+  backorder_lead_time_days: number | null;
+}
+
 interface ProductDetailProps {
   id: string;
   name: string;
@@ -16,6 +24,7 @@ interface ProductDetailProps {
   images: string[];
   colors?: string[];
   attributes?: Attribute[];
+  inventory?: InventoryItem[];
   isFavorite?: boolean;
   isInCart?: boolean;
   onToggleFavorite?: (id: string) => void;
@@ -32,6 +41,7 @@ export default function ProductDetail({
   images,
   colors,
   attributes,
+  inventory = [],
   isFavorite = false,
   isInCart: isInCartProp = false,
   onToggleFavorite,
@@ -53,6 +63,24 @@ export default function ProductDetail({
 
   // Local state controls button - shows "Go to cart" after adding until characteristics change
   const isInCart = wasAddedToCart;
+
+  // Get inventory info for current combination
+  const getCurrentInventory = (): InventoryItem | undefined => {
+    if (inventory.length === 0) return undefined;
+    
+    const attrValues = Object.values(selectedAttributes);
+    const attr1 = attrValues[0] || null;
+    const attr2 = attrValues[1] || null;
+    
+    return inventory.find(inv => 
+      (inv.color === selectedColor || (inv.color === null && !selectedColor)) &&
+      (inv.attribute1_value === attr1 || (inv.attribute1_value === null && !attr1)) &&
+      (inv.attribute2_value === attr2 || (inv.attribute2_value === null && !attr2))
+    );
+  };
+
+  const currentInventory = getCurrentInventory();
+  const hasInventoryTracking = inventory.length > 0;
 
   const nextImage = () => {
     setCurrentImage((prev) => (prev + 1) % images.length);
@@ -238,6 +266,14 @@ export default function ProductDetail({
             >
               {formatPrice(price)}
             </p>
+            {hasInventoryTracking && currentInventory && (
+              <p className={`text-sm mt-1 ${currentInventory.quantity > 0 ? 'text-green-600' : 'text-orange-500'}`}>
+                {currentInventory.quantity > 0 
+                  ? `Осталось ${currentInventory.quantity} шт` 
+                  : `Под заказ${currentInventory.backorder_lead_time_days ? ` (~${currentInventory.backorder_lead_time_days} дн.)` : ''}`
+                }
+              </p>
+            )}
           </div>
 
           <div className="border-t pt-4">

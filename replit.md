@@ -43,7 +43,8 @@ The system includes a comprehensive admin panel accessible at `/admin`:
 - **Categories Tab**: Full CRUD operations for product categories (stored in database)
 - **Orders Tab**: View all orders with customer info, product images, and status management
 - **Statistics Tab**: User counts, order metrics, revenue statistics, conversion rates
-- **Settings Tab**: Configure Cloudinary credentials (cloud_name, api_key, api_secret) with encrypted storage
+- **Settings Tab**: Configure Cloudinary credentials, payment systems, Telegram, SMTP, Yandex Maps, and delivery time settings
+- **Inventory Tab**: Manage product stock levels (quantity per color/attribute combination)
 
 **Admin API Endpoints:**
 - `POST /api/admin/login`: Admin authentication
@@ -60,6 +61,8 @@ The system includes a comprehensive admin panel accessible at `/admin`:
 - `GET/PUT /api/admin/settings/payments`: Payment systems configuration
 - `GET/PUT /api/admin/settings/telegram`: Telegram notifications configuration
 - `GET/PUT /api/admin/settings/smtp`: SMTP email configuration
+- `GET/POST /api/admin/settings/delivery`: Global delivery time settings
+- `GET/POST/PUT/DELETE /api/admin/inventory`: Product inventory management
 
 **Admin Setup:**
 1. Create a user account via registration on the main site
@@ -82,6 +85,14 @@ All shop settings are centralized in `config/settings.json`, covering:
 - `texts`: Customizable UI labels
 - `fonts`: `fontFamily`, `fontFile`, `productName` (weight), `price` (weight), `description` (weight)
 - `logoSize`: Configurable logo display size
+
+### Inventory & Delivery Settings
+
+The system tracks product availability at the variant level (color + attributes). Global delivery time settings are configured in the admin panel:
+- `delivery_days_in_stock`: Delivery time for items in stock (default: 3 days)
+- `delivery_days_backorder`: Delivery time for items on backorder (default: 14 days)
+
+Product availability status ("В наличии" / "Под заказ") is displayed on product cards, detail pages, and during checkout. The checkout modal automatically shows the appropriate delivery estimate based on cart contents.
 
 ### Deployment
 

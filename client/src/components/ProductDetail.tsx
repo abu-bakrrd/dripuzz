@@ -266,9 +266,9 @@ export default function ProductDetail({
             >
               {formatPrice(price)}
             </p>
-            {hasInventoryTracking && currentInventory && (
+            {hasInventoryTracking && (
               <div className="mt-2">
-                {currentInventory.quantity > 0 ? (
+                {currentInventory && currentInventory.quantity > 0 ? (
                   <span className="inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">
                     <Package className="w-3 h-3" />
                     <span>В наличии</span>
@@ -278,7 +278,7 @@ export default function ProductDetail({
                     <Clock className="w-3 h-3" />
                     <span>
                       Под заказ
-                      {currentInventory.backorder_lead_time_days && (
+                      {currentInventory?.backorder_lead_time_days && (
                         <span className="ml-1">({currentInventory.backorder_lead_time_days} дн.)</span>
                       )}
                     </span>

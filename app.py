@@ -4201,6 +4201,7 @@ def sitemap():
         host = request.host_url.rstrip('/')
         
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+        xml += '<?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>\n'
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         
         xml += f'  <url>\n    <loc>{host}/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n'
@@ -4223,27 +4224,75 @@ def sitemap():
                 conn.close()
                 conn = None
         
-        config = load_config()
-        categories_list = config.get('categories', [])
-        for cat in categories_list:
-            cat_id = cat.get('id', '')
-            if cat_id:
-                xml += f'  <url>\n    <loc>{host}/?category={cat_id}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n'
+        try:
+            config = load_config()
+            categories_list = config.get('categories', [])
+            for cat in categories_list:
+                cat_id = cat.get('id', '')
+                if cat_id:
+                    xml += f'  <url>\n    <loc>{host}/?category={cat_id}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n'
+        except Exception as config_err:
+            print(f"Sitemap config error: {config_err}")
         
         xml += '</urlset>'
         
         response = app.response_class(response=xml, status=200, mimetype='application/xml')
         response.headers['Content-Type'] = 'application/xml; charset=utf-8'
+        response.headers['Cache-Control'] = 'public, max-age=3600'
         return response
     except Exception as e:
         print(f"Sitemap error: {e}")
+        host = request.host_url.rstrip("/") if request else "https://example.com"
         xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
         xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        xml += f'  <url>\n    <loc>{request.host_url.rstrip("/")}/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n'
+        xml += f'  <url>\n    <loc>{host}/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>\n'
         xml += '</urlset>'
         response = app.response_class(response=xml, status=200, mimetype='application/xml')
         response.headers['Content-Type'] = 'application/xml; charset=utf-8'
         return response
+
+# SEO: Sitemap XSL stylesheet for browser display
+@app.route('/sitemap.xsl')
+def sitemap_xsl():
+    xsl = '''<?xml version="1.0" encoding="UTF-8"?>
+<xsl:stylesheet version="2.0" xmlns:xsl="http://www.w3.org/1999/XSL/Transform" xmlns:sitemap="http://www.sitemaps.org/schemas/sitemap/0.9">
+<xsl:output method="html" encoding="UTF-8" indent="yes"/>
+<xsl:template match="/">
+<html>
+<head>
+<title>Sitemap</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+h1 { color: #333; }
+table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+th { background: #4CAF50; color: white; }
+tr:hover { background: #f1f1f1; }
+a { color: #1a73e8; text-decoration: none; }
+a:hover { text-decoration: underline; }
+.count { color: #666; margin-bottom: 20px; }
+</style>
+</head>
+<body>
+<h1>Sitemap</h1>
+<p class="count">Total URLs: <xsl:value-of select="count(sitemap:urlset/sitemap:url)"/></p>
+<table>
+<tr><th>URL</th><th>Priority</th><th>Change Frequency</th></tr>
+<xsl:for-each select="sitemap:urlset/sitemap:url">
+<tr>
+<td><a href="{sitemap:loc}"><xsl:value-of select="sitemap:loc"/></a></td>
+<td><xsl:value-of select="sitemap:priority"/></td>
+<td><xsl:value-of select="sitemap:changefreq"/></td>
+</tr>
+</xsl:for-each>
+</table>
+</body>
+</html>
+</xsl:template>
+</xsl:stylesheet>'''
+    response = app.response_class(response=xsl, status=200, mimetype='application/xml')
+    response.headers['Content-Type'] = 'application/xslt+xml; charset=utf-8'
+    return response
 
 # SEO: Robots.txt
 @app.route('/robots.txt')

@@ -118,11 +118,11 @@ export default function ProductCard({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-card rounded-2xl border border-card-border overflow-hidden cursor-pointer shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200"
+      className="bg-transparent cursor-pointer active:opacity-80 transition-opacity duration-150"
       data-testid={`card-product-${id}`}
     >
       <div
-        className="relative aspect-square bg-muted"
+        className="relative aspect-square bg-muted/50 rounded-2xl overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -144,7 +144,7 @@ export default function ProductCard({
                 key={idx}
                 src={img}
                 alt={name}
-                className={`absolute inset-0 w-full h-full object-contain p-1 transition-opacity duration-300 ${
+                className={`absolute inset-0 w-full h-full object-contain p-2 transition-opacity duration-300 ${
                   idx === currentImage ? "opacity-100" : "opacity-0"
                 }`}
                 loading="lazy"
@@ -172,11 +172,11 @@ export default function ProductCard({
           onClick={handleFavoriteClick}
           onTouchStart={handleFavoriteTouchStart}
           onTouchEnd={handleFavoriteTouchEnd}
-          className="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center z-10 shadow-sm active:scale-90 transition-transform"
+          className="absolute top-2 right-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center z-10 active:scale-90 transition-transform"
           data-testid={`button-favorite-${id}`}
         >
           <Heart
-            className={`w-5 h-5 transition-colors ${isFavorite ? "fill-red-500 text-red-500" : "text-foreground/70"}`}
+            className={`w-4 h-4 transition-colors ${isFavorite ? "fill-red-500 text-red-500" : "text-foreground/60"}`}
           />
         </button>
         
@@ -194,21 +194,21 @@ export default function ProductCard({
         )}
       </div>
       
-      <div className="p-3 space-y-2">
+      <div className="pt-2.5 pb-1 px-1 space-y-1">
         <h3 
-          className="text-sm text-foreground line-clamp-2 leading-snug min-h-[2.5rem]" 
+          className="text-[13px] text-foreground line-clamp-2 leading-tight" 
           style={{ 
             fontFamily: 'var(--font-family-custom, Inter)',
-            fontWeight: 'var(--font-weight-product-name, 500)'
+            fontWeight: 'var(--font-weight-product-name, 400)'
           }}
           data-testid={`text-product-name-${id}`}
         >
           {name}
         </h3>
         
-        <div className="flex items-center justify-between gap-1">
+        <div className="flex items-center justify-between">
           <p 
-            className="text-sm text-foreground" 
+            className="text-[14px] text-foreground" 
             style={{ 
               fontFamily: 'var(--font-family-custom, Inter)',
               fontWeight: 'var(--font-weight-price, 600)'
@@ -219,15 +219,15 @@ export default function ProductCard({
           </p>
           <Button
             size="icon"
-            variant={isInCart ? "default" : "outline"}
+            variant={isInCart ? "default" : "ghost"}
             onClick={handleCartClick}
-            className="h-8 w-8 rounded-lg shrink-0"
+            className="h-7 w-7 rounded-full shrink-0"
             data-testid={`button-add-to-cart-${id}`}
           >
             {isInCart ? (
-              <Check className="w-4 h-4" />
+              <Check className="w-3.5 h-3.5" />
             ) : (
-              <ShoppingCart className="w-4 h-4" />
+              <ShoppingCart className="w-3.5 h-3.5" />
             )}
           </Button>
         </div>

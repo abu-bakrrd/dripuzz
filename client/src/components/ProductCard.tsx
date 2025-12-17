@@ -118,11 +118,11 @@ export default function ProductCard({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-card rounded-md border border-card-border overflow-hidden cursor-pointer"
+      className="bg-card rounded-2xl border border-card-border overflow-hidden cursor-pointer shadow-sm hover:shadow-md active:scale-[0.98] transition-all duration-200"
       data-testid={`card-product-${id}`}
     >
       <div
-        className="relative aspect-square bg-muted"
+        className="relative aspect-[4/5] bg-muted"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -172,11 +172,11 @@ export default function ProductCard({
           onClick={handleFavoriteClick}
           onTouchStart={handleFavoriteTouchStart}
           onTouchEnd={handleFavoriteTouchEnd}
-          className="absolute top-2 left-2 w-8 h-8 rounded-full bg-background/80 flex items-center justify-center z-10"
+          className="absolute top-2.5 right-2.5 w-9 h-9 rounded-full bg-background/90 backdrop-blur-sm flex items-center justify-center z-10 shadow-sm active:scale-90 transition-transform"
           data-testid={`button-favorite-${id}`}
         >
           <Heart
-            className={`w-5 h-5 ${isFavorite ? "fill-red-500 text-red-500" : "text-foreground"}`}
+            className={`w-5 h-5 transition-colors ${isFavorite ? "fill-red-500 text-red-500" : "text-foreground/70"}`}
           />
         </button>
         
@@ -194,9 +194,9 @@ export default function ProductCard({
         )}
       </div>
       
-      <div className="p-3">
+      <div className="p-3 space-y-2">
         <h3 
-          className="text-sm text-foreground line-clamp-2 mb-1" 
+          className="text-sm text-foreground line-clamp-2 leading-snug min-h-[2.5rem]" 
           style={{ 
             fontFamily: 'var(--font-family-custom, Inter)',
             fontWeight: 'var(--font-weight-product-name, 500)'
@@ -206,9 +206,9 @@ export default function ProductCard({
           {name}
         </h3>
         
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <p 
-            className="text-base text-foreground" 
+            className="text-base text-foreground truncate" 
             style={{ 
               fontFamily: 'var(--font-family-custom, Inter)',
               fontWeight: 'var(--font-weight-price, 600)'
@@ -219,9 +219,9 @@ export default function ProductCard({
           </p>
           <Button
             size="icon"
-            variant={isInCart ? "default" : "ghost"}
+            variant={isInCart ? "default" : "outline"}
             onClick={handleCartClick}
-            className="h-8 w-8"
+            className="h-9 w-9 rounded-xl shrink-0 shadow-sm"
             data-testid={`button-add-to-cart-${id}`}
           >
             {isInCart ? (

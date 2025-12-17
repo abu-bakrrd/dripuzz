@@ -4334,9 +4334,24 @@ def get_seo_html(product=None):
     logo = config.get('logo', '/config/logo.svg')
     logo_url = logo if logo.startswith('http') else f"{host}{logo}"
     
+    seo = config.get('seo', {})
+    seo_title = seo.get('title', shop_name)
+    seo_description = seo.get('description', shop_desc)
+    seo_keywords = seo.get('keywords', '')
+    seo_site_url = seo.get('siteUrl', host)
+    seo_language = seo.get('language', 'ru')
+    
+    html = html.replace('{{SHOP_NAME}}', shop_name)
+    html = html.replace('{{SEO_TITLE}}', seo_title)
+    html = html.replace('{{SEO_DESCRIPTION}}', seo_description)
+    html = html.replace('{{SEO_KEYWORDS}}', seo_keywords)
+    html = html.replace('{{SEO_SITE_URL}}', seo_site_url)
+    html = html.replace('{{SEO_LANGUAGE}}', seo_language)
+    html = html.replace('{{SEO_LANGUAGE_UPPER}}', seo_language.upper())
+    
     if product:
         title = f"{product['name']} | {shop_name}"
-        description = product.get('description', shop_desc)[:160]
+        description = product.get('description', seo_description)[:160]
         image = product['images'][0] if product.get('images') else logo_url
         image_url = image if image.startswith('http') else f"{host}{image}"
         url = f"{host}/product/{product['id']}"
@@ -4355,39 +4370,26 @@ def get_seo_html(product=None):
                 "url": url
             }
         }
+        
+        html = html.replace(f'<title>{seo_title}</title>', f'<title>{title}</title>')
+        html = html.replace(f'content="{seo_description}"', f'content="{description}"')
+        html = html.replace(f'content="{seo_site_url}"', f'content="{url}"')
     else:
-        title = shop_desc or shop_name
-        description = shop_desc
+        title = seo_title
+        description = seo_description
         image_url = logo_url
-        url = host
+        url = seo_site_url
         schema = {
             "@context": "https://schema.org",
             "@type": "Organization",
             "name": shop_name,
-            "description": shop_desc,
-            "url": host,
+            "description": seo_description,
+            "url": seo_site_url,
             "logo": logo_url
         }
     
-    meta_tags = f'''
-    <title>{title}</title>
-    <meta name="description" content="{description}">
-    <meta property="og:title" content="{title}">
-    <meta property="og:description" content="{description}">
-    <meta property="og:image" content="{image_url}">
-    <meta property="og:url" content="{url}">
-    <meta property="og:type" content="{'product' if product else 'website'}">
-    <meta property="og:site_name" content="{shop_name}">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{title}">
-    <meta name="twitter:description" content="{description}">
-    <meta name="twitter:image" content="{image_url}">
-    <link rel="canonical" href="{url}">
-    <script type="application/ld+json">{json.dumps(schema)}</script>
-    '''
-    
-    html = html.replace('<title>Загрузка...</title>', meta_tags)
-    html = html.replace('Cache-Control', 'X-Original-Cache-Control')
+    schema_script = f'<script type="application/ld+json">{json.dumps(schema)}</script>'
+    html = html.replace('</head>', f'{schema_script}\n</head>')
     
     response = app.response_class(response=html, status=200, mimetype='text/html')
     response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'

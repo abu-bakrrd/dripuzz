@@ -610,11 +610,12 @@ def send_password_reset_email(email, token, site_url):
     return send_email(email, "Сброс пароля", html_content, text_content)
 
 # Telegram notification function
-def send_telegram_notification(order_data, order_items):
+def send_telegram_notification(order_data, order_items, site_url=None):
     """Send order notification to Telegram admin"""
     try:
-        order_id = str(order_data.get('id', 'unknown'))[:8]
-        print(f"📱 Attempting to send Telegram notification for order {order_id}...")
+        order_id = str(order_data.get('id', 'unknown'))
+        order_id_short = order_id[:6]
+        print(f"📱 Attempting to send Telegram notification for order {order_id_short}...")
         
         tg_config = get_telegram_config()
         print(f"   - notifications_enabled: {tg_config.get('notifications_enabled')}")
@@ -632,41 +633,71 @@ def send_telegram_notification(order_data, order_items):
             print(f"   ❌ Telegram notification: bot_token={bool(bot_token)}, admin_chat_id={bool(admin_chat_id)}")
             return False
         
-        # Format order items
+        # Count items and format
+        total_items = sum(item['quantity'] for item in order_items)
         items_text = ""
         for item in order_items:
-            items_text += f"  - {item['name']} x{item['quantity']} = {item['price'] * item['quantity']:,} сум\n"
+            item_total = item['price'] * item['quantity']
+            items_text += f"• {item['name']}"
             if item.get('selected_color'):
-                items_text += f"    Цвет: {item['selected_color']}\n"
+                items_text += f" ({item['selected_color']})"
+            items_text += f"\n  {item['quantity']} шт × {item['price']:,} = <b>{item_total:,}</b> сум\n"
         
         # Payment method labels
         payment_labels = {
-            'click': 'Click',
-            'payme': 'Payme',
-            'uzum': 'Uzum Bank',
-            'card_transfer': 'Перевод на карту'
+            'click': '💳 Click',
+            'payme': '💳 Payme',
+            'uzum': '💳 Uzum Bank',
+            'card_transfer': '💵 Перевод на карту'
         }
         payment_method = payment_labels.get(order_data.get('payment_method'), order_data.get('payment_method', 'Не указан'))
         
+        # Format date
+        from datetime import datetime
+        created_at = order_data.get('created_at')
+        if created_at:
+            try:
+                if isinstance(created_at, str):
+                    dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                else:
+                    dt = created_at
+                date_str = dt.strftime('%d.%m.%Y %H:%M')
+            except:
+                date_str = 'Только что'
+        else:
+            date_str = 'Только что'
+        
         # Build message
-        message = f"""🛒 <b>Новый заказ!</b>
+        message = f"""🔔 <b>НОВЫЙ ЗАКАЗ #{order_id_short}</b>
 
-📋 <b>Заказ #{order_id}</b>
+⏰ {date_str}
 
-👤 <b>Клиент:</b> {order_data.get('customer_name', 'Не указано')}
-📞 <b>Телефон:</b> {order_data.get('customer_phone', 'Не указан')}
-📍 <b>Адрес:</b> {order_data.get('delivery_address', 'Не указан')}
+━━━━━━━━━━━━━━━━━━
 
-💳 <b>Способ оплаты:</b> {payment_method}
+👤 <b>{order_data.get('customer_name', 'Клиент')}</b>
+📞 <code>{order_data.get('customer_phone', 'Не указан')}</code>
+📍 {order_data.get('delivery_address', 'Адрес не указан')}
 
-📦 <b>Товары:</b>
+━━━━━━━━━━━━━━━━━━
+
+🛍 <b>Товары ({total_items} шт):</b>
+
 {items_text}
-💰 <b>Итого:</b> {order_data['total']:,} сум
+━━━━━━━━━━━━━━━━━━
+
+{payment_method}
+
+💰 <b>ИТОГО: {order_data['total']:,} сум</b>
 """
         
         # Add receipt photo info if exists
         if order_data.get('payment_receipt_url'):
-            message += f"\n📸 <b>Чек оплаты:</b> <a href=\"{order_data['payment_receipt_url']}\">Посмотреть</a>"
+            message += f"\n📸 <a href=\"{order_data['payment_receipt_url']}\">Чек оплаты</a>"
+        
+        # Add link to admin panel
+        if site_url:
+            admin_url = f"{site_url.rstrip('/')}/admin/orders"
+            message += f"\n\n🔗 <a href=\"{admin_url}\">Открыть в админ-панели</a>"
         
         # Send message to Telegram
         url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -674,13 +705,13 @@ def send_telegram_notification(order_data, order_items):
             'chat_id': admin_chat_id,
             'text': message,
             'parse_mode': 'HTML',
-            'disable_web_page_preview': False
+            'disable_web_page_preview': True
         }
         
         response = requests.post(url, json=payload, timeout=10)
         
         if response.status_code == 200:
-            print(f"✅ Telegram notification sent for order {order_id}")
+            print(f"✅ Telegram notification sent for order {order_id_short}")
             return True
         else:
             print(f"❌ Telegram notification failed: {response.text}")
@@ -1886,6 +1917,7 @@ def checkout_order():
         print(f"{'='*50}\n")
         
         # Send Telegram notification for new order
+        from datetime import datetime
         order_data = {
             'id': order_id,
             'total': total,
@@ -1893,7 +1925,8 @@ def checkout_order():
             'customer_phone': customer_phone,
             'delivery_address': delivery_address,
             'payment_method': payment_method,
-            'payment_receipt_url': payment_receipt_url
+            'payment_receipt_url': payment_receipt_url,
+            'created_at': datetime.now()
         }
         order_items_for_notification = [
             {
@@ -1904,7 +1937,8 @@ def checkout_order():
             }
             for item in cart_items
         ]
-        send_telegram_notification(order_data, order_items_for_notification)
+        site_url = request.url_root
+        send_telegram_notification(order_data, order_items_for_notification, site_url)
         
         return jsonify({
             'order_id': order_id,

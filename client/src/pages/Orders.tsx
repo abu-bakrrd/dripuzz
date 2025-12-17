@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'wouter';
-import { ArrowLeft, Package, ChevronDown, MapPin, CreditCard, Clock, CheckCircle2, Truck, PackageCheck, MessageCircle, Phone, Copy, Check, Image as ImageIcon, Search, RefreshCw, ShoppingCart, Sparkles, Ban, Wallet, PackageOpen, FileCheck, Loader2 } from 'lucide-react';
+import { ArrowLeft, Package, ChevronDown, MapPin, CreditCard, Clock, CheckCircle2, Truck, PackageCheck, MessageCircle, Phone, Copy, Check, Image as ImageIcon, Search, RefreshCw, ShoppingCart, Sparkles, Ban, Wallet, PackageOpen, FileCheck, Loader2, Calendar, Timer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +31,9 @@ interface Order {
   delivery_address: string;
   payment_method: string;
   items: OrderItem[];
+  has_backorder?: boolean;
+  backorder_delivery_date?: string;
+  estimated_delivery_days?: number;
 }
 
 const DEFAULT_STATUS_CONFIG: Record<string, { label: string; icon: any; color: string }> = {
@@ -95,6 +98,37 @@ const formatRelativeDate = (dateString: string): string => {
   if (diffHours < 24) return `${diffHours} ч назад`;
   if (diffDays < 7) return `${diffDays} дн назад`;
   return formatDate(dateString);
+};
+
+const formatDeliveryDate = (createdAt: string, estimatedDays?: number): string => {
+  if (!estimatedDays) return 'Уточняется';
+  const orderDate = new Date(createdAt);
+  const deliveryDate = new Date(orderDate.getTime() + estimatedDays * 24 * 60 * 60 * 1000);
+  return deliveryDate.toLocaleDateString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+  });
+};
+
+const getDeliveryLabel = (order: Order): { text: string; isBackorder: boolean } => {
+  if (order.status === 'delivered' || order.status === 'completed') {
+    return { text: 'Доставлен', isBackorder: false };
+  }
+  if (order.status === 'cancelled') {
+    return { text: 'Отменён', isBackorder: false };
+  }
+  if (order.has_backorder) {
+    return { 
+      text: order.backorder_delivery_date 
+        ? new Date(order.backorder_delivery_date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+        : formatDeliveryDate(order.created_at, order.estimated_delivery_days),
+      isBackorder: true 
+    };
+  }
+  return { 
+    text: formatDeliveryDate(order.created_at, order.estimated_delivery_days),
+    isBackorder: false 
+  };
 };
 
 export default function Orders() {
@@ -451,6 +485,14 @@ export default function Orders() {
                           <Clock className="h-2.5 w-2.5 flex-shrink-0" />
                           <span className="truncate">{formatRelativeDate(order.created_at)}</span>
                         </p>
+                        {order.status !== 'delivered' && order.status !== 'completed' && order.status !== 'cancelled' && (order.estimated_delivery_days || order.backorder_delivery_date) && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Timer className={`h-2.5 w-2.5 flex-shrink-0 ${order.has_backorder ? 'text-amber-500' : 'text-green-500'}`} />
+                            <span className={`text-[10px] font-medium ${order.has_backorder ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                              {getDeliveryLabel(order).text}
+                            </span>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-start gap-1.5 flex-shrink-0">
@@ -622,6 +664,34 @@ export default function Orders() {
                               </div>
                             </div>
                           </div>
+
+                          {order.status !== 'delivered' && order.status !== 'completed' && order.status !== 'cancelled' && (
+                            (() => {
+                              const deliveryInfo = getDeliveryLabel(order);
+                              return (
+                                <div className={`rounded-xl p-4 ${deliveryInfo.isBackorder ? 'bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800' : 'bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800'}`}>
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${deliveryInfo.isBackorder ? 'bg-amber-100 dark:bg-amber-900' : 'bg-green-100 dark:bg-green-900'}`}>
+                                      <Calendar className={`h-5 w-5 ${deliveryInfo.isBackorder ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`} />
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className={`text-xs mb-0.5 ${deliveryInfo.isBackorder ? 'text-amber-600 dark:text-amber-400' : 'text-green-600 dark:text-green-400'}`}>
+                                        {deliveryInfo.isBackorder ? 'Ожидаемая дата доставки (под заказ)' : 'Ожидаемая дата доставки'}
+                                      </p>
+                                      <p className={`text-base font-semibold ${deliveryInfo.isBackorder ? 'text-amber-800 dark:text-amber-200' : 'text-green-800 dark:text-green-200'}`}>
+                                        {deliveryInfo.text}
+                                      </p>
+                                      {order.estimated_delivery_days && (
+                                        <p className={`text-xs mt-0.5 ${deliveryInfo.isBackorder ? 'text-amber-600/70 dark:text-amber-400/70' : 'text-green-600/70 dark:text-green-400/70'}`}>
+                                          ~{order.estimated_delivery_days} {order.estimated_delivery_days === 1 ? 'день' : order.estimated_delivery_days < 5 ? 'дня' : 'дней'}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })()
+                          )}
 
                           <Separator />
 

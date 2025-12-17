@@ -2430,7 +2430,8 @@ def get_user_orders():
         # Get all orders for user (increased limit for full orders page)
         cur.execute('''
             SELECT id, user_id, total, status, created_at, customer_name, customer_phone, 
-                   delivery_address, payment_method
+                   delivery_address, payment_method, has_backorder, backorder_delivery_date, 
+                   estimated_delivery_days
             FROM orders 
             WHERE user_id = %s 
             ORDER BY created_at DESC

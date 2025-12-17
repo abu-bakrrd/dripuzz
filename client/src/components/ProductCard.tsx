@@ -118,7 +118,7 @@ export default function ProductCard({
   return (
     <div
       onClick={handleCardClick}
-      className="bg-transparent cursor-pointer active:opacity-80 transition-opacity duration-150"
+      className="bg-transparent cursor-pointer rounded-2xl p-1.5 -m-1.5 hover:bg-muted/60 active:bg-muted/80 transition-colors duration-150"
       data-testid={`card-product-${id}`}
     >
       <div

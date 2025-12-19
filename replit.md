@@ -104,7 +104,7 @@ Product availability status ("В наличии" / "Под заказ") is displ
 
 ### Deployment
 
-Deployment supports fully automated (`auto_deploy.sh`) and interactive (`deploy_vps.sh`) methods for Ubuntu 22.04 VPS environments. It handles environment variable setup, GitHub integration for cloning, automatic database initialization, Nginx configuration as a reverse proxy, and optional Telegram bot deployment as a systemd service. Remote database access can be enabled via `enable_remote_db.sh`. The Flask backend runs on port 5000 and is served through Nginx.
+Deployment uses the interactive `deploy_vps.sh` script for Ubuntu 22.04 VPS environments. It handles environment variable setup, GitHub integration for cloning, automatic database initialization, Nginx configuration as a reverse proxy, and optional Telegram bot deployment as a systemd service. Remote database access can be enabled during the deployment setup. The Flask backend runs on port 5000 and is served through Nginx.
 
 ## Payment Integration
 

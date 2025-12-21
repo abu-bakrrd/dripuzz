@@ -258,37 +258,19 @@ print_step "Файл .env создан"
 print_step "Установка зависимостей и сборка приложения..."
 cd $APP_DIR
 
-# Установка Node.js зависимостей и сборка фронтенда (как root)
+# Установка Node.js зависимостей и сборка фронтенда
 print_step "Установка Node.js зависимостей..."
+sudo -u $APP_USER bash <<EOF
+export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 cd $APP_DIR
-if ! npm install; then
-    print_error "npm install failed"
+npm install || (print_error "npm install failed" && exit 1)
+npm run build || (print_error "npm run build failed" && exit 1)
+EOF
+
+if [ $? -ne 0 ]; then
+    print_error "Ошибка при сборке Node.js зависимостей"
     exit 1
 fi
-
-print_step "Сборка фронтенда..."
-cd $APP_DIR
-
-# Запускаем Vite
-if ! npx vite build; then
-    print_error "vite build failed"
-    exit 1
-fi
-
-# Проверяем что dist был создан
-if [ ! -d "$APP_DIR/dist" ]; then
-    print_error "Директория dist не создана после vite build"
-    exit 1
-fi
-
-print_step "Сборка Node.js бэкенда..."
-# Запускаем esbuild отдельно (игнорируем ошибки если dist существует)
-if ! npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist; then
-    print_warning "esbuild завершился с предупреждением, но dist существует"
-fi
-
-# Установка правильных прав после сборки
-chown -R $APP_USER:$APP_USER $APP_DIR/node_modules $APP_DIR/dist 2>/dev/null || true
 print_step "Node.js зависимости установлены и фронтенд собран"
 
 # Создание виртуального окружения и установка Python зависимостей

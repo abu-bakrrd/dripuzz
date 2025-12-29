@@ -19,6 +19,7 @@ from db_operations import (
     get_categories_from_config,
     find_products_by_name
 )
+from bot_locales import get_bot_translation
 
 
 class ProductBot:
@@ -44,6 +45,7 @@ class ProductBot:
         """
         self.bot = telebot.TeleBot(token)
         self.authorized_users = self._load_authorized_users()
+        self.language = self._load_language()  # Загрузка языка из конфига
         self.user_states = {}  # Хранение состояний пользователей
         self.temp_data = {}    # Временные данные для создания товаров
         
@@ -100,7 +102,8 @@ class ProductBot:
     def _load_authorized_users(self):
         """Загружает список авторизованных пользователей из settingsbot.json"""
         try:
-            with open('settingsbot.json', 'r', encoding='utf-8') as f:
+            config_path = os.path.join(os.path.dirname(__file__), 'settingsbot.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
                 return set(data.get('authorized_users', []))
         except FileNotFoundError:
@@ -109,6 +112,21 @@ class ProductBot:
         except Exception as e:
             print(f"❌ Ошибка загрузки авторизованных пользователей: {e}")
             return set()
+    
+    def _load_language(self):
+        """Загружает язык из settingsbot.json"""
+        try:
+            config_path = os.path.join(os.path.dirname(__file__), 'settingsbot.json')
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return data.get('language', 'ru')
+        except Exception as e:
+            print(f"⚠️ Ошибка загрузки языка: {e}. Используется русский по умолчанию.")
+            return 'ru'
+    
+    def t(self, key: str, **kwargs) -> str:
+        """Получить перевод по ключу"""
+        return get_bot_translation(key, self.language, **kwargs)
     
     def _is_authorized(self, user_id):
         """
@@ -125,10 +143,10 @@ class ProductBot:
     def _create_main_menu(self):
         """Создает главное меню с кнопками"""
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-        btn_add = types.KeyboardButton("➕ Добавить товар")
-        btn_delete = types.KeyboardButton("🗑 Удалить товар")
-        btn_list = types.KeyboardButton("📋 Список товаров")
-        btn_categories = types.KeyboardButton("📁 Категории")
+        btn_add = types.KeyboardButton(self.t("btn_add_product"))
+        btn_delete = types.KeyboardButton(self.t("btn_delete_product"))
+        btn_list = types.KeyboardButton(self.t("btn_list_products"))
+        btn_categories = types.KeyboardButton(self.t("btn_categories"))
         markup.add(btn_add, btn_delete)
         markup.add(btn_list, btn_categories)
         return markup
@@ -143,43 +161,39 @@ class ProductBot:
             if not self._is_authorized(user_id):
                 self.bot.send_message(
                     message.chat.id,
-                    "❌ У вас нет доступа к этому боту.\n"
-                    f"Ваш ID: {user_id}\n\n"
-                    "Попросите администратора добавить ваш ID в список авторизованных пользователей."
+                    self.t("access_denied", user_id=user_id)
                 )
                 return
             
             username = message.from_user.username or message.from_user.first_name
             self.bot.send_message(
                 message.chat.id,
-                f"👋 Привет, {username}!\n\n"
-                "🛍 Добро пожаловать в бот управления товарами.\n\n"
-                "Выберите действие из меню:",
+                self.t("welcome", username=username),
                 reply_markup=self._create_main_menu()
             )
         
-        @self.bot.message_handler(func=lambda message: message.text == "➕ Добавить товар")
+        @self.bot.message_handler(func=lambda message: message.text == self.t("btn_add_product"))
         def handle_add_product(message):
             if not self._is_authorized(message.from_user.id):
-                self.bot.send_message(message.chat.id, "❌ Доступ запрещен")
+                self.bot.send_message(message.chat.id, self.t("access_forbidden"))
                 return
             
             self.user_states[message.from_user.id] = "awaiting_product_name"
             self.temp_data[message.from_user.id] = {}
             
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
-            markup.add(types.KeyboardButton("❌ Отмена"))
+            markup.add(types.KeyboardButton(self.t("btn_cancel")))
             
             self.bot.send_message(
                 message.chat.id,
-                "📝 Введите название товара:",
+                self.t("enter_product_name"),
                 reply_markup=markup
             )
         
-        @self.bot.message_handler(func=lambda message: message.text == "🗑 Удалить товар")
+        @self.bot.message_handler(func=lambda message: message.text == self.t("btn_delete_product"))
         def handle_delete_product_menu(message):
             if not self._is_authorized(message.from_user.id):
-                self.bot.send_message(message.chat.id, "❌ Доступ запрещен")
+                self.bot.send_message(message.chat.id, self.t("access_forbidden"))
                 return
             
             # Получаем все товары
@@ -188,7 +202,7 @@ class ProductBot:
             if not products:
                 self.bot.send_message(
                     message.chat.id,
-                    "📭 Товаров пока нет в базе данных.",
+                    self.t("no_products"),
                     reply_markup=self._create_main_menu()
                 )
                 return
@@ -202,16 +216,15 @@ class ProductBot:
             
             self.bot.send_message(
                 message.chat.id,
-                "🗑 <b>Выберите товар для удаления:</b>\n\n"
-                f"Всего товаров: {len(products)}",
+                self.t("select_product_to_delete", count=len(products)),
                 parse_mode='HTML',
                 reply_markup=markup
             )
         
-        @self.bot.message_handler(func=lambda message: message.text == "📋 Список товаров")
+        @self.bot.message_handler(func=lambda message: message.text == self.t("btn_list_products"))
         def handle_list_products(message):
             if not self._is_authorized(message.from_user.id):
-                self.bot.send_message(message.chat.id, "❌ Доступ запрещен")
+                self.bot.send_message(message.chat.id, self.t("access_forbidden"))
                 return
             
             products = get_all_products()
@@ -219,19 +232,17 @@ class ProductBot:
             if not products:
                 self.bot.send_message(
                     message.chat.id,
-                    "📭 Товаров пока нет в базе данных."
+                    self.t("no_products")
                 )
                 return
             
-            response = f"📋 <b>Список товаров ({len(products)}):</b>\n\n"
+            response = self.t("products_list", count=len(products))
             
             for idx, product in enumerate(products[:30], 1):  # Показываем первые 30
-                response += f"{idx}. <b>{product['name']}</b>\n"
-                response += f"   💰 Цена: {product['price']:,} сум\n"
-                response += f"   🆔 ID: <code>{product['id']}</code>\n\n"
+                response += self.t("product_item", num=idx, name=product['name'], price=product['price'], id=product['id'])
             
             if len(products) > 30:
-                response += f"\n... и еще {len(products) - 30} товаров"
+                response += self.t("products_more", count=len(products) - 30)
             
             self.bot.send_message(
                 message.chat.id,
@@ -239,10 +250,10 @@ class ProductBot:
                 parse_mode='HTML'
             )
         
-        @self.bot.message_handler(func=lambda message: message.text == "📁 Категории")
+        @self.bot.message_handler(func=lambda message: message.text == self.t("btn_categories"))
         def handle_categories(message):
             if not self._is_authorized(message.from_user.id):
-                self.bot.send_message(message.chat.id, "❌ Доступ запрещен")
+                self.bot.send_message(message.chat.id, self.t("access_forbidden"))
                 return
             
             categories = get_categories_from_config()
@@ -250,15 +261,14 @@ class ProductBot:
             if not categories:
                 self.bot.send_message(
                     message.chat.id,
-                    "📭 Категории не настроены в конфигурации."
+                    self.t("no_categories")
                 )
                 return
             
-            response = "📁 <b>Категории товаров:</b>\n\n"
+            response = self.t("categories_list")
             
             for cat in categories:
-                response += f"<b>{cat['name']}</b>\n"
-                response += f"   🆔 ID: <code>{cat['id']}</code>\n\n"
+                response += self.t("category_item", name=cat['name'], id=cat['id'])
             
             self.bot.send_message(
                 message.chat.id,
@@ -266,7 +276,7 @@ class ProductBot:
                 parse_mode='HTML'
             )
         
-        @self.bot.message_handler(func=lambda message: message.text == "❌ Отмена")
+        @self.bot.message_handler(func=lambda message: message.text == self.t("btn_cancel"))
         def handle_cancel(message):
             user_id = message.from_user.id
             
@@ -277,7 +287,7 @@ class ProductBot:
             
             self.bot.send_message(
                 message.chat.id,
-                "❌ Операция отменена.",
+                self.t("operation_cancelled"),
                 reply_markup=self._create_main_menu()
             )
         

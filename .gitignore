@@ -1,6 +1,28 @@
+# Node
 node_modules
 dist
-.DS_Store
 server/public
 vite.config.ts.*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+env/
+.env
+
+# MacOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# IDEs
+.vscode/
+.idea/
+
+# Other
 *.tar.gz

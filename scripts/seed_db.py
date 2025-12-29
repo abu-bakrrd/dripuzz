@@ -87,7 +87,7 @@ def seed_database():
     # Load category IDs from config
     print("Loading categories from config...")
     import json
-    config_path = os.path.join(os.path.dirname(__file__), 'config', 'settings.json')
+    config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
     with open(config_path, 'r', encoding='utf-8') as f:
         config = json.load(f)
     

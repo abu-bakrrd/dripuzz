@@ -1,6 +1,9 @@
 #!/bin/bash
 # Start Flask API and Vite dev server for development
 
+# Navigate to project root
+cd "$(dirname "$0")/.."
+
 # Start Flask API in background on port 5000
 python app.py &
 FLASK_PID=$!

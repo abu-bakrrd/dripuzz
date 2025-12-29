@@ -17,6 +17,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from cryptography.fernet import Fernet
+from locales import get_all_translations
 
 app = Flask(__name__, static_folder='dist/public', static_url_path='/static')
 app.secret_key = os.environ.get("SESSION_SECRET")
@@ -787,6 +788,13 @@ def get_config():
                 }
         except Exception as e:
             print(f"Warning: Could not load Yandex Maps config: {e}")
+        
+        # Add translations based on language setting
+        try:
+            language = config.get('language', 'ru')
+            config['translations'] = get_all_translations(language)
+        except Exception as e:
+            print(f"Warning: Could not load translations: {e}")
         
         return Response(
             json.dumps(config, ensure_ascii=False),

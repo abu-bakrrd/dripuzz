@@ -1,127 +1,128 @@
 {
-  "shopName": "Monvoir",
-  "description": "Будь в стиле. Будь с Monvoir",
-  "logo": "/config/logo.svg",
-  "seo": {
-    "title": "Monvoir — Стильная одежда | Интернет-магазин",
-    "description": "Monvoir — интернет-магазин стильной одежды в Узбекистане. Головные уборы, верхняя одежда, обувь и аксессуары. Доставка по всей стране.",
-    "keywords": "одежда, Узбекистан, интернет-магазин, стиль, мода, головные уборы, верхняя одежда, обувь, аксессуары",
-    "siteUrl": "https://monvoir.shop",
-    "language": "ru"
-  },
-  "currency": {
-    "symbol": "UZS",
-    "code": "UZS",
-    "position": "after"
-  },
-  "managerContact": "@gayupov_a",
-"colorScheme": {
-  "background": "#FEFEFE",
-  "foreground": "#1A1A1A",
+	"language": "ru",
+	"shopName": "Monvoir",
+	"description": "Будь в стиле. Будь с Monvoir",
+	"logo": "/config/logo.svg",
+	"seo": {
+		"title": "Monvoir — Стильная одежда | Интернет-магазин",
+		"description": "Monvoir — интернет-магазин стильной одежды в Узбекистане. Головные уборы, верхняя одежда, обувь и аксессуары. Доставка по всей стране.",
+		"keywords": "одежда, Узбекистан, интернет-магазин, стиль, мода, головные уборы, верхняя одежда, обувь, аксессуары",
+		"siteUrl": "https://monvoir.shop",
+		"language": "ru"
+	},
+	"currency": {
+		"symbol": "UZS",
+		"code": "UZS",
+		"position": "after"
+	},
+	"managerContact": "@gayupov_a",
+	"colorScheme": {
+		"background": "#FEFEFE",
+		"foreground": "#1A1A1A",
 
-  "card": "#FFFFFF",
-  "cardForeground": "#1A1A1A",
+		"card": "#FFFFFF",
+		"cardForeground": "#1A1A1A",
 
-  "primary": "#EAB308",
-  "primaryForeground": "#1A1A1A",
+		"primary": "#EAB308",
+		"primaryForeground": "#1A1A1A",
 
-  "secondary": "#B98A00",
-  "secondaryForeground": "#FFFFFF",
+		"secondary": "#B98A00",
+		"secondaryForeground": "#FFFFFF",
 
-  "muted": "#F5F5F5",
-  "mutedForeground": "#737373",
+		"muted": "#F5F5F5",
+		"mutedForeground": "#737373",
 
-  "accent": "#FACC15",
-  "accentForeground": "#1A1A1A",
+		"accent": "#FACC15",
+		"accentForeground": "#1A1A1A",
 
-  "border": "#E5E5E5",
-  "input": "#E5E5E5",
-  "ring": "#EAB308"
-},
-  "sortOptions": [
-    {
-      "id": "new",
-      "label": "Новые"
-    },
-    {
-      "id": "price_asc",
-      "label": "Дешевле"
-    },
-    {
-      "id": "price_desc",
-      "label": "Дороже"
-    }
-  ],
-  "ui": {
-    "maxWidth": "420px",
-    "productsPerPage": 12,
-    "showCategoryIcons": true,
-    "showPriceFilter": true
-  },
-  "texts": {
-    "addToCart": "Добавить в корзину",
-    "addedToCart": "Добавлено в корзину",
-    "checkout": "Оформить заказ",
-    "total": "Итого",
-    "emptyCart": "Корзина пуста",
-    "emptyFavorites": "Нет избранных товаров",
-    "loading": "Загрузка..."
-  },
-  "fonts": {
-    "fontFamily": "Inter",
-    "fontFile": null,
-    "productName": {
-      "weight": 500
-    },
-    "price": {
-      "weight": 600
-    },
-    "description": {
-      "weight": 400
-    }
-  },
-  "logoSize": 32,
-  "orderStatuses": {
-    "pending": "Ожидает оплаты",
-    "reviewing": "Рассматривается",
-    "paid": "Оплачен",
-    "processing": "Собирается",
-    "shipped": "В пути",
-    "delivered": "Доставлен",
-    "cancelled": "Отменён"
-  },
-  "payment": {
-    "click": {
-      "enabled": false,
-      "merchantId": "",
-      "serviceId": ""
-    },
-    "payme": {
-      "enabled": false,
-      "merchantId": ""
-    },
-    "uzum": {
-      "enabled": false,
-      "merchantId": ""
-    },
-    "cardTransfer": {
-      "enabled": true,
-      "cardNumber": "9860160602358923",
-      "cardHolder": "Zolola Gayupova",
-      "bankName": "Hamkor Bankx"
-    }
-  },
-  "telegramNotifications": {
-    "enabled": true,
-    "adminChatId": "5644397480"
-  },
-  "yandexMaps": {
-    "apiKey": "48108220-010b-4516-939f-dcdc2bb3d7bd",
-    "defaultCenter": [41.311081, 69.240562],
-    "defaultZoom": 12
-  },
-  "delivery": {
-    "enabled": true,
-    "freeDeliveryNote": "Доставка оплачивается при получении"
-  }
+		"border": "#E5E5E5",
+		"input": "#E5E5E5",
+		"ring": "#EAB308"
+	},
+	"sortOptions": [
+		{
+			"id": "new",
+			"label": "Новые"
+		},
+		{
+			"id": "price_asc",
+			"label": "Дешевле"
+		},
+		{
+			"id": "price_desc",
+			"label": "Дороже"
+		}
+	],
+	"ui": {
+		"maxWidth": "420px",
+		"productsPerPage": 12,
+		"showCategoryIcons": true,
+		"showPriceFilter": true
+	},
+	"texts": {
+		"addToCart": "Добавить в корзину",
+		"addedToCart": "Добавлено в корзину",
+		"checkout": "Оформить заказ",
+		"total": "Итого",
+		"emptyCart": "Корзина пуста",
+		"emptyFavorites": "Нет избранных товаров",
+		"loading": "Загрузка..."
+	},
+	"fonts": {
+		"fontFamily": "Inter",
+		"fontFile": null,
+		"productName": {
+			"weight": 500
+		},
+		"price": {
+			"weight": 600
+		},
+		"description": {
+			"weight": 400
+		}
+	},
+	"logoSize": 32,
+	"orderStatuses": {
+		"pending": "Ожидает оплаты",
+		"reviewing": "Рассматривается",
+		"paid": "Оплачен",
+		"processing": "Собирается",
+		"shipped": "В пути",
+		"delivered": "Доставлен",
+		"cancelled": "Отменён"
+	},
+	"payment": {
+		"click": {
+			"enabled": false,
+			"merchantId": "",
+			"serviceId": ""
+		},
+		"payme": {
+			"enabled": false,
+			"merchantId": ""
+		},
+		"uzum": {
+			"enabled": false,
+			"merchantId": ""
+		},
+		"cardTransfer": {
+			"enabled": true,
+			"cardNumber": "9860160602358923",
+			"cardHolder": "Zolola Gayupova",
+			"bankName": "Hamkor Bankx"
+		}
+	},
+	"telegramNotifications": {
+		"enabled": true,
+		"adminChatId": "5644397480"
+	},
+	"yandexMaps": {
+		"apiKey": "48108220-010b-4516-939f-dcdc2bb3d7bd",
+		"defaultCenter": [41.311081, 69.240562],
+		"defaultZoom": 12
+	},
+	"delivery": {
+		"enabled": true,
+		"freeDeliveryNote": "Доставка оплачивается при получении"
+	}
 }

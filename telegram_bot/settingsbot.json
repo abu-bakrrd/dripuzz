@@ -1,28 +1,27 @@
 {
-  "authorized_users": [
-    5644397480
-  ],
-  "admin_notes": "Добавьте ваш Telegram ID в массив authorized_users. Пример: [123456789, 987654321]",
-  "categories": [
-    {
-      "id": "category-1",
-      "name": "Category 1"
-    },
-    {
-      "id": "category-2",
-      "name": "Category 2"
-    },
-    {
-      "id": "category-3",
-      "name": "Category 3"
-    },
-    {
-      "id": "category-4",
-      "name": "Category 4"
-    },
-    {
-      "id": "category-5",
-      "name": "Category 5"
-    }
-  ]
+	"language": "ru",
+	"authorized_users": [5644397480],
+	"admin_notes": "Добавьте ваш Telegram ID в массив authorized_users. Пример: [123456789, 987654321]",
+	"categories": [
+		{
+			"id": "category-1",
+			"name": "Category 1"
+		},
+		{
+			"id": "category-2",
+			"name": "Category 2"
+		},
+		{
+			"id": "category-3",
+			"name": "Category 3"
+		},
+		{
+			"id": "category-4",
+			"name": "Category 4"
+		},
+		{
+			"id": "category-5",
+			"name": "Category 5"
+		}
+	]
 }

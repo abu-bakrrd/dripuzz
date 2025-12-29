@@ -4,6 +4,10 @@
 import os
 import sys
 
+# Add root directory to python path
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 if __name__ == "__main__":
     # Debug: Check actual values
     database_url = os.environ.get('DATABASE_URL', '')

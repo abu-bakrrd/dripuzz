@@ -62,7 +62,7 @@ def get_categories_from_config():
         list: Array of category dictionaries or empty array if error
     """
     try:
-        config_path = Path(__file__).parent / 'settingsbot.json'
+        config_path = os.path.join(os.path.dirname(__file__), 'settingsbot.json')
         with open(config_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
             return data.get('categories', [])

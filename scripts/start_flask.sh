@@ -1,4 +1,5 @@
 #!/bin/bash
 # Initialize database and start Flask server
-python seed_db.py
+cd "$(dirname "$0")/.."
+python scripts/seed_db.py
 python app.py

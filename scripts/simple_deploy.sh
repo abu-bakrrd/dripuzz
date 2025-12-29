@@ -4,6 +4,7 @@
 # Использование: curl -fsSL https://raw.githubusercontent.com/YOUR_REPO/main/simple_deploy.sh | sudo bash
 
 set -e
+cd "$(dirname "$0")/.."
 
 echo "=================================================="
 echo "🚀 Установка Telegram Shop - Простой режим"

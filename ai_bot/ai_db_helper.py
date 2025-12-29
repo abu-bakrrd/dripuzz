@@ -102,10 +102,17 @@ def search_products(query):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        search_pattern = f'%{query.lower()}%'
+        # Разбиваем запрос на слова и убираем "мусор"
+        stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'привет', 'mona', 'мона'}
+        keywords = [word for word in query.lower().split() if word not in stop_words and len(word) > 2]
         
-        cur.execute('''
-            SELECT 
+        if not keywords:
+            # Если после очистки ничего не осталось, ищем по оригиналу (на всякий случай)
+            keywords = [query.lower()]
+
+        # Формируем динамический SQL запрос для поиска по любому из ключевых слов
+        sql_query = '''
+            SELECT DISTINCT
                 p.id,
                 p.name,
                 p.description,
@@ -116,12 +123,27 @@ def search_products(query):
                 c.name as category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
-            WHERE LOWER(p.name) LIKE %s 
-               OR LOWER(p.description) LIKE %s
-               OR LOWER(c.name) LIKE %s
-            ORDER BY p.name
-        ''', (search_pattern, search_pattern, search_pattern))
+            WHERE 
+        '''
         
+        conditions = []
+        params = []
+        
+        for word in keywords:
+            conditions.append("(LOWER(p.name) LIKE %s OR LOWER(p.description) LIKE %s OR LOWER(c.name) LIKE %s)")
+            pattern = f'%{word}%'
+            params.extend([pattern, pattern, pattern])
+            
+        if conditions:
+            sql_query += " OR ".join(conditions)
+        else:
+            # Fallback
+            sql_query += " LOWER(p.name) LIKE %s "
+            params = [f'%{query}%']
+
+        sql_query += ' ORDER BY p.name LIMIT 5' # Ограничиваем выдачу
+
+        cur.execute(sql_query, tuple(params))
         products = cur.fetchall()
         
         # Добавляем информацию о наличии

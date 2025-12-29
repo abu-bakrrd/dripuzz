@@ -7,7 +7,7 @@ import os
 import sys
 import telebot
 from telebot import types
-import google.generativeai as genai
+from groq import Groq
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
 
@@ -17,8 +17,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status
 
-# Загрузка переменных окружения
-load_dotenv()
+# Загрузка переменных окружения (явно указываем путь)
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+load_dotenv(env_path)
+
+print(f"DEBUG: CWD = {os.getcwd()}", flush=True)
+print(f"DEBUG: .env path = {env_path}", flush=True)
+print(f"DEBUG: GROQ_API_KEY present = {bool(os.getenv('GROQ_API_KEY'))}", flush=True)
 
 
 class AICustomerBot:
@@ -30,7 +35,6 @@ class AICustomerBot:
         
         Args:
             bot_token (str): Telegram Bot API токен
-            gemini_key (str): Google Gemini API ключ
         """
         self.bot = telebot.TeleBot(bot_token)
         

@@ -262,12 +262,7 @@ def format_products_for_ai(products):
             context += f"   Статус: Нет в наличии\n"
             
     return context
-        else:
-            context += f"   Наличие: уточняйте у менеджера\n"
-        
-        context += "\n"
-    
-    return context
+
 
 
 def get_categories():

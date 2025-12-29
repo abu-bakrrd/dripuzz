@@ -353,8 +353,12 @@ def get_order_status(order_id):
             status_text = status_map.get(order['status'], order['status'])
             
             # Формируем детальный отчет
+            created_at = order['created_at']
+            est_delivery = created_at + timedelta(days=2)
+            
             details = f"📦 ЗАКАЗ #{order['id']}\n"
-            details += f"🗓 Дата: {order['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            details += f"🗓 Дата заказа: {created_at.strftime('%Y-%m-%d %H:%M')}\n"
+            details += f"🚚 Ожидаемая доставка: до {est_delivery.strftime('%Y-%m-%d')}\n"
             details += f"🔄 Статус: {status_text}\n"
             details += f"💰 Сумма: {order.get('total', 0):,} сум\n"
             details += f"💳 Оплата: {order.get('payment_method', 'Не указано')}\n"

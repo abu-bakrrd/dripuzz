@@ -285,8 +285,12 @@ def get_order_status(order_id):
         # Проверяем, существует ли таблица orders
         cur.execute("SELECT to_regclass('public.orders')")
         if not cur.fetchone()['to_regclass']:
+            cur.close()
+            conn.close()
             return "Сайт пока не поддерживает отслеживание заказов через бота."
             
+        # Создаем новый курсор для второго запроса
+        cur = conn.cursor()
         cur.execute('''
             SELECT status, total, created_at 
             FROM orders 

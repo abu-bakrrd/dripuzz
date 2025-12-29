@@ -108,8 +108,19 @@ if [ -d "$APP_DIR/config" ]; then
 fi
 
 # Перезапуск приложения
-print_step "Перезапуск приложения..."
+print_step "Перезапуск сервисов..."
 systemctl restart shop-app
+
+# Перезапуск ботов, если они существуют
+if systemctl list-unit-files | grep -q ai-bot.service; then
+    print_step "Перезапуск AI бота..."
+    systemctl restart ai-bot
+fi
+
+if systemctl list-unit-files | grep -q telegram-bot.service; then
+    print_step "Перезапуск Shop бота..."
+    systemctl restart telegram-bot
+fi
 
 # Ожидание запуска
 sleep 3

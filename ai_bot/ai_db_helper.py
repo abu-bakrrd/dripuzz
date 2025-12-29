@@ -251,11 +251,8 @@ def format_products_for_ai(products):
                         parts.append(item['attribute2_value'])
                     
                     variant = ', '.join(parts) if parts else 'стандартный'
-                    # НЕ показываем точное количество, но показываем сам факт наличия
-                    # Но для бота можно оставить цифру, он сам решит как сказать (мы запретили ему говорить цифру)
-                    # Но лучше подскажем ему словесно
-                    qty_text = "много" if item['quantity'] > 5 else "мало"
-                    context += f"      - {variant}: есть (остаток: {qty_text})\n"
+                    # НЕ показываем цифры даже боту, чтобы он случайно не проговорился
+                    context += f"      - {variant}: Есть в наличии\n"
             else:
                 context += f"   Статус: Нет в наличии (раскуплен)\n"
         else:

@@ -284,7 +284,7 @@ def get_order_status(order_id):
         
         # Проверяем, существует ли таблица orders
         cur.execute("SELECT to_regclass('public.orders')")
-        if not cur.fetchone()[0]:
+        if not cur.fetchone()['to_regclass']:
             return "Сайт пока не поддерживает отслеживание заказов через бота."
             
         cur.execute('''

@@ -14,6 +14,9 @@ from datetime import datetime, timedelta
 # Добавляем родительскую директорию в путь для импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 3.1 (GROQ INTEGRATION)", flush=True)
+
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status
 

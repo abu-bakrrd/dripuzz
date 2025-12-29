@@ -320,13 +320,12 @@ def get_order_status(order_id):
         # Создаем новый курсор для второго запроса
         cur = conn.cursor()
         
-        # Используем поиск по подстроке (но только с начала строки)
+        # 1. Поиск по началу ID (стандартный)
         cur.execute('''
             SELECT id, status, total, created_at, delivery_address, customer_name, customer_phone, payment_method
             FROM orders
             WHERE id::text ILIKE %s
         ''', (f'{order_id}%',))
-
         order = cur.fetchone()
 
         if order:

@@ -298,18 +298,27 @@ def get_order_status(order_id):
         # Создаем новый курсор для второго запроса
         cur = conn.cursor()
         
-        # Используем поиск по подстроке для поддержки и полных UUID и коротких ID
+        # Используем поиск по подстроке (но только с начала строки)
         cur.execute('''
-            SELECT status, total, created_at 
-            FROM orders 
+            SELECT id, status, total, created_at, delivery_address, customer_name, customer_phone, payment_method
+            FROM orders
             WHERE id::text ILIKE %s
-        ''', (f'%{order_id}%',))
-        
+        ''', (f'{order_id}%',))
+
         order = cur.fetchone()
-        cur.close()
-        conn.close()
-        
+
         if order:
+            # Получаем состав заказа
+            cur.execute('''
+                SELECT name, quantity, price, selected_color, selected_attributes
+                FROM order_items
+                WHERE order_id = %s
+            ''', (order['id'],))
+            items = cur.fetchall()
+            
+            cur.close()
+            conn.close()
+
             status_map = {
                 'pending': 'Ожидает оплаты',
                 'processing': 'В обработке',
@@ -320,8 +329,44 @@ def get_order_status(order_id):
                 'reviewing': 'На проверке'
             }
             status_text = status_map.get(order['status'], order['status'])
-            return f"ID заказа: {order_id}\nСтатус: {status_text}\nСумма: {order.get('total', 0):,} сум"
+            
+            # Формируем детальный отчет
+            details = f"📦 ЗАКАЗ #{order['id']}\n"
+            details += f"🗓 Дата: {order['created_at'].strftime('%Y-%m-%d %H:%M')}\n"
+            details += f"🔄 Статус: {status_text}\n"
+            details += f"💰 Сумма: {order.get('total', 0):,} сум\n"
+            details += f"💳 Оплата: {order.get('payment_method', 'Не указано')}\n"
+            
+            if order.get('delivery_address'):
+                details += f"📍 Адрес доставки: {order['delivery_address']}\n"
+            if order.get('customer_name'):
+                details += f"👤 Клиент: {order['customer_name']} ({order.get('customer_phone', '')})\n"
+            
+            details += "\n🛒 СОСТАВ ЗАКАЗА:\n"
+            for item in items:
+                item_desc = f"- {item['name']} (x{item['quantity']})"
+                if item.get('selected_color'):
+                    item_desc += f", Цвет: {item['selected_color']}"
+                if item.get('selected_attributes'):
+                    # Пробуем распарсить JSON если это строка
+                    attrs = item['selected_attributes']
+                    if isinstance(attrs, str):
+                        try:
+                            attrs = json.loads(attrs)
+                        except:
+                            pass
+                    # Если словарь
+                    if isinstance(attrs, dict):
+                        size = attrs.get('Размер') or attrs.get('Size')
+                        if size:
+                            item_desc += f", Р-р: {size}"
+                
+                details += f"{item_desc}\n"
+                
+            return details
         else:
+            cur.close()
+            conn.close()
             return None
             
     except Exception as e:

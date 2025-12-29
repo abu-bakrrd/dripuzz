@@ -129,7 +129,7 @@ def search_products(query):
             cur.execute('''
                 SELECT color, attribute1_value, attribute2_value, quantity
                 FROM product_inventory
-                WHERE product_id = %s AND quantity > 0
+                WHERE product_id = %s
             ''', (product['id'],))
             product['inventory'] = cur.fetchall()
         
@@ -154,7 +154,7 @@ def get_product_details(product_id):
     """
     try:
         conn = get_db_connection()
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=RealDictCursor)
         
         cur.execute('''
             SELECT 
@@ -236,18 +236,32 @@ def format_products_for_ai(products):
         # Наличие
         inventory = product.get('inventory', [])
         if inventory:
-            context += f"   В наличии:\n"
-            for item in inventory:
-                parts = []
-                if item.get('color'):
-                    parts.append(f"цвет {item['color']}")
-                if item.get('attribute1_value'):
-                    parts.append(item['attribute1_value'])
-                if item.get('attribute2_value'):
-                    parts.append(item['attribute2_value'])
-                
-                variant = ', '.join(parts) if parts else 'стандартный'
-                context += f"      - {variant}: {item['quantity']} шт\n"
+            # Фильтруем только те варианты, где quantity > 0
+            available_items = [item for item in inventory if item['quantity'] > 0]
+            
+            if available_items:
+                context += f"   В наличии:\n"
+                for item in available_items:
+                    parts = []
+                    if item.get('color'):
+                        parts.append(f"цвет {item['color']}")
+                    if item.get('attribute1_value'):
+                        parts.append(item['attribute1_value'])
+                    if item.get('attribute2_value'):
+                        parts.append(item['attribute2_value'])
+                    
+                    variant = ', '.join(parts) if parts else 'стандартный'
+                    # НЕ показываем точное количество, но показываем сам факт наличия
+                    # Но для бота можно оставить цифру, он сам решит как сказать (мы запретили ему говорить цифру)
+                    # Но лучше подскажем ему словесно
+                    qty_text = "много" if item['quantity'] > 5 else "мало"
+                    context += f"      - {variant}: есть (остаток: {qty_text})\n"
+            else:
+                context += f"   Статус: Нет в наличии (раскуплен)\n"
+        else:
+            context += f"   Статус: Нет в наличии\n"
+            
+    return context
         else:
             context += f"   Наличие: уточняйте у менеджера\n"
         

@@ -300,46 +300,59 @@ class AICustomerBot:
                     else:
                         order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\nЗаказ с ID {order_id} не найден в базе данных.\n(Попроси клиента перепроверить ID и подскажи, где его найти на сайте)"
                 
-                # Формируем историю
-                history_text = self._format_history_for_prompt(session['history'])
-                
-                # Формируем полный промпт
-                full_prompt = f"""{self.system_prompt}
-
-ИНФОРМАЦИЯ О ТОВАРАХ:
-{products_context}
-
-{history_text}
-КЛИЕНТ: {user_question}
-
-ОТВЕТ (в HTML):"""
-                
-                # Отправляем ответ клиенту
                 # Генерируем ответ
                 try:
-                    # Вызываем модель (Gemma)
-                    if self.model:
-                         response = self.model.generate_content(full_prompt)
+                    if self.client:
+                        # Подготовка сообщений для Groq
+                        messages = [
+                            {"role": "system", "content": f"{self.system_prompt}\n\nИНФОРМАЦИЯ О ТОВАРАХ:\n{products_context}\n\n{order_info if order_info else ''}"}
+                        ]
+                        
+                        # Добавляем историю переписки
+                        # history в self.sessions хранит {'role': 'user'/'model', 'text': ...} - нужно адаптировать под API Groq
+                        # Groq ожидает 'role': 'user' или 'assistant'
+                        for msg in session['history'][-10:]: # последние 10 сообщений
+                            role = "user" if msg['role'] == "user" else "assistant"
+                            messages.append({"role": role, "content": msg['text']})
+                        
+                        # Добавляем текущий вопрос
+                        messages.append({"role": "user", "content": user_question})
+
+                        # Вызов API
+                        completion = self.client.chat.completions.create(
+                            model=self.model_name,
+                            messages=messages,
+                            temperature=0.6,
+                            max_tokens=1024,
+                            top_p=1,
+                            stop=None,
+                            stream=False
+                        )
+                        
+                        response_text = completion.choices[0].message.content
                          
-                         if response and response.text:
+                        if response_text:
                              # Отправляем ответ клиенту
                              try:
                                  self.bot.send_message(
                                      message.chat.id,
-                                     response.text,
+                                     response_text,
                                      parse_mode='HTML'
                                  )
                              except Exception as e:
                                  print(f"⚠️ Ошибка отправки (HTML): {e}")
-                                 # Пробуем без Markdown
-                                 self.bot.send_message(message.chat.id, response.text)
-                         else:
+                                 # Пробуем без Markdown/HTML если ошибка парсинга
+                                 self.bot.send_message(message.chat.id, response_text)
+                                 
+                             # Сохраняем в историю
+                             self._update_history(user_id, user_question, response_text)
+                        else:
                              raise Exception("Пустой ответ от модели")
                     else:
-                        raise Exception("Модель не инициализирована (self.model is None)")
+                        raise Exception("Модель не инициализирована (self.client is None)")
                         
                 except Exception as e:
-                     raise e  # Пробрасываем ошибку выше, в блок where catch DEBUG ERROR
+                     raise e  # Пробрасываем ошибку выше
                     
             except Exception as e:
                 error_msg = f"❌ Ошибка генерации: {e}"
@@ -351,15 +364,20 @@ class AICustomerBot:
                 # Fallback: Если есть информация о заказе...
                 if order_info and "ИНФОРМАЦИЯ О ЗАКАЗЕ" in order_info and "не найден" not in order_info:
                     try:
-                        clean_info = order_info.replace("\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n", "").replace("\n(Используй эту информацию, чтобы ответить клиенту о статусе его заказа)", "")
-                        self.bot.send_message(
-                            message.chat.id,
-                            f"🤖 <b>Автоматический ответ:</b>\n\n{clean_info}\n\n<i>(AI временно недоступен, но я нашел ваш заказ в базе)</i>",
-                            parse_mode='HTML'
-                        )
-                        return
-                    except Exception:
-                        pass
+    def _update_history(self, user_id, user_text, bot_text):
+        """Обновление истории сообщений"""
+        if user_id not in self.sessions:
+            self._get_user_session(user_id)
+            
+        session = self.sessions[user_id]
+        session['history'].append({'role': 'user', 'text': user_text})
+        session['history'].append({'role': 'model', 'text': bot_text})
+        
+        # Ограничиваем историю (последние 20 сообщений)
+        if len(session['history']) > 20:
+            session['history'] = session['history'][-20:]
+            
+        session['last_active'] = datetime.now()
 
                 self.bot.send_message(
                     message.chat.id,

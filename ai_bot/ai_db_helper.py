@@ -288,7 +288,7 @@ def get_order_status(order_id):
             return "Сайт пока не поддерживает отслеживание заказов через бота."
             
         cur.execute('''
-            SELECT status, total_amount, created_at 
+            SELECT status, total, created_at 
             FROM orders 
             WHERE id = %s OR id::text LIKE %s
         ''', (order_id, f'%{order_id}'))
@@ -303,10 +303,12 @@ def get_order_status(order_id):
                 'processing': 'В обработке',
                 'shipped': 'Отправлен',
                 'delivered': 'Доставлен',
-                'cancelled': 'Отменен'
+                'cancelled': 'Отменен',
+                'paid': 'Оплачен',
+                'reviewing': 'На проверке'
             }
             status_text = status_map.get(order['status'], order['status'])
-            return f"ID заказа: {order_id}\nСтатус: {status_text}\nСумма: {order.get('total_amount', 0):,} сум"
+            return f"ID заказа: {order_id}\nСтатус: {status_text}\nСумма: {order.get('total', 0):,} сум"
         else:
             return None
             

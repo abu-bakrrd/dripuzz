@@ -17,7 +17,7 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 from cryptography.fernet import Fernet
-from locales import get_all_translations
+from telegram_bot.locales import get_all_translations
 
 app = Flask(__name__, static_folder='dist/public', static_url_path='/static')
 app.secret_key = os.environ.get("SESSION_SECRET")

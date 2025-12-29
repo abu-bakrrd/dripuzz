@@ -362,10 +362,10 @@ class AICustomerBot:
                                  self.bot.send_message(
                                      message.chat.id,
                                      response.text,
-                                     parse_mode='Markdown'
+                                     parse_mode='HTML'
                                  )
                              except Exception as e:
-                                 print(f"⚠️ Ошибка отправки (Markdown): {e}")
+                                 print(f"⚠️ Ошибка отправки (HTML): {e}")
                                  # Пробуем без Markdown
                                  self.bot.send_message(message.chat.id, response.text)
                          else:

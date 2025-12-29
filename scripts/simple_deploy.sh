@@ -139,6 +139,10 @@ sudo -u "$APP_USER" npm install --silent > /dev/null 2>&1
 echo "🔨 Сборка фронтенда..."
 sudo -u "$APP_USER" npm run build
 
+# Инициализация таблиц
+echo "🗄️ Инициализация таблиц..."
+sudo -u "$APP_USER" python3 scripts/init_tables.py
+
 # Создание .env
 echo "⚙️  Создание конфигурации..."
 cat > "$APP_DIR/.env" <<EOF

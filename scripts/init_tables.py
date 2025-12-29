@@ -2,7 +2,9 @@
 """
 Initialize database tables (run this once before starting the app)
 """
+import sys
 import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv
 
 # Load environment variables from .env file

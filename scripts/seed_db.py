@@ -1,6 +1,12 @@
 import psycopg2
 from psycopg2.extras import RealDictCursor
+import sys
 import os
+
+# Add parent directory to path to allow importing app
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from dotenv import load_dotenv
 
 def seed_database():
     # Debug: print all environment variables starting with PG or DATABASE

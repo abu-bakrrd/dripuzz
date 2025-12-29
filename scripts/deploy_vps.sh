@@ -287,7 +287,7 @@ print_step "Инициализация таблиц базы данных..."
 sudo -u $APP_USER bash <<EOF
 cd $APP_DIR
 source venv/bin/activate
-python3 init_tables.py
+python3 scripts/init_tables.py
 EOF
 
 if [ $? -eq 0 ]; then
@@ -421,7 +421,7 @@ if [ "$LOAD_SEED" = "y" ] || [ "$LOAD_SEED" = "Y" ]; then
     sudo -u $APP_USER bash <<EOF
 cd $APP_DIR
 source venv/bin/activate
-python3 seed_db.py
+python3 scripts/seed_db.py
 EOF
     print_step "Тестовые данные загружены"
 fi

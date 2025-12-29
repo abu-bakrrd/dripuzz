@@ -48,13 +48,14 @@ class AICustomerBot:
         try:
             # Инициализация модели
             # Используем Gemma 3 4B, так как у нее высокие лимиты (14k запросов)
-            # Примечание: Gemma может не поддерживать system_instruction в том же виде, проверьте
-            self.model = genai.GenerativeModel('gemma-3-4b-it', generation_config=generation_config)
-            print(f"✅ Модель: Gemma 3 4B IT подключена")
+            # Убираем generation_config, так как он может быть несовместим или вызывать ошибки инициализации
+            self.model = genai.GenerativeModel('gemma-3-4b-it')
+            print(f"✅ Модель: Gemma 3 4B IT подключена", flush=True)
         except Exception as e:
-            print(f"⚠️ Ошибка инициализации Gemma 3: {e}")
-            # Fallback
-            self.model = genai.GenerativeModel('gemini-2.0-flash-lite')
+            print(f"⚠️ Ошибка инициализации Gemma 3: {e}", flush=True)
+            # Если не вышло, пробуем старую добрую flash (хотя ее может не быть в списке)
+            # Лучше упасть или вывести ошибку, чем использовать модель с лимитом 0
+            self.model = None
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime}}
         self.sessions = {}

@@ -45,10 +45,9 @@ class AICustomerBot:
             print(f"⚠️ Ошибка инициализации Gemini 1.5 Flash: {e}")
             # Fallback
             try:
-                self.model = genai.GenerativeModel('gemini-pro')
                 print(f"✅ Модель: Gemini Pro (fallback) подключена")
             except:
-                self.model = genai.GenerativeModel('gemini-1.5-flash-latest')-latest')
+                self.model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime}}
         self.sessions = {}

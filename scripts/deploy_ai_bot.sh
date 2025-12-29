@@ -35,11 +35,35 @@ if [ ! -d "$BOT_DIR" ]; then
 fi
 
 echo ""
-echo "📦 Установка зависимостей Python для AI бота..."
-cd "$APP_DIR"
-source venv/bin/activate
-pip install google-generativeai pyTelegramBotAPI python-dotenv psycopg2-binary
-deactivate
+echo "🔧 Настройка конфигурации..."
+
+# Проверка наличия .env файла
+if [ ! -f "$APP_DIR/.env" ]; then
+    echo "⚠️  Файл .env не найден в $APP_DIR"
+    echo "Создание базового .env..."
+    touch "$APP_DIR/.env"
+    chown shopapp:shopapp "$APP_DIR/.env"
+fi
+
+# Проверка наличия AI_BOT_TOKEN
+if ! grep -q "AI_BOT_TOKEN" "$APP_DIR/.env"; then
+    echo "⚠️  В файле .env не найдены ключи для AI бота."
+    echo "Пожалуйста, введите их сейчас (нажмите Enter после ввода):"
+    echo ""
+    
+    read -p "🤖 Token вашего AI бота (от BotFather): " BOT_TOKEN
+    read -p "🧠 API ключ Gemini (от Google): " GEMINI_KEY
+    
+    # Добавляем ключи в конец файла
+    echo "" >> "$APP_DIR/.env"
+    echo "# AI Bot Config" >> "$APP_DIR/.env"
+    echo "AI_BOT_TOKEN=$BOT_TOKEN" >> "$APP_DIR/.env"
+    echo "GEMINI_API_KEY=$GEMINI_KEY" >> "$APP_DIR/.env"
+    
+    echo "✅ Ключи добавлены в .env"
+else
+    echo "✅ Конфигурация AI бота найдена в .env"
+fi
 
 echo ""
 echo "⚙️  Создание systemd сервиса для AI бота..."

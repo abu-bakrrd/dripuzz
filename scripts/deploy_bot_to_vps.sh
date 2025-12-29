@@ -15,7 +15,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Получаем путь к приложению
-APP_DIR="/opt/telegram-shop"
+APP_DIR="/home/shopapp/app"
 BOT_DIR="$APP_DIR/telegram_bot"
 
 echo ""

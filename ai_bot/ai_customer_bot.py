@@ -350,52 +350,6 @@ class AICustomerBot:
 
 ОТВЕТ (в HTML):"""
                 
-                # Список доступных моделей (на основе вашего вывода)
-                model_names = [
-                    'gemini-2.0-flash',       # Новая быстрая версия
-                    'gemini-flash-latest',    # Стабильная версия Flash
-                    'gemini-pro-latest',      # Стабильная версия Pro
-                    'gemini-2.0-flash-lite',  # Облегченная версия
-                ]
-                response = None
-                last_error = None
-
-                for m_name in model_names:
-                    try:
-                        # print(f"🤖 Попытка использовать модель: {m_name}")
-                        model = genai.GenerativeModel(m_name)
-                        response = model.generate_content(full_prompt)
-                        if response and response.text:
-                            # print(f"✅ Успешно использована модель: {m_name}")
-                            break
-                    except Exception as e:
-                        last_error = str(e)
-                        # print(f"⚠️ Модель {m_name} не сработала: {e}")
-                        continue
-                
-                if not response:
-                    raise Exception(f"Все модели вернули ошибку. Последняя: {last_error}")
-
-                ai_answer = response.text
-                
-                # Сохраняем в историю
-                session['history'].append({'role': 'user', 'text': user_question})
-                session['history'].append({'role': 'model', 'text': ai_answer})
-                
-                # Отправляем ответ клиенту
-                try:
-                    self.bot.send_message(
-                        message.chat.id,
-                        ai_answer,
-                        parse_mode='HTML'
-                    )
-                except telebot.apihelper.ApiTelegramException as e:
-                    if "can't parse entities" in str(e):
-                        # Если HTML сломался, пробуем отправить как текст
-                        print(f"⚠️ Ошибка разметки HTML, отправка без форматирования: {e}")
-                        self.bot.send_message(
-                            message.chat.id,
-                            ai_answer, # Отправляем как есть, телеграм сам покажет теги как текст, но сообщение дойдет
                             parse_mode=None
                         )
                     else:

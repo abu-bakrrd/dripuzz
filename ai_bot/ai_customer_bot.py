@@ -310,14 +310,17 @@ Mona: Да, посмотрите на этот <a href="..."><b>Пиджак Oxf
 
                 # 3. Проверка на статус заказа (UUID или первые 6+ символов)
                 order_info = ""
+                # Нормализация: заменяем кириллицу, похожую на латиницу (для тех, кто пишет FАС35...)
+                clean_question = user_question.lower().translate(str.maketrans("асеорх", "aceopx"))
+                
                 # Ищем полный UUID или короткий ID (минимум 6 символов)
                 uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'  # Полный UUID
                 short_id_pattern = r'\b[0-9a-f]{6,}\b'  # 6+ символов (hex)
                 
-                found_uuids = re.findall(uuid_pattern, user_question.lower())
+                found_uuids = re.findall(uuid_pattern, clean_question)
                 if not found_uuids:
                     # Если полный UUID не найден, ищем короткий ID
-                    found_uuids = re.findall(short_id_pattern, user_question.lower())
+                    found_uuids = re.findall(short_id_pattern, clean_question)
                 
                 if found_uuids:
                     order_id = found_uuids[0]
@@ -325,7 +328,7 @@ Mona: Да, посмотрите на этот <a href="..."><b>Пиджак Oxf
                     if status_result:
                         order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n{status_result}\n(Используй эту информацию, чтобы ответить клиенту о статусе его заказа)"
                     else:
-                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\nЗаказ с ID {order_id} не найден в базе данных.\n(Попроси клиента перепроверить ID и подскажи, где его найти на сайте)"
+                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\nЗаказ с ID {order_id} не найден. (Возможно, ошибка в символах или заказ еще не создан)."
                 
                 # Генерируем ответ
                 try:

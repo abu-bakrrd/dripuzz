@@ -368,8 +368,13 @@ class AICustomerBot:
                     self.bot.send_message(message.chat.id, response.text)
                     
             except Exception as e:
-                print(f"❌ Ошибка генерации: {e}")
-                # Fallback: Если есть информация о заказе, но AI упал (например, лимиты), отправим инфо напрямую
+                error_msg = f"❌ Ошибка генерации: {e}"
+                print(error_msg, flush=True)
+                
+                # ОТЛАДКА: Отправляем текст ошибки прямо в чат, чтобы пользователь увидел его
+                self.bot.send_message(message.chat.id, f"DEBUG ERROR: {e}")
+
+                # Fallback: Если есть информация о заказе...
                 if order_info and "ИНФОРМАЦИЯ О ЗАКАЗЕ" in order_info and "не найден" not in order_info:
                     try:
                         clean_info = order_info.replace("\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n", "").replace("\n(Используй эту информацию, чтобы ответить клиенту о статусе его заказа)", "")

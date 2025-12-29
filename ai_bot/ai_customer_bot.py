@@ -36,8 +36,17 @@ class AICustomerBot:
         
         # Настройка Gemini
         genai.configure(api_key=gemini_key)
+        
+        # Конфигурация генерации
+        generation_config = {
+            "temperature": 0.7,
+            "top_p": 0.95,
+            "top_k": 40,
+            "max_output_tokens": 1024,
+        }
+
         try:
-            # Используем доступные модели            # Инициализация модели
+            # Инициализация модели
             # Используем gemini-1.5-flash как наиболее стабильную бесплатную версию
             self.model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
             print(f"✅ Модель: Gemini 1.5 Flash подключена")

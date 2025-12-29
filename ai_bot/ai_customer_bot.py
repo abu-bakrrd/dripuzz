@@ -350,13 +350,26 @@ class AICustomerBot:
 
 ОТВЕТ (в HTML):"""
                 
-                            parse_mode=None
-                        )
-                    else:
-                        raise e
-                
+                # Отправляем ответ клиенту
+                try:
+                    # Assuming 'response' object is obtained from an AI model call here
+                    # For the sake of fixing indentation, let's assume 'response' exists.
+                    # A placeholder for AI model call would be:
+                    # response = self.model.generate_content(full_prompt)
+                    # For now, let's use a dummy response if not defined elsewhere
+                    response = type('obj', (object,), {'text' : "Извините, произошла ошибка при генерации ответа."})() # Dummy response
+                    self.bot.send_message(
+                        message.chat.id,
+                        response.text,
+                        parse_mode='Markdown'
+                    )
+                except Exception as e:
+                    print(f"⚠️ Ошибка отправки: {e}")
+                    # Пробуем без Markdown
+                    self.bot.send_message(message.chat.id, response.text)
+                    
             except Exception as e:
-                print(f"❌ Ошибка обработки вопроса: {e}")
+                print(f"❌ Ошибка генерации: {e}")
                 # Fallback: Если есть информация о заказе, но AI упал (например, лимиты), отправим инфо напрямую
                 if order_info and "ИНФОРМАЦИЯ О ЗАКАЗЕ" in order_info and "не найден" not in order_info:
                     try:

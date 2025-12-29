@@ -350,22 +350,31 @@ class AICustomerBot:
 ОТВЕТ (в HTML):"""
                 
                 # Отправляем ответ клиенту
+                # Генерируем ответ
                 try:
-                    # Assuming 'response' object is obtained from an AI model call here
-                    # For the sake of fixing indentation, let's assume 'response' exists.
-                    # A placeholder for AI model call would be:
-                    # response = self.model.generate_content(full_prompt)
-                    # For now, let's use a dummy response if not defined elsewhere
-                    response = type('obj', (object,), {'text' : "Извините, произошла ошибка при генерации ответа."})() # Dummy response
-                    self.bot.send_message(
-                        message.chat.id,
-                        response.text,
-                        parse_mode='Markdown'
-                    )
+                    # Вызываем модель (Gemma)
+                    if self.model:
+                         response = self.model.generate_content(full_prompt)
+                         
+                         if response and response.text:
+                             # Отправляем ответ клиенту
+                             try:
+                                 self.bot.send_message(
+                                     message.chat.id,
+                                     response.text,
+                                     parse_mode='Markdown'
+                                 )
+                             except Exception as e:
+                                 print(f"⚠️ Ошибка отправки (Markdown): {e}")
+                                 # Пробуем без Markdown
+                                 self.bot.send_message(message.chat.id, response.text)
+                         else:
+                             raise Exception("Пустой ответ от модели")
+                    else:
+                        raise Exception("Модель не инициализирована (self.model is None)")
+                        
                 except Exception as e:
-                    print(f"⚠️ Ошибка отправки: {e}")
-                    # Пробуем без Markdown
-                    self.bot.send_message(message.chat.id, response.text)
+                     raise e  # Пробрасываем ошибку выше, в блок where catch DEBUG ERROR
                     
             except Exception as e:
                 error_msg = f"❌ Ошибка генерации: {e}"

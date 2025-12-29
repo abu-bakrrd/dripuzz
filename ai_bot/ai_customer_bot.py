@@ -320,27 +320,27 @@ class AICustomerBot:
                 except Exception as e:
                     print(f"⚠️ Ошибка получения товаров: {e}")
 
-                # 3. Проверка на статус заказа (UUID или первые 6+ символов)
+                # 3. Проверка на статус заказа
                 order_info = ""
-                # Нормализация: заменяем кириллицу, похожую на латиницу (для тех, кто пишет FАС35...)
-                clean_question = user_question.lower().translate(str.maketrans("асеорх", "aceopx"))
+                # Нормализация: убираем # и заменяем кириллицу
+                clean_question = user_question.lower().replace('#', '').translate(str.maketrans("асеорх", "aceopx"))
                 
-                # Ищем полный UUID или короткий ID (минимум 6 символов)
-                uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'  # Полный UUID
-                short_id_pattern = r'\b[0-9a-f]{6,}\b'  # 6+ символов (hex)
+                # Ищем полный UUID или короткий ID
+                uuid_pattern = r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}'
+                short_id_pattern = r'\b[0-9a-f]{6,}\b'
                 
                 found_uuids = re.findall(uuid_pattern, clean_question)
                 if not found_uuids:
-                    # Если полный UUID не найден, ищем короткий ID
                     found_uuids = re.findall(short_id_pattern, clean_question)
                 
                 if found_uuids:
                     order_id = found_uuids[0]
                     status_result = get_order_status(order_id)
                     if status_result:
-                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n{status_result}\n(Используй эту информацию, чтобы ответить клиенту о статусе его заказа)"
+                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n{status_result}\n(Используй эту информацию, чтобы ответить клиенту)"
                     else:
-                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\nЗаказ с ID {order_id} не найден. (Возможно, ошибка в символах или заказ еще не создан)."
+                        # Диагностика для пользователя: показываем, что именно искали
+                        order_info = f"\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\nЯ искала заказ по номеру '{order_id}', но не нашла его в базе. (Возможно, опечатка? Стандартный ID начинается как 'a1b2c3d4...')."
                 
                 # Генерируем ответ
                 try:

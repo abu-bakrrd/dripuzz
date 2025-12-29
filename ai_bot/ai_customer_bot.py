@@ -34,26 +34,19 @@ class AICustomerBot:
         """
         self.bot = telebot.TeleBot(bot_token)
         
-        # Настройка Gemini
-        genai.configure(api_key=gemini_key)
-        
-        # Конфигурация генерации
-        generation_config = {
-            "temperature": 0.7,
-            "top_p": 0.95,
-            "top_k": 40,
-            "max_output_tokens": 1024,
-        }
-
-        try:
-            # Инициализация модели
-            # Используем Gemma 3 27B IT - более умная модель с высокими лимитами
-            self.model = genai.GenerativeModel('gemma-3-27b-it')
-            print(f"✅ Модель: Gemma 3 27B IT подключена", flush=True)
-
-        except Exception as e:
-            print(f"⚠️ Ошибка инициализации Gemma 3: {e}", flush=True)
-            self.model = None
+        # Инициализация Groq клиента
+        self.api_key = os.getenv('GROQ_API_KEY')
+        if not self.api_key:
+            print("⚠️ GROQ_API_KEY не найден в .env! AI не будет работать.")
+            self.client = None
+        else:
+            try:
+                self.client = Groq(api_key=self.api_key)
+                self.model_name = "llama-3.3-70b-versatile"
+                print(f"✅ Модель: Groq {self.model_name} подключена", flush=True)
+            except Exception as e:
+                print(f"⚠️ Ошибка инициализации Groq: {e}", flush=True)
+                self.client = None
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime}}
         self.sessions = {}

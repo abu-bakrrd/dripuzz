@@ -291,11 +291,13 @@ def get_order_status(order_id):
             
         # Создаем новый курсор для второго запроса
         cur = conn.cursor()
+        
+        # Используем поиск по подстроке для поддержки и полных UUID и коротких ID
         cur.execute('''
             SELECT status, total, created_at 
             FROM orders 
-            WHERE id = %s OR id::text LIKE %s
-        ''', (order_id, f'%{order_id}'))
+            WHERE id::text ILIKE %s
+        ''', (f'%{order_id}%',))
         
         order = cur.fetchone()
         cur.close()

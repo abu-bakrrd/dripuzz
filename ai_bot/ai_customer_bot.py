@@ -47,16 +47,14 @@ class AICustomerBot:
 
         try:
             # Инициализация модели
-            # Используем gemini-1.5-flash как наиболее стабильную бесплатную версию
-            self.model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
-            print(f"✅ Модель: Gemini 1.5 Flash подключена")
+            # Используем Gemma 3 4B, так как у нее высокие лимиты (14k запросов)
+            # Примечание: Gemma может не поддерживать system_instruction в том же виде, проверьте
+            self.model = genai.GenerativeModel('gemma-3-4b-it', generation_config=generation_config)
+            print(f"✅ Модель: Gemma 3 4B IT подключена")
         except Exception as e:
-            print(f"⚠️ Ошибка инициализации Gemini 1.5 Flash: {e}")
+            print(f"⚠️ Ошибка инициализации Gemma 3: {e}")
             # Fallback
-            try:
-                print(f"✅ Модель: Gemini Pro (fallback) подключена")
-            except:
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
+            self.model = genai.GenerativeModel('gemini-2.0-flash-lite')
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime}}
         self.sessions = {}

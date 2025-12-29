@@ -37,11 +37,18 @@ class AICustomerBot:
         # Настройка Gemini
         genai.configure(api_key=gemini_key)
         try:
-            # Используем доступные модели из вашего списка
-            self.model = genai.GenerativeModel('gemini-2.0-flash')
+            # Используем доступные модели            # Инициализация модели
+            # Используем gemini-1.5-flash как наиболее стабильную бесплатную версию
+            self.model = genai.GenerativeModel('gemini-1.5-flash', generation_config=generation_config)
+            print(f"✅ Модель: Gemini 1.5 Flash подключена")
         except Exception as e:
-            print(f"⚠️ Ошибка инициализации gemini-2.0-flash: {e}")
-            self.model = genai.GenerativeModel('gemini-flash-latest')
+            print(f"⚠️ Ошибка инициализации Gemini 1.5 Flash: {e}")
+            # Fallback
+            try:
+                self.model = genai.GenerativeModel('gemini-pro')
+                print(f"✅ Модель: Gemini Pro (fallback) подключена")
+            except:
+                self.model = genai.GenerativeModel('gemini-1.5-flash-latest')-latest')
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime}}
         self.sessions = {}

@@ -1,31 +1,58 @@
 <!DOCTYPE html>
 <html lang="{{SEO_LANGUAGE}}">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no" />
-    <meta name="description" content="{{SEO_DESCRIPTION}}" />
-    <meta name="keywords" content="{{SEO_KEYWORDS}}" />
-    <meta name="author" content="{{SHOP_NAME}}" />
-    <meta name="robots" content="index, follow" />
-    <meta property="og:title" content="{{SEO_TITLE}}" />
-    <meta property="og:description" content="{{SEO_DESCRIPTION}}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="{{SEO_SITE_URL}}" />
-    <meta property="og:image" content="{{SEO_SITE_URL}}/config/logo.svg" />
-    <meta property="og:locale" content="{{SEO_LANGUAGE}}_{{SEO_LANGUAGE_UPPER}}" />
-    <meta name="twitter:card" content="summary" />
-    <meta name="twitter:title" content="{{SEO_TITLE}}" />
-    <meta name="twitter:description" content="{{SEO_DESCRIPTION}}" />
-    <link rel="icon" type="image/svg+xml" href="/config/logo.svg" />
-    <link rel="canonical" href="{{SEO_SITE_URL}}" />
-    <title>{{SEO_TITLE}}</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no"
+		/>
+		<meta name="description" content="{{SEO_DESCRIPTION}}" />
+		<meta name="keywords" content="{{SEO_KEYWORDS}}" />
+		<meta name="author" content="{{SHOP_NAME}}" />
+		<meta name="robots" content="index, follow" />
+		<meta property="og:title" content="{{SEO_TITLE}}" />
+		<meta property="og:description" content="{{SEO_DESCRIPTION}}" />
+		<meta property="og:type" content="website" />
+		<meta property="og:url" content="{{SEO_SITE_URL}}" />
+		<meta property="og:image" content="{{SEO_SITE_URL}}/config/logo.svg" />
+		<meta
+			property="og:locale"
+			content="{{SEO_LANGUAGE}}_{{SEO_LANGUAGE_UPPER}}"
+		/>
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="{{SEO_TITLE}}" />
+		<meta name="twitter:description" content="{{SEO_DESCRIPTION}}" />
+		<link rel="icon" type="image/svg+xml" href="/config/logo.svg" />
+		<link rel="canonical" href="{{SEO_SITE_URL}}" />
+		<title>{{SEO_TITLE}}</title>
+		<script src="https://telegram.org/js/telegram-web-app.js"></script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<script>
+			// Apply theme immediately to prevent FOUC
+			;(function () {
+				const storageKey = 'vite-ui-theme'
+				const theme = localStorage.getItem(storageKey) || 'light'
+				const root = document.documentElement
+
+				if (theme === 'system') {
+					const systemTheme = window.matchMedia('(prefers-color-scheme: dark)')
+						.matches
+						? 'dark'
+						: 'light'
+					root.classList.add(systemTheme)
+				} else {
+					root.classList.add(theme)
+				}
+			})()
+		</script>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="/src/main.tsx"></script>
+	</body>
 </html>

@@ -35,15 +35,17 @@ export default function Header({
 							src={config.logo}
 							alt='Logo'
 							style={{ width: `${logoSize}px`, height: 'auto' }}
-							className='object-contain'
+							className='object-contain transition-opacity duration-200'
 						/>
 					)}
-					<h1
-						className='text-lg font-semibold text-foreground'
-						data-testid='text-brand-name'
-					>
-						{config?.shopName || 'Loading...'}
-					</h1>
+					{config?.shopName && (
+						<h1
+							className='text-lg font-semibold text-foreground transition-opacity duration-200'
+							data-testid='text-brand-name'
+						>
+							{config.shopName}
+						</h1>
+					)}
 				</div>
 
 				<div className='flex items-center gap-2'>

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from "react";
 import { Search, X, Loader2 } from "lucide-react";
+import { optimizeProductThumbnail } from "@/lib/imageOptimizer";
 import { useConfig } from "@/hooks/useConfig";
 
 interface Product {
@@ -152,9 +153,11 @@ export default function SearchWithSuggestions({
                     <div className="w-12 h-12 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                       {product.images?.[0] ? (
                         <img
-                          src={product.images[0]}
+                          src={optimizeProductThumbnail(product.images[0])}
                           alt={product.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
+                          decoding="async"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">

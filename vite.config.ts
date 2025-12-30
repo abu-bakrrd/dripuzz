@@ -30,6 +30,19 @@ export default defineConfig({
 	build: {
 		outDir: path.resolve(import.meta.dirname, 'dist/public'),
 		emptyOutDir: true,
+		rollupOptions: {
+			output: {
+				manualChunks: {
+					// Выделяем vendor библиотеки в отдельный чанк
+					'react-vendor': ['react', 'react-dom'],
+					'router-vendor': ['wouter'],
+					'query-vendor': ['@tanstack/react-query'],
+					// Админка будет загружаться отдельно благодаря lazy loading
+				},
+			},
+		},
+		// Увеличиваем лимит предупреждений о размере чанка
+		chunkSizeWarningLimit: 1000,
 	},
 	server: {
 		host: '0.0.0.0',

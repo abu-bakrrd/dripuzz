@@ -7,8 +7,6 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/hooks/useCart'
 import { useConfig } from '@/hooks/useConfig'
 import { useFavorites } from '@/hooks/useFavorites'
-import AdminLayout from '@/pages/admin/AdminLayout'
-import AdminLogin from '@/pages/admin/AdminLogin'
 import Cart from '@/pages/Cart'
 import Favorites from '@/pages/Favorites'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -19,9 +17,13 @@ import Product from '@/pages/Product'
 import Register from '@/pages/Register'
 import ResetPassword from '@/pages/ResetPassword'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Route, Router, Switch, useLocation } from 'wouter'
 import { queryClient } from './lib/queryClient'
+
+// Lazy-load админку для code splitting (загружается отдельно от основного бандла)
+const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
+const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin'))
 
 interface PendingAction {
 	type: 'addToCart' | 'toggleFavorite' | 'navigate'
@@ -204,11 +206,27 @@ function AppContent() {
 			<div className='w-full'>
 				<Switch>
 					<Route path='/admin/login'>
-						<AdminLogin />
+						<Suspense
+							fallback={
+								<div className='min-h-screen flex items-center justify-center'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							}
+						>
+							<AdminLogin />
+						</Suspense>
 					</Route>
 
 					<Route path='/admin'>
-						<AdminLayout />
+						<Suspense
+							fallback={
+								<div className='min-h-screen flex items-center justify-center'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							}
+						>
+							<AdminLayout />
+						</Suspense>
 					</Route>
 
 					<Route path='/login'>

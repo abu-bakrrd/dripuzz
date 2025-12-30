@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { useConfig } from '@/hooks/useConfig'
+import { optimizeProductThumbnail, optimizeProductHero } from '@/lib/imageOptimizer'
 import { Check, Heart, Image as ImageIcon, ShoppingCart } from 'lucide-react'
 import { useRef, useState } from 'react'
 
@@ -146,7 +147,11 @@ export default function ProductCard({
 						) : (
 							<img
 								key={idx}
-								src={img}
+								src={
+									priority && idx === 0
+										? optimizeProductHero(img)
+										: optimizeProductThumbnail(img)
+								}
 								alt={name}
 								className={`absolute inset-0 w-full h-full object-cover rounded-2xl transition-opacity duration-300 ${
 									idx === currentImage ? 'opacity-100' : 'opacity-0'

@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { useConfig } from '@/hooks/useConfig'
+import { optimizeProductDetail } from '@/lib/imageOptimizer'
 import {
 	ArrowLeft,
 	Check,
@@ -217,11 +218,14 @@ export default function ProductDetail({
 								) : (
 									<img
 										key={idx}
-										src={img}
+										src={optimizeProductDetail(img)}
 										alt={name}
 										className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
 											idx === currentImage ? 'opacity-100' : 'opacity-0'
 										}`}
+										loading={idx === 0 ? 'eager' : 'lazy'}
+										fetchPriority={idx === 0 ? 'high' : 'low'}
+										decoding='async'
 										onError={() => {
 											setImageErrors(prev => new Set(prev).add(idx))
 										}}

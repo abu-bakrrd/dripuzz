@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, ShoppingCart, Check, Loader2, Package, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { optimizeProductThumbnail } from "@/lib/imageOptimizer";
 import { useConfig } from "@/hooks/useConfig";
 
 interface Attribute {
@@ -163,9 +164,11 @@ export default function QuickAddModal({
                 <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
                   {product.images && product.images[0] ? (
                     <img 
-                      src={product.images[0]} 
+                      src={optimizeProductThumbnail(product.images[0])} 
                       alt={product.name}
                       className="w-full h-full object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-muted-foreground">

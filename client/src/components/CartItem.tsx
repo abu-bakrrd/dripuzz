@@ -1,5 +1,6 @@
 import { Minus, Plus, Trash2, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { optimizeProductThumbnail } from "@/lib/imageOptimizer";
 import { useState } from "react";
 import { useConfig } from "@/hooks/useConfig";
 
@@ -36,9 +37,11 @@ export default function CartItem({
           <ImageIcon className="w-10 h-10 text-muted-foreground/40" />
         ) : (
           <img
-            src={images[0]}
+            src={optimizeProductThumbnail(images[0])}
             alt={name}
             className="w-full h-full object-cover"
+            loading="lazy"
+            decoding="async"
             onError={() => setImageError(true)}
           />
         )}

@@ -158,13 +158,13 @@
 	--elevate-1: rgba(255, 255, 255, 0.04);
 	--elevate-2: rgba(255, 255, 255, 0.09);
 
-	--background: 0 0% 3.9%;
+	--background: 0 0% 7%;
 
 	--foreground: 0 0% 98%;
 
 	--border: 0 0% 14.9%;
 
-	--card: 0 0% 6%;
+	--card: 0 0% 11%;
 
 	--card-foreground: 0 0% 98%;
 
@@ -238,8 +238,8 @@
 @layer base {
 	* {
 		@apply border-border;
-		transition: background-color 0.15s ease-out, color 0.15s ease-out,
-			border-color 0.15s ease-out, opacity 0.15s ease-out;
+		transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out,
+			border-color 0.2s ease-in-out;
 	}
 
 	html,

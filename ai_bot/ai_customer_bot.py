@@ -302,7 +302,7 @@ class AICustomerBot:
         Returns:
             str: Очищенный текст
         """
-        import re
+        # re уже импортирован глобально
         
         # Удаляем различные варианты thinking tags
         patterns = [
@@ -594,7 +594,7 @@ class AICustomerBot:
                             # Обработка ошибки 429 (Rate Limit)
                             if '429' in error_str or 'rate limit' in error_lower or 'rate_limit' in error_lower:
                                 # Пытаемся извлечь время ожидания из ошибки
-                                import re
+                                # re уже импортирован глобально
                                 retry_after_match = re.search(r'retry[_-]?after[:\s]+(\d+)', error_str, re.IGNORECASE)
                                 if retry_after_match:
                                     seconds = int(retry_after_match.group(1))

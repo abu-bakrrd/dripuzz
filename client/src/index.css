@@ -51,7 +51,7 @@ html [class*="transition-colors"]::after {
 html .transition-all:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active)),
 html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active)),
 html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active))::before,
-html [class*="transition-all"]:not(:hover):not(:focus):not(:active)):not(:has(:hover)):not(:has(:focus)):not(:has(:active))::after {
+html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active))::after {
 	transition-property: transform, filter, opacity !important;
 }
 

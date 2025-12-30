@@ -374,8 +374,7 @@
 		inset: -1px;
 	}
 
-	/* Отключаем все анимации и transitions для dropdown и select */
-	/* Используем селекторы для Radix UI Portal элементов */
+	/* Отключаем все transitions для dropdown и select */
 	[data-radix-dropdown-menu-content],
 	[data-radix-select-content],
 	[data-radix-dropdown-menu-content] *,
@@ -384,7 +383,6 @@
 	[data-radix-select-content] *::before,
 	[data-radix-dropdown-menu-content] *::after,
 	[data-radix-select-content] *::after,
-	/* Также отключаем для элементов с popover классом внутри Portal */
 	[data-radix-portal] [role="menu"],
 	[data-radix-portal] [role="listbox"],
 	[data-radix-portal] [role="menu"] *,
@@ -393,11 +391,7 @@
 	[data-radix-portal] [role="listbox"] *::before,
 	[data-radix-portal] [role="menu"] *::after,
 	[data-radix-portal] [role="listbox"] *::after {
-		animation: none !important;
 		transition: none !important;
-		transition-property: none !important;
-		transition-duration: 0s !important;
-		transform: none !important;
 	}
 
 	/* Отключаем focus ring для кнопки сортировки */

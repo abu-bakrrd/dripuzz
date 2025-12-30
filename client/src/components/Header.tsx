@@ -1,4 +1,3 @@
-import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConfig } from '@/hooks/useConfig'
@@ -48,7 +47,6 @@ export default function Header({
 				</div>
 
 				<div className='flex items-center gap-2'>
-					<ThemeToggle />
 					{user ? (
 						<ProfileDropdown />
 					) : (

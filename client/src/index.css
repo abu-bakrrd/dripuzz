@@ -167,7 +167,6 @@
 	--card: 0 0% 6%;
 
 	--card-foreground: 0 0% 98%;
-	// ... (I need to be careful with replace chunks, better to replace just the specific lines if possible or blocks)
 
 	--card-border: 0 0% 14%;
 

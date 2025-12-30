@@ -75,12 +75,12 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       style={{ 
-        transition: 'none !important', 
-        transitionProperty: 'none !important', 
-        transitionDuration: '0s !important',
-        transitionDelay: '0s !important',
-        animation: 'none !important',
-        transform: 'none !important'
+        transition: 'none', 
+        transitionProperty: 'none', 
+        transitionDuration: '0s',
+        transitionDelay: '0s',
+        animation: 'none',
+        transform: 'none'
       } as React.CSSProperties}
       className={cn(
         "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-none duration-0 transition-none",

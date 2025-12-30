@@ -7,6 +7,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import json
+from datetime import datetime, timedelta
 
 
 def get_db_connection():

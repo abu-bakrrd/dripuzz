@@ -49,7 +49,7 @@ class AICustomerBot:
         else:
             try:
                 self.client = Groq(api_key=self.api_key)
-                self.model_name = "llama-3.3-70b-versatile"
+                self.model_name = "llama-3.1-8b-instant"
                 print(f"✅ Модель: Groq {self.model_name} подключена", flush=True)
             except Exception as e:
                 print(f"⚠️ Ошибка инициализации Groq: {e}", flush=True)

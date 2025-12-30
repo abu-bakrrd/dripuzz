@@ -49,8 +49,8 @@ class AICustomerBot:
         else:
             try:
                 self.client = Groq(api_key=self.api_key)
-                # Используем доступную модель Groq
-                self.model_name = "llama-3.3-70b-versatile"
+                # Используем модель llama-4-scout для инструкций
+                self.model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
                 print(f"✅ Модель: Groq {self.model_name} подключена", flush=True)
             except Exception as e:
                 print(f"⚠️ Ошибка инициализации Groq: {e}", flush=True)

@@ -74,7 +74,14 @@ const SelectContent = React.forwardRef<
   <SelectPrimitive.Portal>
     <SelectPrimitive.Content
       ref={ref}
-      style={{ transition: 'none', transitionProperty: 'none', transitionDuration: '0s' }}
+      style={{ 
+        transition: 'none !important', 
+        transitionProperty: 'none !important', 
+        transitionDuration: '0s !important',
+        transitionDelay: '0s !important',
+        animation: 'none !important',
+        transform: 'none !important'
+      } as React.CSSProperties}
       className={cn(
         "relative z-50 max-h-[--radix-select-content-available-height] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md animate-none duration-0 transition-none",
         className

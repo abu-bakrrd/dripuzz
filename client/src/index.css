@@ -374,7 +374,7 @@
 		inset: -1px;
 	}
 
-	/* Отключаем все transitions для dropdown и select */
+	/* Отключаем все transitions для dropdown и select - ЖЕЛЕЗОБЕТОННОЕ ПРАВИЛО */
 	[data-radix-dropdown-menu-content],
 	[data-radix-select-content],
 	[data-radix-dropdown-menu-content] *,
@@ -392,6 +392,13 @@
 	[data-radix-portal] [role="menu"] *::after,
 	[data-radix-portal] [role="listbox"] *::after {
 		transition: none !important;
+		transition-property: none !important;
+		transition-duration: 0s !important;
+		transition-delay: 0s !important;
+		transition-timing-function: none !important;
+		animation: none !important;
+		animation-duration: 0s !important;
+		transform: none !important;
 	}
 
 	/* Отключаем focus ring для кнопки сортировки */

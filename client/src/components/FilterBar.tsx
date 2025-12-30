@@ -146,7 +146,7 @@ export default function FilterBar({
             {/* Sort with Shadcn Select */}
             <Select value={selectedSort} onValueChange={onSortChange}>
               <SelectTrigger 
-                className="w-[110px] h-8 rounded-full text-sm ml-2 focus:outline-none" 
+                className="w-[110px] h-8 rounded-full text-sm ml-2 focus:outline-none border-0" 
                 data-testid="filter-sort"
               >
                 <SelectValue />

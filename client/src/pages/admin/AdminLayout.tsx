@@ -1,3 +1,4 @@
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
@@ -63,8 +64,6 @@ export default function AdminLayout() {
 		<div className='min-h-screen bg-background'>
 			<header className='border-b bg-card sticky top-0 z-50'>
 				<div className='max-w-7xl mx-auto px-4 py-3 flex items-center justify-between'>
-					import {ThemeToggle} from '@/components/ThemeToggle'; // ... imports
-					// ... inside Header JSX
 					<h1 className='text-xl font-bold'>Админ-панель</h1>
 					<div className='flex items-center gap-4'>
 						<ThemeToggle />

@@ -238,7 +238,11 @@
 @layer base {
 	* {
 		@apply border-border;
-		transition: all 0.3s ease-in-out !important;
+		transition-property: color, background-color, border-color,
+			text-decoration-color, fill, stroke, opacity, box-shadow, transform,
+			filter, backdrop-filter;
+		transition-duration: 0.3s;
+		transition-timing-function: ease-in-out;
 	}
 
 	html,

@@ -111,16 +111,23 @@ export default function ThemeApplier() {
 			)
 			root.style.setProperty('--sidebar-ring', hexToHSL(scheme.ring))
 		} else {
-			// In dark mode, remove inline styles for backgrounds so CSS takes over
+			// In dark mode, remove inline styles so CSS classes (.dark) take over
+			// This is safer than forcing values in JS, as it respects the stylesheet
 			const propsToRemove = [
 				'--background',
 				'--foreground',
 				'--card',
 				'--card-foreground',
+				'--popover',
+				'--popover-foreground',
 				'--secondary',
 				'--secondary-foreground',
 				'--muted',
 				'--muted-foreground',
+				'--accent',
+				'--accent-foreground',
+				'--destructive',
+				'--destructive-foreground',
 				'--border',
 				'--input',
 				'--ring',

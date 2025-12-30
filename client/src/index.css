@@ -29,19 +29,58 @@
 
 /* Переключение темы без анимации - мгновенное */
 /* Отключаем transitions для цветовых свойств при смене темы */
-/* Но оставляем transitions для hover/focus состояний */
-*:not(:hover):not(:focus):not(:active),
-*:not(:hover):not(:focus):not(:active)::before,
-*:not(:hover):not(:focus):not(:active)::after {
+/* Переопределяем все transition-colors и transition-all для цветов */
+
+/* Базовое правило - отключаем transitions для цветов у всех элементов */
+*,
+*::before,
+*::after {
 	transition-property: transform, filter, opacity !important;
-	/* НЕ включаем color, background-color, border-color для мгновенной смены темы */
+	/* НЕ включаем color, background-color, border-color, fill, stroke для мгновенной смены темы */
 }
 
-/* Для элементов в состоянии hover/focus оставляем transition-colors */
+/* Явно переопределяем transition-colors классы */
+.transition-colors,
+[class*="transition-colors"] {
+	transition-property: transform, filter, opacity !important;
+}
+
+/* Явно переопределяем transition-all для цветовых свойств */
+.transition-all:not(:hover):not(:focus):not(:active),
+[class*="transition-all"]:not(:hover):not(:focus):not(:active) {
+	transition-property: transform, filter, opacity !important;
+}
+
+/* Для SVG элементов отключаем transitions для fill и stroke */
+svg:not(:hover):not(:focus):not(:active),
+svg *:not(:hover):not(:focus):not(:active) {
+	transition-property: transform, filter, opacity !important;
+}
+
+/* Для текстовых элементов отключаем transitions для color */
+h1:not(:hover):not(:focus):not(:active),
+h2:not(:hover):not(:focus):not(:active),
+h3:not(:hover):not(:focus):not(:active),
+h4:not(:hover):not(:focus):not(:active),
+h5:not(:hover):not(:focus):not(:active),
+h6:not(:hover):not(:focus):not(:active),
+p:not(:hover):not(:focus):not(:active),
+span:not(:hover):not(:focus):not(:active),
+div:not(:hover):not(:focus):not(:active),
+a:not(:hover):not(:focus):not(:active),
+button:not(:hover):not(:focus):not(:active),
+label:not(:hover):not(:focus):not(:active),
+input:not(:hover):not(:focus):not(:active),
+textarea:not(:hover):not(:focus):not(:active),
+select:not(:hover):not(:focus):not(:active) {
+	transition-property: transform, filter, opacity !important;
+}
+
+/* Для hover/focus/active состояний разрешаем transitions для цветов */
 *:hover,
 *:focus,
 *:active {
-	transition-property: transform, filter, opacity, color, background-color, border-color !important;
+	transition-property: transform, filter, opacity, color, background-color, border-color, fill, stroke !important;
 }
 
 /* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */

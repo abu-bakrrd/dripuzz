@@ -219,7 +219,7 @@ export default function ProductCard({
 					data-testid={`button-favorite-${id}`}
 				>
 					<Heart
-						className={`w-4 h-4 transition-colors ${
+						className={`w-4 h-4 ${
 							isFavorite ? 'fill-red-500 text-red-500' : 'text-foreground/60'
 						}`}
 					/>
@@ -230,7 +230,7 @@ export default function ProductCard({
 						{images.map((_, idx) => (
 							<div
 								key={idx}
-								className={`h-1.5 rounded-full transition-all duration-300 ${
+								className={`h-1.5 rounded-full transition-[width] duration-300 ${
 									idx === currentImage
 										? 'w-4 bg-foreground'
 										: 'w-1.5 bg-foreground/30'

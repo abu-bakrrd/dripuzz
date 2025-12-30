@@ -28,83 +28,14 @@
 }
 
 /* Переключение темы без анимации - мгновенное */
-/* ЖЕЛЕЗОБЕТОННОЕ правило: полностью отключаем transitions для всех цветовых свойств */
-/* Применяем максимальную специфичность для перекрытия всех Tailwind классов */
+/* ДУБЛИРУЕМ правила из HTML для дополнительной защиты */
+/* Основные правила уже в index.html для максимального приоритета */
 
-/* Базовое правило - отключаем transitions для цветов у ВСЕХ элементов */
-html *,
-html *::before,
-html *::after {
+/* Дополнительное правило для перекрытия любых оставшихся случаев */
+html body *:not(:hover):not(:focus):not(:active),
+html body *:not(:hover):not(:focus):not(:active)::before,
+html body *:not(:hover):not(:focus):not(:active)::after {
 	transition-property: transform, filter, opacity !important;
-	/* НЕ включаем color, background-color, border-color, fill, stroke для мгновенной смены темы */
-}
-
-/* Явно переопределяем ВСЕ возможные классы с transition-colors */
-html .transition-colors,
-html [class*="transition-colors"],
-html [class*="transition-colors"]::before,
-html [class*="transition-colors"]::after {
-	transition-property: transform, filter, opacity !important;
-}
-
-/* Явно переопределяем ВСЕ возможные классы с transition-all (кроме hover/focus/active) */
-html .transition-all:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active)),
-html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active)),
-html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active))::before,
-html [class*="transition-all"]:not(:hover):not(:focus):not(:active):not(:has(:hover)):not(:has(:focus)):not(:has(:active))::after {
-	transition-property: transform, filter, opacity !important;
-}
-
-/* Для SVG элементов полностью отключаем transitions для fill и stroke */
-html svg:not(:hover):not(:focus):not(:active),
-html svg *:not(:hover):not(:focus):not(:active),
-html svg:not(:hover):not(:focus):not(:active)::before,
-html svg:not(:hover):not(:focus):not(:active)::after,
-html svg *:not(:hover):not(:focus):not(:active)::before,
-html svg *:not(:hover):not(:focus):not(:active)::after {
-	transition-property: transform, filter, opacity !important;
-}
-
-/* Для ВСЕХ текстовых и контейнерных элементов отключаем transitions для color */
-html h1:not(:hover):not(:focus):not(:active),
-html h2:not(:hover):not(:focus):not(:active),
-html h3:not(:hover):not(:focus):not(:active),
-html h4:not(:hover):not(:focus):not(:active),
-html h5:not(:hover):not(:focus):not(:active),
-html h6:not(:hover):not(:focus):not(:active),
-html p:not(:hover):not(:focus):not(:active),
-html span:not(:hover):not(:focus):not(:active),
-html div:not(:hover):not(:focus):not(:active),
-html a:not(:hover):not(:focus):not(:active),
-html button:not(:hover):not(:focus):not(:active),
-html label:not(:hover):not(:focus):not(:active),
-html input:not(:hover):not(:focus):not(:active),
-html textarea:not(:hover):not(:focus):not(:active),
-html select:not(:hover):not(:focus):not(:active),
-html li:not(:hover):not(:focus):not(:active),
-html td:not(:hover):not(:focus):not(:active),
-html th:not(:hover):not(:focus):not(:active),
-html article:not(:hover):not(:focus):not(:active),
-html section:not(:hover):not(:focus):not(:active),
-html header:not(:hover):not(:focus):not(:active),
-html footer:not(:hover):not(:focus):not(:active),
-html nav:not(:hover):not(:focus):not(:active),
-html main:not(:hover):not(:focus):not(:active),
-html aside:not(:hover):not(:focus):not(:active) {
-	transition-property: transform, filter, opacity !important;
-}
-
-/* Для hover/focus/active состояний разрешаем transitions для цветов */
-html *:hover,
-html *:focus,
-html *:active,
-html *:hover::before,
-html *:hover::after,
-html *:focus::before,
-html *:focus::after,
-html *:active::before,
-html *:active::after {
-	transition-property: transform, filter, opacity, color, background-color, border-color, fill, stroke !important;
 }
 
 /* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */

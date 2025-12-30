@@ -51,31 +51,102 @@
 			/>
 		</noscript>
 		<style>
-			/* ЖЕЛЕЗОБЕТОННОЕ правило для отключения transitions у Radix UI элементов */
+			/* УЛЬТИМАТУМ: Мгновенная смена темы - отключаем ВСЕ transitions для цветов */
+			/* Это правило применяется ПЕРВЫМ, до всех остальных стилей */
+			
+			/* 1. Отключаем transitions для Radix UI элементов */
 			[data-radix-dropdown-menu-content],
-			[data-radix-select-content],
 			[data-radix-dropdown-menu-content] *,
-			[data-radix-select-content] *,
 			[data-radix-dropdown-menu-content] *::before,
-			[data-radix-select-content] *::before,
 			[data-radix-dropdown-menu-content] *::after,
+			[data-radix-select-content],
+			[data-radix-select-content] *,
+			[data-radix-select-content] *::before,
 			[data-radix-select-content] *::after,
 			[data-radix-portal] [role="menu"],
-			[data-radix-portal] [role="listbox"],
 			[data-radix-portal] [role="menu"] *,
-			[data-radix-portal] [role="listbox"] *,
 			[data-radix-portal] [role="menu"] *::before,
-			[data-radix-portal] [role="listbox"] *::before,
 			[data-radix-portal] [role="menu"] *::after,
+			[data-radix-portal] [role="listbox"],
+			[data-radix-portal] [role="listbox"] *,
+			[data-radix-portal] [role="listbox"] *::before,
 			[data-radix-portal] [role="listbox"] *::after {
 				transition: none !important;
 				transition-property: none !important;
 				transition-duration: 0s !important;
 				transition-delay: 0s !important;
-				transition-timing-function: none !important;
 				animation: none !important;
-				animation-duration: 0s !important;
 				transform: none !important;
+			}
+			
+			/* 2. ОТКЛЮЧАЕМ transitions для ВСЕХ цветовых свойств у ВСЕХ элементов */
+			/* Используем максимальную специфичность для перекрытия Tailwind */
+			html body *,
+			html body *::before,
+			html body *::after {
+				transition-property: transform, filter, opacity !important;
+				/* НЕ включаем color, background-color, border-color, fill, stroke */
+			}
+			
+			/* 3. Явно переопределяем ВСЕ классы с transition-colors */
+			html body .transition-colors,
+			html body [class*="transition-colors"],
+			html body [class*="transition-colors"]::before,
+			html body [class*="transition-colors"]::after {
+				transition-property: transform, filter, opacity !important;
+				transition-duration: inherit !important;
+			}
+			
+			/* 4. Переопределяем transition-all (кроме hover/focus/active) */
+			html body .transition-all:not(:hover):not(:focus):not(:active),
+			html body [class*="transition-all"]:not(:hover):not(:focus):not(:active),
+			html body [class*="transition-all"]:not(:hover):not(:focus):not(:active)::before,
+			html body [class*="transition-all"]:not(:hover):not(:focus):not(:active)::after {
+				transition-property: transform, filter, opacity !important;
+			}
+			
+			/* 5. Для SVG - отключаем fill и stroke transitions */
+			html body svg:not(:hover):not(:focus):not(:active),
+			html body svg *:not(:hover):not(:focus):not(:active),
+			html body svg:not(:hover):not(:focus):not(:active)::before,
+			html body svg:not(:hover):not(:focus):not(:active)::after {
+				transition-property: transform, filter, opacity !important;
+			}
+			
+			/* 6. Для всех текстовых элементов */
+			html body h1:not(:hover):not(:focus):not(:active),
+			html body h2:not(:hover):not(:focus):not(:active),
+			html body h3:not(:hover):not(:focus):not(:active),
+			html body h4:not(:hover):not(:focus):not(:active),
+			html body h5:not(:hover):not(:focus):not(:active),
+			html body h6:not(:hover):not(:focus):not(:active),
+			html body p:not(:hover):not(:focus):not(:active),
+			html body span:not(:hover):not(:focus):not(:active),
+			html body div:not(:hover):not(:focus):not(:active),
+			html body a:not(:hover):not(:focus):not(:active),
+			html body button:not(:hover):not(:focus):not(:active),
+			html body label:not(:hover):not(:focus):not(:active),
+			html body input:not(:hover):not(:focus):not(:active),
+			html body textarea:not(:hover):not(:focus):not(:active),
+			html body select:not(:hover):not(:focus):not(:active),
+			html body li:not(:hover):not(:focus):not(:active),
+			html body td:not(:hover):not(:focus):not(:active),
+			html body th:not(:hover):not(:focus):not(:active),
+			html body article:not(:hover):not(:focus):not(:active),
+			html body section:not(:hover):not(:focus):not(:active),
+			html body header:not(:hover):not(:focus):not(:active),
+			html body footer:not(:hover):not(:focus):not(:active),
+			html body nav:not(:hover):not(:focus):not(:active),
+			html body main:not(:hover):not(:focus):not(:active),
+			html body aside:not(:hover):not(:focus):not(:active) {
+				transition-property: transform, filter, opacity !important;
+			}
+			
+			/* 7. Для hover/focus/active - разрешаем transitions для цветов */
+			html body *:hover,
+			html body *:focus,
+			html body *:active {
+				transition-property: transform, filter, opacity, color, background-color, border-color, fill, stroke !important;
 			}
 		</style>
 		<script>

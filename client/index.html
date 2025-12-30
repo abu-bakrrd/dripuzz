@@ -92,11 +92,14 @@
 					selectors.forEach(selector => {
 						const elements = document.querySelectorAll(selector);
 						elements.forEach(el => {
+							// Применяем через setProperty с important
 							el.style.setProperty('transition', 'none', 'important');
 							el.style.setProperty('transition-property', 'none', 'important');
 							el.style.setProperty('transition-duration', '0s', 'important');
 							el.style.setProperty('transition-delay', '0s', 'important');
+							el.style.setProperty('transition-timing-function', 'none', 'important');
 							el.style.setProperty('animation', 'none', 'important');
+							el.style.setProperty('animation-duration', '0s', 'important');
 							el.style.setProperty('transform', 'none', 'important');
 							
 							// Применяем к дочерним элементам
@@ -105,6 +108,8 @@
 								child.style.setProperty('transition', 'none', 'important');
 								child.style.setProperty('transition-property', 'none', 'important');
 								child.style.setProperty('transition-duration', '0s', 'important');
+								child.style.setProperty('transition-delay', '0s', 'important');
+								child.style.setProperty('animation', 'none', 'important');
 							});
 						});
 					});
@@ -113,30 +118,63 @@
 				// Применяем сразу
 				forceNoTransition();
 				
-				// Следим за появлением новых элементов
-				const observer = new MutationObserver(() => {
+				// Используем requestAnimationFrame для постоянного применения
+				function rafLoop() {
 					forceNoTransition();
+					requestAnimationFrame(rafLoop);
+				}
+				requestAnimationFrame(rafLoop);
+				
+				// Следим за появлением новых элементов и изменениями атрибутов
+				const observer = new MutationObserver((mutations) => {
+					forceNoTransition();
+					// Также применяем при изменении data-state (открытие/закрытие)
+					mutations.forEach(mutation => {
+						if (mutation.type === 'attributes' && 
+							(mutation.attributeName === 'data-state' || mutation.attributeName === 'style')) {
+							forceNoTransition();
+						}
+					});
 				});
 				
 				// Начинаем наблюдение после загрузки DOM
-				if (document.readyState === 'loading') {
-					document.addEventListener('DOMContentLoaded', () => {
-						observer.observe(document.body, {
-							childList: true,
-							subtree: true
-						});
-						forceNoTransition();
-					});
-				} else {
+				function startObserving() {
 					observer.observe(document.body, {
 						childList: true,
-						subtree: true
+						subtree: true,
+						attributes: true,
+						attributeFilter: ['data-state', 'style', 'class']
 					});
 					forceNoTransition();
 				}
 				
-				// Также применяем при каждом изменении стилей
-				setInterval(forceNoTransition, 100);
+				if (document.readyState === 'loading') {
+					document.addEventListener('DOMContentLoaded', startObserving);
+				} else {
+					startObserving();
+				}
+				
+				// Обработчики событий на клики и открытие меню
+				document.addEventListener('click', () => {
+					setTimeout(forceNoTransition, 0);
+					setTimeout(forceNoTransition, 10);
+					setTimeout(forceNoTransition, 50);
+				}, true);
+				
+				// Перехватываем изменения стилей через Proxy (если возможно)
+				if (window.CSS && CSS.supports && CSS.supports('transition', 'none')) {
+					const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
+					CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
+						const el = this;
+						if (el && el.parentElement) {
+							const isRadixElement = el.closest('[data-radix-dropdown-menu-content], [data-radix-select-content], [data-radix-portal] [role="menu"], [data-radix-portal] [role="listbox"]');
+							if (isRadixElement && (property === 'transition' || property === 'transition-property' || property === 'transition-duration')) {
+								return; // Блокируем установку transition для Radix элементов
+							}
+						}
+						return originalSetProperty.call(this, property, value, priority);
+					};
+				}
 			})();
 			
 			// Apply theme and accent color immediately to prevent FOUC

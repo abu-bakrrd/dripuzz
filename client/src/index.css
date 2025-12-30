@@ -2,26 +2,14 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Плавная анимация переключения темы для всех элементов */
-/* Используем !important чтобы гарантировать одинаковую скорость для всех элементов */
+/* Переключение темы без анимации - мгновенное */
+/* Убираем transitions для цветов при переключении темы */
 *,
 *::before,
 *::after {
-	transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter !important;
-	transition-duration: 0.3s !important;
-	transition-timing-function: ease-in-out !important;
-}
-
-/* Исключаем элементы, которые не должны анимироваться */
-img,
-svg,
-video,
-canvas,
-audio,
-iframe,
-embed,
-object {
-	transition-property: opacity, transform, filter;
+	transition-property: transform, filter, opacity !important;
+	transition-duration: 0.2s !important;
+	/* НЕ анимируем color, background-color, border-color при переключении темы */
 }
 
 /* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */

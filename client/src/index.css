@@ -4,9 +4,10 @@
 
 /* Переключение темы без анимации - мгновенное */
 /* Убираем transitions для цветов при переключении темы */
-*,
-*::before,
-*::after {
+/* Исключаем Radix UI элементы из глобального transition */
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *):not([role="menu"]):not([role="listbox"]):not([role="menu"] *):not([role="listbox"] *),
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *):not([role="menu"]):not([role="listbox"]):not([role="menu"] *):not([role="listbox"] *)::before,
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *):not([role="menu"]):not([role="listbox"]):not([role="menu"] *):not([role="listbox"] *)::after {
 	transition-property: transform, filter, opacity !important;
 	transition-duration: 0.2s !important;
 	/* НЕ анимируем color, background-color, border-color при переключении темы */

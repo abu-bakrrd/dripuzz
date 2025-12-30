@@ -3,12 +3,13 @@
 @tailwind utilities;
 
 /* Плавная анимация переключения темы для всех элементов */
+/* Используем !important чтобы гарантировать одинаковую скорость для всех элементов */
 *,
 *::before,
 *::after {
-	transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
-	transition-duration: 0.3s;
-	transition-timing-function: ease-in-out;
+	transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter !important;
+	transition-duration: 0.3s !important;
+	transition-timing-function: ease-in-out !important;
 }
 
 /* Исключаем элементы, которые не должны анимироваться */
@@ -259,11 +260,7 @@ object {
 @layer base {
 	* {
 		@apply border-border;
-		transition-property: color, background-color, border-color,
-			text-decoration-color, fill, stroke, opacity, box-shadow, transform,
-			filter, backdrop-filter;
-		transition-duration: 0.3s;
-		transition-timing-function: ease-in-out;
+		/* Transitions уже применены глобально выше - не дублируем */
 	}
 
 	html,
@@ -273,6 +270,17 @@ object {
 
 	body {
 		@apply font-sans antialiased bg-background text-foreground;
+		/* Явно указываем transition для текста, чтобы он синхронизировался с остальными элементами */
+		transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+		transition-duration: 0.3s;
+		transition-timing-function: ease-in-out;
+	}
+
+	/* Убеждаемся, что все текстовые элементы имеют одинаковую скорость анимации */
+	p, h1, h2, h3, h4, h5, h6, span, div, a, button, input, textarea, select, label {
+		transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+		transition-duration: 0.3s;
+		transition-timing-function: ease-in-out;
 	}
 }
 

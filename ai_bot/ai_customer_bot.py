@@ -49,7 +49,8 @@ class AICustomerBot:
         else:
             try:
                 self.client = Groq(api_key=self.api_key)
-                self.model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
+                # Используем доступную модель Groq
+                self.model_name = "llama-3.3-70b-versatile"
                 print(f"✅ Модель: Groq {self.model_name} подключена", flush=True)
             except Exception as e:
                 print(f"⚠️ Ошибка инициализации Groq: {e}", flush=True)
@@ -586,9 +587,12 @@ class AICustomerBot:
                             
                             response_text = completion.choices[0].message.content
                         except Exception as api_error:
-                            # Обработка ошибки 429 (Rate Limit)
+                            # Обработка ошибок API
                             error_str = str(api_error)
-                            if '429' in error_str or 'rate limit' in error_str.lower() or 'rate_limit' in error_str.lower():
+                            error_lower = error_str.lower()
+                            
+                            # Обработка ошибки 429 (Rate Limit)
+                            if '429' in error_str or 'rate limit' in error_lower or 'rate_limit' in error_lower:
                                 # Пытаемся извлечь время ожидания из ошибки
                                 import re
                                 retry_after_match = re.search(r'retry[_-]?after[:\s]+(\d+)', error_str, re.IGNORECASE)
@@ -608,9 +612,26 @@ class AICustomerBot:
                                     parse_mode='HTML'
                                 )
                                 return
+                            # Обработка ошибки модели (404, model not found и т.д.)
+                            elif '404' in error_str or 'not found' in error_lower or 'model' in error_lower and ('invalid' in error_lower or 'unknown' in error_lower):
+                                print(f"❌ Ошибка модели: {api_error}", flush=True)
+                                self.bot.send_message(
+                                    message.chat.id,
+                                    "⚠️ <b>Ошибка AI модели</b>\n\n"
+                                    "К сожалению, сейчас AI недоступен. Пожалуйста, попробуйте позже или используйте команду /manager для связи с менеджером.",
+                                    parse_mode='HTML'
+                                )
+                                return
                             else:
-                                # Другие ошибки API - пробрасываем дальше
-                                raise api_error
+                                # Другие ошибки API - логируем и сообщаем пользователю
+                                print(f"❌ Ошибка API: {api_error}", flush=True)
+                                self.bot.send_message(
+                                    message.chat.id,
+                                    "⚠️ <b>Временная ошибка</b>\n\n"
+                                    "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже или используйте команду /manager.",
+                                    parse_mode='HTML'
+                                )
+                                return
                          
                         if response_text:
                              # Очищаем thinking tags и подобные конструкции

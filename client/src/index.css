@@ -372,4 +372,19 @@
 	.border.hover-elevate:not(.no-hover-interaction-elevate)::after {
 		inset: -1px;
 	}
+
+	/* Отключаем все анимации для dropdown и select */
+	[data-radix-dropdown-menu-content],
+	[data-radix-select-content] {
+		animation: none !important;
+		transition: none !important;
+		transform: none !important;
+	}
+
+	/* Отключаем focus ring для кнопки сортировки */
+	[data-testid="filter-sort"]:focus {
+		ring-width: 0 !important;
+		ring-offset-width: 0 !important;
+		outline: none !important;
+	}
 }

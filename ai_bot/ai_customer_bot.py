@@ -286,22 +286,25 @@ class AICustomerBot:
             potential_ids.extend(re.findall(r'\b[0-9a-f]{6,}\b', clean_text))
             
             # Проверяем кандидатов в базе данных
-            found_order_response = None
+            found_order_full = None
+            found_order_short = None
+            
             for oid in potential_ids:
-                # Игнорируем слишком длинные последовательности, если это не UUID (например, hash транзакции), 
-                # хотя get_order_status просто не найдет их.
-                status_info = get_order_status(oid)
+                # Игнорируем слишком длинные последовательности, если это не UUID
+                # Пробуем получить короткую версию для отправки пользователю
+                short_info = get_order_status(oid, detailed=False)
                 
-                # Проверяем, что вернулся успешный ответ (содержит "ЗАКАЗ #")
-                if status_info and "ЗАКАЗ #" in status_info:
-                    found_order_response = status_info
+                # Проверяем, что вернулся успешный ответ
+                if short_info and "Заказ #" in short_info:
+                    found_order_short = short_info
+                    # Получаем полную версию для истории
+                    found_order_full = get_order_status(oid, detailed=True)
                     break
             
-            if found_order_response:
-                response_text = f"📦 {found_order_response}"
-                self.bot.send_message(message.chat.id, response_text)
-                # ВАЖНО: сохраняем точный ответ базы данных в историю
-                self._update_history(user_id, user_question, response_text)
+            if found_order_short:
+                self.bot.send_message(message.chat.id, found_order_short, parse_mode='HTML')
+                # ВАЖНО: сохраняем ПОЛНЫЙ ответ базы данных в историю, чтобы AI знал детали
+                self._update_history(user_id, user_question, found_order_full)
                 return
             
             # Получаем сессию

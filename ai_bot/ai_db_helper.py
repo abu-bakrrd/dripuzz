@@ -303,9 +303,10 @@ def get_categories():
         return []
 
 
-def get_order_status(order_id):
+def get_order_status(order_id, detailed=True):
     """
     Получить статус заказа по ID
+    detailed: Если False, возвращает только статус и дату доставки (для краткого ответа)
     """
     try:
         conn = get_db_connection()
@@ -342,13 +343,13 @@ def get_order_status(order_id):
             conn.close()
 
             status_map = {
-                'pending': 'Ожидает оплаты',
-                'processing': 'В обработке',
-                'shipped': 'Отправлен',
-                'delivered': 'Доставлен',
-                'cancelled': 'Отменен',
-                'paid': 'Оплачен',
-                'reviewing': 'На проверке'
+                'pending': '⏳ Ожидает оплаты',
+                'processing': '⚙️ В обработке',
+                'shipped': '🚚 Отправлен',
+                'delivered': '✅ Доставлен',
+                'cancelled': '❌ Отменен',
+                'paid': '💳 Оплачен',
+                'reviewing': '🧐 На проверке'
             }
             status_text = status_map.get(order['status'], order['status'])
             
@@ -356,23 +357,33 @@ def get_order_status(order_id):
             created_at = order['created_at']
             est_delivery = created_at + timedelta(days=2)
             
-            details = f"📦 ЗАКАЗ #{order['id']}\n"
-            details += f"🗓 Дата заказа: {created_at.strftime('%Y-%m-%d %H:%M')}\n"
-            details += f"🚚 Ожидаемая доставка: до {est_delivery.strftime('%Y-%m-%d')}\n"
+            # КРАТКАЯ ВЕРСИЯ (ПО УМОЛЧАНИЮ ДЛЯ ПОЛЬЗОВАТЕЛЯ)
+            if not detailed:
+                short_msg = (
+                    f"🛍 <b>Заказ #{order['id'].split('-')[0].upper()}</b>\n\n"
+                    f"🔄 <b>Статус:</b> {status_text}\n"
+                    f"📅 <b>Доставка:</b> ~{est_delivery.strftime('%d.%m.%Y')}"
+                )
+                return short_msg
+
+            # ПОЛНАЯ ВЕРСИЯ (ДЛЯ ИСТОРИИ И AI)
+            details = f"🛍 <b>ЗАКАЗ #{order['id']}</b>\n"
+            details += f"📅 Дата: {created_at.strftime('%Y-%m-%d %H:%M')}\n"
+            details += f"🏁 Доставка: до {est_delivery.strftime('%Y-%m-%d')}\n"
             details += f"🔄 Статус: {status_text}\n"
             details += f"💰 Сумма: {order.get('total', 0):,} сум\n"
             details += f"💳 Оплата: {order.get('payment_method', 'Не указано')}\n"
             
             if order.get('delivery_address'):
-                details += f"📍 Адрес доставки: {order['delivery_address']}\n"
+                details += f"📍 Адрес: {order['delivery_address']}\n"
             if order.get('customer_name'):
                 details += f"👤 Клиент: {order['customer_name']} ({order.get('customer_phone', '')})\n"
             
-            details += "\n🛒 СОСТАВ ЗАКАЗА:\n"
+            details += "\n🛒 <b>СОСТАВ ЗАКАЗА:</b>\n"
             for item in items:
                 item_desc = f"- {item['name']} (x{item['quantity']})"
                 if item.get('selected_color'):
-                    item_desc += f", Цвет: {item['selected_color']}"
+                    item_desc += f", {item['selected_color']}"
                 if item.get('selected_attributes'):
                     # Пробуем распарсить JSON если это строка
                     attrs = item['selected_attributes']
@@ -385,7 +396,7 @@ def get_order_status(order_id):
                     if isinstance(attrs, dict):
                         size = attrs.get('Размер') or attrs.get('Size')
                         if size:
-                            item_desc += f", Р-р: {size}"
+                            item_desc += f", {size}"
                 
                 details += f"{item_desc}\n"
                 

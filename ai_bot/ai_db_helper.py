@@ -7,7 +7,187 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import json
+import re
 from datetime import datetime, timedelta
+
+
+def hex_to_color_name(hex_color):
+    """
+    Конвертирует HEX-код цвета в название на русском языке
+    
+    Args:
+        hex_color (str): HEX-код цвета (например, #000000 или 000000)
+        
+    Returns:
+        str: Название цвета на русском
+    """
+    # Убираем # если есть
+    hex_color = hex_color.strip().lstrip('#').upper()
+    
+    # Словарь основных цветов
+    color_map = {
+        # Черные и серые
+        '000000': 'черный',
+        'FFFFFF': 'белый',
+        '808080': 'серый',
+        'C0C0C0': 'серебристый',
+        '696969': 'темно-серый',
+        'A9A9A9': 'светло-серый',
+        '2F2F2F': 'темно-серый',
+        'D3D3D3': 'светло-серый',
+        
+        # Красные
+        'FF0000': 'красный',
+        'DC143C': 'малиновый',
+        'B22222': 'кирпично-красный',
+        '8B0000': 'темно-красный',
+        'FF6347': 'томатный',
+        'FF4500': 'оранжево-красный',
+        'FF1493': 'розовый',
+        'FF69B4': 'ярко-розовый',
+        'FFC0CB': 'светло-розовый',
+        
+        # Оранжевые
+        'FFA500': 'оранжевый',
+        'FF8C00': 'темно-оранжевый',
+        'FF7F50': 'коралловый',
+        
+        # Желтые
+        'FFFF00': 'желтый',
+        'FFD700': 'золотой',
+        'FFD700': 'золотистый',
+        'FFFFE0': 'светло-желтый',
+        'FFF8DC': 'кремовый',
+        
+        # Зеленые
+        '008000': 'зеленый',
+        '00FF00': 'лайм',
+        '228B22': 'лесной зеленый',
+        '32CD32': 'салатовый',
+        '00FF7F': 'весенний зеленый',
+        '2E8B57': 'морской зеленый',
+        '006400': 'темно-зеленый',
+        '00FF00': 'ярко-зеленый',
+        'ADFF2F': 'желто-зеленый',
+        
+        # Синие
+        '0000FF': 'синий',
+        '000080': 'темно-синий',
+        '00008B': 'навигационный синий',
+        '191970': 'полночный синий',
+        '4169E1': 'королевский синий',
+        '1E90FF': 'ярко-синий',
+        '00BFFF': 'небесно-голубой',
+        '87CEEB': 'небесно-голубой',
+        '4682B4': 'стальной синий',
+        '708090': 'сланцево-серый',
+        
+        # Голубые и бирюзовые
+        '00FFFF': 'голубой',
+        '40E0D0': 'бирюзовый',
+        '00CED1': 'темно-бирюзовый',
+        '48D1CC': 'средне-бирюзовый',
+        '20B2AA': 'светло-морской',
+        
+        # Фиолетовые
+        '800080': 'фиолетовый',
+        '4B0082': 'индиго',
+        '9400D3': 'фиолетовый',
+        '9932CC': 'темно-фиолетовый',
+        'BA55D3': 'средне-фиолетовый',
+        'DA70D6': 'орхидея',
+        'EE82EE': 'фиолетовый',
+        'DDA0DD': 'сливовый',
+        'D8BFD8': 'чертополох',
+        
+        # Коричневые
+        'A52A2A': 'коричневый',
+        '8B4513': 'седло-коричневый',
+        'CD853F': 'персиковый',
+        'DEB887': 'беж',
+        'F5DEB3': 'пшеничный',
+        'D2B48C': 'загар',
+        'BC8F8F': 'розово-коричневый',
+        '800000': 'темно-коричневый',
+        '654321': 'темно-коричневый',
+    }
+    
+    # Проверяем точное совпадение
+    if hex_color in color_map:
+        return color_map[hex_color]
+    
+    # Если нет точного совпадения, пытаемся определить приблизительно
+    if len(hex_color) == 6:
+        r = int(hex_color[0:2], 16)
+        g = int(hex_color[2:4], 16)
+        b = int(hex_color[4:6], 16)
+        
+        # Определяем по RGB значениям
+        max_val = max(r, g, b)
+        min_val = min(r, g, b)
+        diff = max_val - min_val
+        
+        # Черный/серый
+        if max_val < 50:
+            return 'черный'
+        if max_val < 128:
+            return 'темно-серый'
+        if diff < 30:
+            if max_val > 200:
+                return 'светло-серый'
+            return 'серый'
+        
+        # Определяем основной цвет
+        if r > g and r > b:
+            if r > 200 and g < 100 and b < 100:
+                return 'красный'
+            elif r > 150:
+                return 'оранжево-красный'
+            return 'красно-коричневый'
+        elif g > r and g > b:
+            if g > 200 and r < 100 and b < 100:
+                return 'зеленый'
+            elif g > 150:
+                return 'зелено-желтый'
+            return 'темно-зеленый'
+        elif b > r and b > g:
+            if b > 200 and r < 100 and g < 100:
+                return 'синий'
+            elif b > 150:
+                return 'голубой'
+            return 'темно-синий'
+        elif r > 150 and g > 150 and b < 100:
+            return 'желтый'
+        elif r > 150 and b > 150 and g < 100:
+            return 'фиолетовый'
+    
+    # Если не удалось определить, возвращаем как есть (может быть уже название)
+    return hex_color
+
+
+def format_colors(colors):
+    """
+    Форматирует список цветов, конвертируя HEX-коды в названия
+    
+    Args:
+        colors (list): Список цветов (могут быть HEX-коды или названия)
+        
+    Returns:
+        str: Отформатированная строка с названиями цветов
+    """
+    if not colors:
+        return ''
+    
+    color_names = []
+    for color in colors:
+        # Проверяем, является ли это HEX-кодом
+        if isinstance(color, str) and re.match(r'^#?[0-9A-Fa-f]{6}$', color):
+            color_names.append(hex_to_color_name(color))
+        else:
+            # Если это уже название, используем как есть
+            color_names.append(str(color))
+    
+    return ', '.join(color_names)
 
 
 def get_db_connection():
@@ -230,8 +410,8 @@ def format_products_for_ai(products):
     context = "ТОВАРЫ В МАГАЗИНЕ:\n\n"
     
     for idx, product in enumerate(products, 1):
-        context += f"{idx}. {product['name']}\n"
-        context += f"   Ссылка: https://monvoir.shop/product/{product['id']}\n"
+        product_url = f"https://monvoir.shop/product/{product['id']}"
+        context += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a>\n"
         context += f"   Цена: {product['price']:,} сум\n"
         
         if product.get('description'):
@@ -240,10 +420,10 @@ def format_products_for_ai(products):
         if product.get('category_name'):
             context += f"   Категория: {product['category_name']}\n"
         
-        # Цвета
+        # Цвета (конвертируем HEX-коды в названия)
         if product.get('colors'):
-            colors = ', '.join(product['colors'])
-            context += f"   Доступные цвета: {colors}\n"
+            colors_str = format_colors(product['colors'])
+            context += f"   Доступные цвета: {colors_str}\n"
         
         # Атрибуты (размеры и т.д.)
         if product.get('attributes'):
@@ -267,7 +447,9 @@ def format_products_for_ai(products):
                 for item in available_items:
                     parts = []
                     if item.get('color'):
-                        parts.append(f"цвет {item['color']}")
+                        # Конвертируем HEX-код в название цвета
+                        color_name = format_colors([item['color']])
+                        parts.append(f"цвет {color_name}")
                     if item.get('attribute1_value'):
                         parts.append(item['attribute1_value'])
                     if item.get('attribute2_value'):

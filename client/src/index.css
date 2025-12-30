@@ -4,9 +4,10 @@
 
 /* Переключение темы без анимации - мгновенное */
 /* Убираем transitions для цветов при переключении темы */
-*,
-*::before,
-*::after {
+/* Исключаем dropdown и select из transition, чтобы они появлялись мгновенно */
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *),
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *)::before,
+*:not([data-radix-dropdown-menu-content]):not([data-radix-select-content]):not([data-radix-dropdown-menu-content] *):not([data-radix-select-content] *)::after {
 	transition-property: transform, filter, opacity !important;
 	transition-duration: 0.2s !important;
 	/* НЕ анимируем color, background-color, border-color при переключении темы */

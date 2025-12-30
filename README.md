@@ -22,6 +22,7 @@ sudo ./deploy_vps.sh
 ## ✨ Возможности
 
 ### Основные функции
+
 - ✅ **Полностью настраиваемый** — всё через JSON конфигурацию
 - ✅ **Любой бизнес** — цветы, одежда, электроника, еда
 - ✅ **Любая валюта** — ₽, $, €, сум и т.д.
@@ -29,6 +30,7 @@ sudo ./deploy_vps.sh
 - ✅ **Адаптивный дизайн** — 2 колонки на мобильных, 4 на десктопе
 
 ### Админ-панель (`/admin`)
+
 - ✅ **Управление товарами** — добавление, редактирование, удаление
 - ✅ **Загрузка изображений** — через Cloudinary
 - ✅ **Управление категориями** — CRUD операции
@@ -37,16 +39,19 @@ sudo ./deploy_vps.sh
 - ✅ **Настройки** — платежи, уведомления, Cloudinary
 
 ### Платежные системы
+
 - ✅ **Click** — онлайн оплата (Узбекистан)
 - ✅ **Payme** — онлайн оплата (Узбекистан)
 - ✅ **Uzum Bank** — онлайн оплата (Узбекистан)
 - ✅ **Перевод на карту** — с загрузкой чека
 
 ### Уведомления
+
 - ✅ **Telegram уведомления** — о новых заказах администратору
 - ✅ **Email** — сброс пароля через SMTP
 
 ### Инфраструктура
+
 - ✅ **PostgreSQL** — надёжная база данных
 - ✅ **Автоматический деплой** — интерактивный скрипт на VPS
 - ✅ **SSL из коробки** — бесплатный HTTPS от Let's Encrypt
@@ -59,6 +64,7 @@ sudo ./deploy_vps.sh
 ### 🎯 Главный документ
 
 **[📖 ПОЛНОЕ РУКОВОДСТВО](docs/ПОЛНОЕ_РУКОВОДСТВО.md)** — ВСЁ в одном файле:
+
 - Как настроить магазин
 - Как развернуть на VPS
 - Как работать с админ-панелью
@@ -79,17 +85,17 @@ sudo ./deploy_vps.sh
 
 ```json
 {
-  "shopName": "Ваш Магазин",
-  "currency": {
-    "symbol": "сум",
-    "code": "UZS",
-    "position": "after"
-  },
-  "managerContact": "@ваш_telegram",
-  "colorScheme": {
-    "primary": "#3B82F6",
-    "background": "#FEFEFE"
-  }
+	"shopName": "Ваш Магазин",
+	"currency": {
+		"symbol": "сум",
+		"code": "UZS",
+		"position": "after"
+	},
+	"managerContact": "@ваш_telegram",
+	"colorScheme": {
+		"primary": "#3B82F6",
+		"background": "#FEFEFE"
+	}
 }
 ```
 
@@ -103,23 +109,23 @@ sudo ./deploy_vps.sh
 
 ```json
 {
-  "payment": {
-    "click": {
-      "enabled": true,
-      "merchantId": "YOUR_MERCHANT_ID",
-      "serviceId": "YOUR_SERVICE_ID"
-    },
-    "payme": {
-      "enabled": true,
-      "merchantId": "YOUR_MERCHANT_ID"
-    },
-    "cardTransfer": {
-      "enabled": true,
-      "cardNumber": "8600 1234 5678 9012",
-      "cardHolder": "Иванов Иван",
-      "bankName": "Uzcard"
-    }
-  }
+	"payment": {
+		"click": {
+			"enabled": true,
+			"merchantId": "YOUR_MERCHANT_ID",
+			"serviceId": "YOUR_SERVICE_ID"
+		},
+		"payme": {
+			"enabled": true,
+			"merchantId": "YOUR_MERCHANT_ID"
+		},
+		"cardTransfer": {
+			"enabled": true,
+			"cardNumber": "8600 1234 5678 9012",
+			"cardHolder": "Иванов Иван",
+			"bankName": "Uzcard"
+		}
+	}
 }
 ```
 
@@ -136,11 +142,13 @@ sudo ./deploy_vps.sh
 Доступна по адресу: `http://ваш-сайт/admin`
 
 ### Первый вход:
+
 1. Зарегистрируйте аккаунт на сайте
 2. Перейдите на `/admin/login`
 3. Если администраторов нет — вы станете первым админом
 
 ### Возможности:
+
 - **Товары** — добавление с загрузкой фото через Cloudinary
 - **Категории** — создание и редактирование
 - **Заказы** — просмотр, изменение статуса
@@ -152,23 +160,39 @@ sudo ./deploy_vps.sh
 
 ## 🚀 Развертывание на VPS
 
-### Способ 1: Автоматически (рекомендуется)
+### Установка на VPS:
+
+1. **Скачайте главный скрипт:**
 
 ```bash
-ssh root@YOUR_VPS_IP
-
-GITHUB_REPO="https://github.com/YOUR_USERNAME/YOUR_REPO.git" \
-curl -fsSL https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/auto_deploy.sh | sudo bash
+wget https://raw.githubusercontent.com/abu-bakrr/MiniTaskerBot3/main/scripts/deploy_vps.sh
+chmod +x deploy_vps.sh
 ```
 
-### Способ 2: Интерактивно
+2. **Запустите установку:**
 
 ```bash
-ssh root@YOUR_VPS_IP
-
-wget https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/deploy_vps.sh
-chmod +x deploy_vps.sh
 sudo ./deploy_vps.sh
+```
+
+_(Скрипт спросит подтверждение, настроит сайт, базу и AI бота)_
+
+### 🔄 Другие сценарии:
+
+- **Только обновить AI Бота**:
+
+```bash
+wget https://raw.githubusercontent.com/abu-bakrr/MiniTaskerBot3/main/scripts/deploy_ai_bot.sh
+chmod +x deploy_ai_bot.sh
+sudo ./deploy_ai_bot.sh
+```
+
+- **Удалить всё с сервера**:
+
+```bash
+wget https://raw.githubusercontent.com/abu-bakrr/MiniTaskerBot3/main/scripts/uninstall_vps.sh
+chmod +x uninstall_vps.sh
+sudo ./uninstall_vps.sh
 ```
 
 **Документация:** [docs/БЫСТРАЯ_УСТАНОВКА.md](docs/БЫСТРАЯ_УСТАНОВКА.md)
@@ -266,10 +290,10 @@ sudo ./fix_permissions.sh
 
 ### Частые проблемы:
 
-| Проблема | Решение |
-|----------|---------|
-| Белая страница / 403 | `sudo ./fix_permissions.sh` |
-| Не запускается | `journalctl -u shop-app -n 100` |
+| Проблема             | Решение                                 |
+| -------------------- | --------------------------------------- |
+| Белая страница / 403 | `sudo ./fix_permissions.sh`             |
+| Не запускается       | `journalctl -u shop-app -n 100`         |
 | Git pull не работает | `sudo -u shopapp git stash && git pull` |
 
 **Полный список:** [docs/ПОЛНОЕ_РУКОВОДСТВО.md](docs/ПОЛНОЕ_РУКОВОДСТВО.md#решение-проблем)
@@ -279,6 +303,7 @@ sudo ./fix_permissions.sh
 ## 🔧 Технологии
 
 **Frontend:**
+
 - React 18 + TypeScript
 - Vite
 - TanStack Query
@@ -286,16 +311,19 @@ sudo ./fix_permissions.sh
 - Tailwind CSS
 
 **Backend:**
+
 - Flask (Python)
 - PostgreSQL
 - Gunicorn
 - Cloudinary (изображения)
 
 **Платежи:**
+
 - Click, Payme, Uzum Bank
 - Перевод на карту
 
 **Deployment:**
+
 - Ubuntu 22.04
 - Nginx
 - Systemd
@@ -306,29 +334,32 @@ sudo ./fix_permissions.sh
 ## 📝 Примеры использования
 
 ### Цветочный магазин
+
 ```json
 {
-  "shopName": "Цветочная Лавка",
-  "currency": { "symbol": "₽", "code": "RUB", "position": "after" },
-  "colorScheme": { "primary": "#FFE5EC" }
+	"shopName": "Цветочная Лавка",
+	"currency": { "symbol": "₽", "code": "RUB", "position": "after" },
+	"colorScheme": { "primary": "#FFE5EC" }
 }
 ```
 
 ### Магазин электроники
+
 ```json
 {
-  "shopName": "TechStore",
-  "currency": { "symbol": "$", "code": "USD", "position": "before" },
-  "colorScheme": { "primary": "#2C3E50" }
+	"shopName": "TechStore",
+	"currency": { "symbol": "$", "code": "USD", "position": "before" },
+	"colorScheme": { "primary": "#2C3E50" }
 }
 ```
 
 ### Магазин в Узбекистане
+
 ```json
 {
-  "shopName": "Online Do'kon",
-  "currency": { "symbol": "сум", "code": "UZS", "position": "after" },
-  "colorScheme": { "primary": "#3B82F6" }
+	"shopName": "Online Do'kon",
+	"currency": { "symbol": "сум", "code": "UZS", "position": "after" },
+	"colorScheme": { "primary": "#3B82F6" }
 }
 ```
 

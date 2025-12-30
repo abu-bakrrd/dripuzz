@@ -43,6 +43,7 @@ export default function ProductCard({
 	const { formatPrice } = useConfig()
 	const [currentImage, setCurrentImage] = useState(0)
 	const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+	const [imageLoading, setImageLoading] = useState<Set<number>>(new Set(images.map((_, idx) => idx)))
 	const touchStartX = useRef(0)
 	const touchEndX = useRef(0)
 	const isSwiping = useRef(false)
@@ -134,42 +135,68 @@ export default function ProductCard({
 				onMouseLeave={() => setCurrentImage(0)}
 			>
 				<div className='relative w-full h-full flex items-center justify-center'>
-					{images.map((img, idx) =>
-						imageErrors.has(idx) ? (
-							<div
-								key={idx}
-								className={`absolute inset-0 w-full h-full flex items-center justify-center transition-opacity duration-300 ${
-									idx === currentImage ? 'opacity-100' : 'opacity-0'
-								}`}
-							>
-								<ImageIcon className='w-16 h-16 text-muted-foreground/40' />
+					{images.map((img, idx) => {
+						const isLoading = imageLoading.has(idx) && !imageErrors.has(idx)
+						const isVisible = idx === currentImage
+						
+						return (
+							<div key={idx} className='absolute inset-0 w-full h-full'>
+								{/* Skeleton заставка */}
+								{isLoading && (
+									<div
+										className={`absolute inset-0 w-full h-full rounded-2xl transition-opacity duration-300 ${
+											isVisible ? 'opacity-100' : 'opacity-0'
+										}`}
+									>
+										<div className='absolute inset-0 bg-gradient-to-br from-muted via-muted/80 to-muted rounded-2xl animate-pulse'>
+											<div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer' />
+										</div>
+									</div>
+								)}
+								
+								{/* Изображение или ошибка */}
+								{imageErrors.has(idx) ? (
+									<div
+										className={`absolute inset-0 w-full h-full flex items-center justify-center transition-opacity duration-300 ${
+											isVisible ? 'opacity-100' : 'opacity-0'
+										}`}
+									>
+										<ImageIcon className='w-16 h-16 text-muted-foreground/40' />
+									</div>
+								) : (
+									<img
+										src={
+											priority && idx === 0
+												? optimizeProductHero(img)
+												: optimizeProductThumbnail(img)
+										}
+										alt={name}
+										className={`absolute inset-0 w-full h-full object-cover rounded-2xl transition-opacity duration-300 ${
+											isVisible ? 'opacity-100' : 'opacity-0'
+										}`}
+										loading={priority ? 'eager' : 'lazy'}
+										fetchPriority={priority ? 'high' : 'low'}
+										decoding='async'
+										onLoad={() => {
+											setImageLoading(prev => {
+												const next = new Set(prev)
+												next.delete(idx)
+												return next
+											})
+										}}
+										onError={() => {
+											setImageErrors(prev => new Set(prev).add(idx))
+											setImageLoading(prev => {
+												const next = new Set(prev)
+												next.delete(idx)
+												return next
+											})
+										}}
+									/>
+								)}
 							</div>
-						) : (
-							<img
-								key={idx}
-								src={
-									priority && idx === 0
-										? optimizeProductHero(img)
-										: optimizeProductThumbnail(img)
-								}
-								alt={name}
-								className={`absolute inset-0 w-full h-full object-cover rounded-2xl transition-opacity duration-300 ${
-									idx === currentImage ? 'opacity-100' : 'opacity-0'
-								}`}
-								loading={priority ? 'eager' : 'lazy'}
-								fetchPriority={priority ? 'high' : 'low'}
-								decoding='async'
-								style={{
-									backgroundColor: '#f3f4f6',
-									backgroundImage:
-										'linear-gradient(to bottom, #f3f4f6, #e5e7eb)',
-								}}
-								onError={() => {
-									setImageErrors(prev => new Set(prev).add(idx))
-								}}
-							/>
 						)
-					)}
+					})}
 				</div>
 
 				{/* Hover-зоны для ПК - невидимые области для переключения фото */}

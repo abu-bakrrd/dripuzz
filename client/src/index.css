@@ -28,9 +28,21 @@
 }
 
 /* Переключение темы без анимации - мгновенное */
-/* УБРАНО глобальное правило transition-property для transform/filter/opacity */
-/* Оно конфликтовало с отключением transitions для Radix UI элементов */
-/* Теперь transitions отключены только для Radix UI элементов, остальные элементы могут иметь свои transitions */
+/* Отключаем transitions для цветовых свойств при смене темы */
+/* Но оставляем transitions для hover/focus состояний */
+*:not(:hover):not(:focus):not(:active),
+*:not(:hover):not(:focus):not(:active)::before,
+*:not(:hover):not(:focus):not(:active)::after {
+	transition-property: transform, filter, opacity !important;
+	/* НЕ включаем color, background-color, border-color для мгновенной смены темы */
+}
+
+/* Для элементов в состоянии hover/focus оставляем transition-colors */
+*:hover,
+*:focus,
+*:active {
+	transition-property: transform, filter, opacity, color, background-color, border-color !important;
+}
 
 /* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */
 :root {
@@ -398,5 +410,19 @@
 		ring-width: 0 !important;
 		ring-offset-width: 0 !important;
 		outline: none !important;
+	}
+
+	/* Анимация shimmer для skeleton заставки изображений */
+	@keyframes shimmer {
+		0% {
+			transform: translateX(-100%);
+		}
+		100% {
+			transform: translateX(100%);
+		}
+	}
+
+	.animate-shimmer {
+		animation: shimmer 2s infinite;
 	}
 }

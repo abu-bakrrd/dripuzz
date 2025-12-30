@@ -66,6 +66,7 @@ export default function ProductDetail({
 
 	const [currentImage, setCurrentImage] = useState(0)
 	const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
+	const [imageLoading, setImageLoading] = useState<Set<number>>(new Set(images.map((_, idx) => idx)))
 	const [selectedColor, setSelectedColor] = useState<string | undefined>()
 	const [selectedAttributes, setSelectedAttributes] = useState<
 		Record<string, string>
@@ -205,33 +206,64 @@ export default function ProductDetail({
 						onTouchEnd={handleTouchEnd}
 					>
 						<div className='relative w-full h-full'>
-							{images.map((img, idx) =>
-								imageErrors.has(idx) ? (
-									<div
-										key={idx}
-										className={`absolute inset-0 w-full h-full flex items-center justify-center transition-opacity duration-300 ${
-											idx === currentImage ? 'opacity-100' : 'opacity-0'
-										}`}
-									>
-										<ImageIcon className='w-20 h-20 text-muted-foreground/40' />
+							{images.map((img, idx) => {
+								const isLoading = imageLoading.has(idx) && !imageErrors.has(idx)
+								const isVisible = idx === currentImage
+								
+								return (
+									<div key={idx} className='absolute inset-0 w-full h-full'>
+										{/* Skeleton заставка */}
+										{isLoading && (
+											<div
+												className={`absolute inset-0 w-full h-full rounded-xl transition-opacity duration-300 ${
+													isVisible ? 'opacity-100' : 'opacity-0'
+												}`}
+											>
+												<div className='absolute inset-0 bg-gradient-to-br from-muted via-muted/80 to-muted rounded-xl animate-pulse'>
+													<div className='absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent animate-shimmer' />
+												</div>
+											</div>
+										)}
+										
+										{/* Изображение или ошибка */}
+										{imageErrors.has(idx) ? (
+											<div
+												className={`absolute inset-0 w-full h-full flex items-center justify-center transition-opacity duration-300 ${
+													isVisible ? 'opacity-100' : 'opacity-0'
+												}`}
+											>
+												<ImageIcon className='w-20 h-20 text-muted-foreground/40' />
+											</div>
+										) : (
+											<img
+												src={optimizeProductDetail(img)}
+												alt={name}
+												className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+													isVisible ? 'opacity-100' : 'opacity-0'
+												}`}
+												loading={idx === 0 ? 'eager' : 'lazy'}
+												fetchPriority={idx === 0 ? 'high' : 'low'}
+												decoding='async'
+												onLoad={() => {
+													setImageLoading(prev => {
+														const next = new Set(prev)
+														next.delete(idx)
+														return next
+													})
+												}}
+												onError={() => {
+													setImageErrors(prev => new Set(prev).add(idx))
+													setImageLoading(prev => {
+														const next = new Set(prev)
+														next.delete(idx)
+														return next
+													})
+												}}
+											/>
+										)}
 									</div>
-								) : (
-									<img
-										key={idx}
-										src={optimizeProductDetail(img)}
-										alt={name}
-										className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-											idx === currentImage ? 'opacity-100' : 'opacity-0'
-										}`}
-										loading={idx === 0 ? 'eager' : 'lazy'}
-										fetchPriority={idx === 0 ? 'high' : 'low'}
-										decoding='async'
-										onError={() => {
-											setImageErrors(prev => new Set(prev).add(idx))
-										}}
-									/>
 								)
-							)}
+							})}
 						</div>
 
 						{/* Hover-зоны для ПК - невидимые области для переключения фото */}

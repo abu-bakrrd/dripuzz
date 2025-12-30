@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Плавная анимация переключения темы для всех элементов */
+*,
+*::before,
+*::after {
+	transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+	transition-duration: 0.3s;
+	transition-timing-function: ease-in-out;
+}
+
+/* Исключаем элементы, которые не должны анимироваться */
+img,
+svg,
+video,
+canvas,
+audio,
+iframe,
+embed,
+object {
+	transition-property: opacity, transform, filter;
+}
+
 /* LIGHT MODE - neutral defaults that will be overridden by ThemeApplier */
 :root {
 	--button-outline: rgba(0, 0, 0, 0.1);

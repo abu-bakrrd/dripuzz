@@ -56,6 +56,9 @@ export default function ThemeApplier() {
 			(theme === 'system' &&
 				window.matchMedia('(prefers-color-scheme: dark)').matches)
 
+		// Все изменения CSS переменных применяются синхронно в useLayoutEffect
+		// Это гарантирует, что все элементы меняют цвет одновременно
+
 		// Apply primary colors regardless of theme (brand identity)
 		root.style.setProperty('--primary', hexToHSL(scheme.primary))
 		root.style.setProperty(

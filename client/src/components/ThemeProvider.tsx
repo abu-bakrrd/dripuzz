@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useLayoutEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
 
@@ -30,9 +30,10 @@ export function ThemeProvider({
 		return (localStorage.getItem(storageKey) as Theme) || defaultTheme
 	})
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		const root = window.document.documentElement
 
+		// Синхронное переключение темы - все изменения происходят одновременно
 		root.classList.remove('light', 'dark')
 
 		if (theme === 'system') {

@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ВАЖНО: Сначала отключаем transitions для Radix UI элементов */
+/* Это должно быть ПЕРЕД глобальным правилом, чтобы иметь приоритет */
+[data-radix-dropdown-menu-content],
+[data-radix-select-content],
+[data-radix-dropdown-menu-content] *,
+[data-radix-select-content] *,
+[data-radix-dropdown-menu-content] *::before,
+[data-radix-select-content] *::before,
+[data-radix-dropdown-menu-content] *::after,
+[data-radix-select-content] *::after,
+[data-radix-portal] [role="menu"],
+[data-radix-portal] [role="listbox"],
+[data-radix-portal] [role="menu"] *,
+[data-radix-portal] [role="listbox"] *,
+[data-radix-portal] [role="menu"] *::before,
+[data-radix-portal] [role="listbox"] *::before,
+[data-radix-portal] [role="menu"] *::after,
+[data-radix-portal] [role="listbox"] *::after {
+	transition-property: none !important;
+	transition-duration: 0s !important;
+	transition-delay: 0s !important;
+	animation: none !important;
+	transform: none !important;
+}
+
 /* Переключение темы без анимации - мгновенное */
 /* Убираем transitions для цветов при переключении темы */
 /* Исключаем Radix UI элементы из глобального transition */
@@ -372,33 +397,6 @@
 	.border.active-elevate-2:not(.no-active-interaction-elevate)::after,
 	.border.hover-elevate:not(.no-hover-interaction-elevate)::after {
 		inset: -1px;
-	}
-
-	/* Отключаем все transitions для dropdown и select - ЖЕЛЕЗОБЕТОННОЕ ПРАВИЛО */
-	[data-radix-dropdown-menu-content],
-	[data-radix-select-content],
-	[data-radix-dropdown-menu-content] *,
-	[data-radix-select-content] *,
-	[data-radix-dropdown-menu-content] *::before,
-	[data-radix-select-content] *::before,
-	[data-radix-dropdown-menu-content] *::after,
-	[data-radix-select-content] *::after,
-	[data-radix-portal] [role="menu"],
-	[data-radix-portal] [role="listbox"],
-	[data-radix-portal] [role="menu"] *,
-	[data-radix-portal] [role="listbox"] *,
-	[data-radix-portal] [role="menu"] *::before,
-	[data-radix-portal] [role="listbox"] *::before,
-	[data-radix-portal] [role="menu"] *::after,
-	[data-radix-portal] [role="listbox"] *::after {
-		transition: none !important;
-		transition-property: none !important;
-		transition-duration: 0s !important;
-		transition-delay: 0s !important;
-		transition-timing-function: none !important;
-		animation: none !important;
-		animation-duration: 0s !important;
-		transform: none !important;
 	}
 
 	/* Отключаем focus ring для кнопки сортировки */

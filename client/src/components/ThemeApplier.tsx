@@ -1,5 +1,5 @@
 import { useConfig } from '@/hooks/useConfig'
-import { useEffect } from 'react'
+import { useLayoutEffect } from 'react'
 
 function hexToHSL(hex: string): string {
 	hex = hex.replace(/^#/, '')
@@ -46,7 +46,7 @@ export default function ThemeApplier() {
 	const { config } = useConfig()
 	const { theme } = useTheme()
 
-	useEffect(() => {
+	useLayoutEffect(() => {
 		if (!config?.colorScheme) return
 
 		const root = document.documentElement

@@ -275,23 +275,34 @@ class AICustomerBot:
                 self._forward_to_admin(message, "Поиск по фото" if user_id in self.waiting_for_search else "Запрос менеджера")
                 return
 
-            # Проверка на запрос статуса заказа (regex)
-            # Поддержка UUID и обычных ID (буквы, цифры, дефисы)
-            order_match = re.search(r'(заказ|статус|order|id)\s*[:#№]?\s*([A-Za-z0-9\-]{5,})', user_question.lower())
-            if order_match:
-                order_id = order_match.group(2)
-                status_info = get_order_status(order_id)
-                if status_info:
-                    self.bot.send_message(message.chat.id, f"📦 {status_info}")
-                    return
-                else:
-                    self.bot.send_message(
-                        message.chat.id, 
-                        f"🚫 <b>ID заказа {order_id} не найден.</b>\n"
-                        "Пожалуйста, проверьте ID. Вы можете найти его в личном кабинете на сайте.",
-                        parse_mode='HTML'
-                    )
-                    return
+            # Проверка наличия ID заказа в сообщении
+            # Ищем UUID или короткий ID (6+ символов, hex)
+            clean_text = user_question.lower()
+            potential_ids = []
+            
+            # 1. UUID Pattern
+            potential_ids.extend(re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', clean_text))
+            # 2. Short ID Pattern (6+ hex chars)
+            potential_ids.extend(re.findall(r'\b[0-9a-f]{6,}\b', clean_text))
+            
+            # Проверяем кандидатов в базе данных
+            found_order_response = None
+            for oid in potential_ids:
+                # Игнорируем слишком длинные последовательности, если это не UUID (например, hash транзакции), 
+                # хотя get_order_status просто не найдет их.
+                status_info = get_order_status(oid)
+                
+                # Проверяем, что вернулся успешный ответ (содержит "ЗАКАЗ #")
+                if status_info and "ЗАКАЗ #" in status_info:
+                    found_order_response = status_info
+                    break
+            
+            if found_order_response:
+                response_text = f"📦 {found_order_response}"
+                self.bot.send_message(message.chat.id, response_text)
+                # ВАЖНО: сохраняем точный ответ базы данных в историю
+                self._update_history(user_id, user_question, response_text)
+                return
             
             # Получаем сессию
             session = self._get_user_session(user_id)

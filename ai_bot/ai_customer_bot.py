@@ -77,24 +77,23 @@ class AICustomerBot:
         
         # Системный промпт для AI (оптимизирован)
         self.system_prompt = """
-Ты — <b>Mona</b>, AI-консультант магазина мужской одежды "Monvoir" (<a href="https://monvoir.shop">сайт</a>).
+Ты — <b>Mona</b>, умный и женственный AI-ассистент магазина мужской одежды Monvoir (<a href="https://monvoir.shop">сайт</a>).
 
-ЛИЧНОСТЬ: 
-- Ты <b>женственная</b>, но профессиональная консультант. Общайся тепло и дружелюбно, но с уважением.
-- Используй эмодзи часто: ✨, 👔, 💼, 📦, 🛍️, ✅, 🔍, 💕, 💖, 🌟, 💫
+ТВОЯ РОЛЬ:
+- Ты ведешь диалог. Для вывода товаров в наличии у тебя есть "функция-помощник".
+- Чтобы вызвать её, напиши в своем ответе тег: <code>[ТОВАРЫ:старт,стоп]</code>.
+- Например, <code>[ТОВАРЫ:0,10]</code> покажет первые 10 товаров из тех, что найдены в базе.
+- По умолчанию выводи 10 товаров (0,10). Если пользователь просит "еще", используй (10,20) и так далее.
 
-ПРАВИЛА ВЫВОДА ТОВАРОВ:
-- ✅ Если в контексте есть товары ("ТОВАРЫ В МАГАЗИНЕ"), ты должна включить их в свой ответ.
-- ✅ Для этого ОБЯЗАТЕЛЬНО используй тег <code>[ДАННЫЕ_О_ТОВАРАХ]</code> в том месте сообщения, где должен быть список товаров.
-- ✅ Твой текст ДОЛЖЕН быть логичным: сначала поприветствуй или подтверди поиск, затем тег списка, а ПОСЛЕ него — предложи уточнить детали или консультацию.
-- ✅ Пример: "Конечно! Вот что я нашла для вас: [ДАННЫЕ_О_ТОВАРАХ] \n\nЯ могу рассказать подробнее о каждой модели, какая вам понравилась? ✨"
-- ✅ НИКОГДА не пиши, что товары будут в "отдельном" или "следующем" сообщении. Всё в одном!
+КРИТИЧЕСКИЕ ПРАВИЛА:
+1. <b>НИКОГДА</b> не перечисляй товары вручную списком. Используй ТОЛЬКО тег <code>[ТОВАРЫ:a,b]</code>.
+2. <b>ПРИВЕТСТВИЕ</b>: Если пользователь просто поздоровался ("Привет", "Добрый день"), просто тепло поприветствуй его. НЕ НУЖНО предлагать товары сразу и НЕ ГОВОРИ об их отсутствии/наличии в первом сообщении.
+3. <b>ЛОГИКА</b>: Твой текст должен быть логичным. Сначала напиши приветствие или подтверди запрос ("Конечно, вот последние новинки:"), затем вставь тег <code>[ТОВАРЫ:a,b]</code>, а ПОСЛЕ него добавь завершающую фразу ("Могу рассказать подробнее о какой-то модели? ✨").
+4. <b>ЗНАНИЕ БАЗЫ</b>: Я буду давать тебе информацию: "Найдено 45 товаров". Исходя из этого, решай, какой диапазон (a,b) вызвать. Если ты показала 10 из 45, обязательно скажи пользователю, что это не всё и ты можешь показать еще.
+5. <b>СТИЛЬ</b>: Вежливый, профессиональный, используй эмодзи: ✨, 👔, 📦, 🛍️, ✅.
 
-ПРАВИЛА ОБЩЕНИЯ:
-- ⛔️ НЕ выдумывай товары, цены или характеристики.
-- ✅ Говори только о том, что видишь в списке "ТОВАРЫ В МАГАЗИНЕ".
-- ✅ Если клиент просит "еще", скажи, что сейчас покажешь другие варианты и используй тег.
-- ✅ Всегда упоминай, что на <a href="https://monvoir.shop">сайте</a> больше выбора.
+ИНФОРМАЦИЯ О ТОВАРАХ (ТОВАРЫ В МАГАЗИНЕ):
+Я буду присылать тебе список названий найденных товаров, чтобы ты понимала ассортимент, но НЕ ДУБЛИРУЙ их названия в тексте, их выведет функция.
 """
         
         # Регистрация обработчиков
@@ -513,312 +512,128 @@ class AICustomerBot:
                 )
                 return
             
-            user_question = message.text
+            user_question = message.text or ""
+            clean_question = user_question.lower().strip()
             
-            # 1. Проверка: Ждем ли мы сообщение для менеджера или поиска?
+            # 1. Проверка на приветствие (чтобы не дергать БД лишний раз и не путать Мону)
+            greetings = ['привет', 'здравствуй', 'добрый день', 'добрый вечер', 'доброе утро', 'хай', 'hi', 'hello']
+            is_simple_greeting = any(word == clean_question for word in greetings) or clean_question == "start"
+            
+            # 2. Проверка: Ждем ли мы сообщение для менеджера или поиска?
             if user_id in self.waiting_for_support or user_id in self.waiting_for_search:
                 self._forward_to_admin(message, "Поиск по фото" if user_id in self.waiting_for_search else "Запрос менеджера")
                 return
 
             # Проверка наличия ID заказа в сообщении
-            # Ищем UUID или короткий ID (6+ символов, hex)
-            clean_text = user_question.lower()
             potential_ids = []
+            potential_ids.extend(re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', clean_question))
+            potential_ids.extend(re.findall(r'\b[0-9a-f]{6,}\b', clean_question))
             
-            # 1. UUID Pattern
-            potential_ids.extend(re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', clean_text))
-            # 2. Short ID Pattern (6+ hex chars)
-            potential_ids.extend(re.findall(r'\b[0-9a-f]{6,}\b', clean_text))
-            
-            # Проверяем кандидатов в базе данных
-            found_order_full = None
-            found_order_short = None
-            
-            for oid in potential_ids:
-                # Игнорируем слишком длинные последовательности, если это не UUID
-                # Пробуем получить короткую версию для отправки пользователю
-                short_info = get_order_status(oid, detailed=False)
-                
-                # Проверяем, что вернулся успешный ответ
-                if short_info and "Заказ #" in short_info:
-                    found_order_short = short_info
-                    # Получаем полную версию для истории
-                    found_order_full = get_order_status(oid, detailed=True)
-                    break
-            
-            if found_order_short:
-                self.bot.send_message(message.chat.id, found_order_short, parse_mode='HTML')
-                # ВАЖНО: сохраняем ПОЛНЫЙ ответ базы данных в историю, чтобы AI знал детали
-                self._update_history(user_id, user_question, found_order_full)
-                return
+            if potential_ids:
+                for oid in potential_ids:
+                    short_info = get_order_status(oid, detailed=False)
+                    if short_info and "Заказ #" in short_info:
+                        self.bot.send_message(message.chat.id, short_info, parse_mode='HTML')
+                        found_order_full = get_order_status(oid, detailed=True)
+                        self._update_history(user_id, user_question, found_order_full)
+                        return
             
             # Получаем сессию
             session = self._get_user_session(user_id)
-            products_text = None  # Инициализация для объединения сообщений
+            products_text = None  
             
-            # Отправляем индикатор "печатает..."
             self.bot.send_chat_action(message.chat.id, 'typing')
             
             try:
-                # 2. Получаем контекст товаров - ВСЕГДА используем поиск
-                products_context = "Информацию о товарах пока получить не удалось."
-                found_products_list = []  # Для проверки наличия товаров
-                is_search_query = False  # Флаг: был ли это поиск конкретного товара
+                # 3. Подготовка контекста товаров
+                products_context = ""
+                found_products_list = []
                 
-                # Проверяем, просит ли пользователь "еще" товары
-                more_keywords = ['еще', 'другие', 'покажи еще', 'еще товары', 'другие товары', 'больше', 'покажи больше', 'еще варианты']
-                is_more_request = any(keyword in user_question.lower() for keyword in more_keywords)
-                
-                try:
-                    # Определяем, является ли запрос общим вопросом
-                    general_questions = ['какие товары', 'что есть', 'что у вас', 'покажи все', 'какой ассортимент', 'что продаете', 'что в наличии', 'товары в наличии']
-                    is_general = any(phrase in user_question.lower() for phrase in general_questions)
+                # Если это НЕ просто приветствие - ищем товары
+                if not is_simple_greeting:
+                    # Проверяем, просит ли пользователь "еще"
+                    more_keywords = ['еще', 'другие', 'покажи еще', 'еще товары', 'больше', 'дальше', 'next']
+                    is_more_request = any(keyword in clean_question for keyword in more_keywords)
                     
-                    # Если запрос "еще" - используем предыдущий поиск
                     if is_more_request and session.get('last_products'):
-                        session['current_offset'] += 4
+                        # Берем предыдущий поиск
                         found_products_list = session['last_products']
-                        
-                        if session['current_offset'] < len(found_products_list):
-                            # Получаем текст товаров
-                            products_text = self._get_formatted_products(found_products_list, session['current_offset'])
-                            products_context = format_products_for_ai(found_products_list[session['current_offset']:session['current_offset']+4])
-                            user_question = f"Я отправил еще товары. Пожалуйста, подтверди это и спроси, нужно ли еще или консультация."
-                        else:
-                            # Больше нет товаров
-                            self.bot.send_message(message.chat.id, "✨ В этом списке больше нет товаров, но вы всегда можете посмотреть весь ассортимент на нашем <a href=\"https://monvoir.shop\"><b>сайте</b></a>! 💖", parse_mode='HTML')
-                            session['current_offset'] = 0
-                            session['last_products'] = []
-                            return # Прекращаем, так как AI не нужен для "ничего не найдено"
                     else:
                         # Новый поиск
-                        session['current_offset'] = 0
-                        found_products_list = search_products(user_question)
+                        # Определяем, общий ли это запрос
+                        general_questions = ['какие товары', 'что есть', 'что у вас', 'ассортимент', 'в наличии', 'каталог']
+                        is_general = any(phrase in clean_question for phrase in general_questions)
                         
-                        if found_products_list:
-                            session['last_products'] = found_products_list
-                            # Подготавливаем текст товаров
-                            products_text = self._get_formatted_products(found_products_list, 0)
-                            
-                            # Подготавливаем контекст для AI
-                            products_context = format_products_for_ai(found_products_list[:4])
-                        elif is_general:
-                            all_products = get_all_products_info()
-                            if all_products:
-                                session['last_products'] = all_products
-                                products_text = self._get_formatted_products(all_products, 0)
-                                products_context = format_products_for_ai(all_products[:4])
-                            else:
-                                products_context = "ТОВАРЫ В МАГАЗИНЕ:\n\nВ каталоге пока нет товаров."
+                        if is_general:
+                            found_products_list = get_all_products_info()
                         else:
-                            products_context = "ТОВАРЫ В МАГАЗИНЕ:\n\nТовар не найден. Порекомендуй заглянуть на сайт или использовать /search."
-                except Exception as e:
-                    print(f"⚠️ Ошибка получения товаров: {e}")
+                            found_products_list = search_products(user_question)
+                        
+                        session['last_products'] = found_products_list
 
-                # 3. Проверка на статус заказа (уже проверено выше, но если не найден - добавляем в контекст для AI)
-                order_info = ""
-                # Заказ уже проверен выше (строки 456-486), если он был найден - мы уже вернулись
-                # Здесь проверяем только если заказ не был найден в первой проверке, но пользователь может спрашивать о нем
-                
-                # Проверяем кеш перед запросом к AI
-                cached_response = self._get_cached_response(user_question)
-                if cached_response:
-                    self.bot.send_message(
-                        message.chat.id,
-                        cached_response,
-                        parse_mode='HTML'
-                    )
-                    # Сохраняем в историю
-                    self._update_history(user_id, user_question, cached_response)
-                    return
-                
-                # Генерируем ответ
-                try:
-                    if self.client:
-                        # Подготовка сообщений для Groq
-                        # Добавляем информацию о том, найден ли товар
-                        product_found_note = ""
-                        if found_products_list:
-                            product_found_note = "\n\nВАЖНО: Товары найдены в каталоге. Покажи их клиенту, НЕ предлагай /search."
-                        else:
-                            # Проверяем, был ли это поиск конкретного товара
-                            if is_search_query:
-                                product_found_note = "\n\nВАЖНО: Товар НЕ найден в каталоге. Можешь предложить /search, но только если клиент спрашивал о конкретном товаре, которого нет в магазине."
-                        
-                        messages = [
-                            {"role": "system", "content": f"{self.system_prompt}\n\nИНФОРМАЦИЯ О ТОВАРАХ:\n{products_context}{product_found_note}\n\n{order_info if order_info else ''}"}
-                        ]
-                        
-                        # Добавляем историю переписки (оптимизировано: максимум 6 сообщений, 2000 символов)
-                        MAX_HISTORY_TOKENS = 2000
-                        total_length = 0
-                        history_messages = []
-                        
-                        for msg in reversed(session['history'][-6:]):  # Последние 6 сообщений
-                            role = "user" if msg['role'] == "user" else "assistant"
-                            content = msg['text']
-                            
-                            # Обрезаем слишком длинные сообщения
-                            if len(content) > 300:
-                                content = content[:300] + "..."
-                            
-                            if total_length + len(content) > MAX_HISTORY_TOKENS:
-                                break
-                                
-                            history_messages.insert(0, {"role": role, "content": content})
-                            total_length += len(content)
-                        
-                        messages.extend(history_messages)
-                        
-                        # Добавляем текущий вопрос
-                        messages.append({"role": "user", "content": user_question})
-
-                        # Вызов API
-                        try:
-                            completion = self.client.chat.completions.create(
-                                model=self.model_name,
-                                messages=messages,
-                                temperature=0.8, # Чуть выше для "живости" Моны
-                                max_tokens=1024,
-                                top_p=1,
-                                stop=None,
-                                stream=False
-                            )
-                            
-                            response_text = completion.choices[0].message.content
-                        except Exception as api_error:
-                            # Обработка ошибок API
-                            error_str = str(api_error)
-                            error_lower = error_str.lower()
-                            
-                            # Обработка ошибки 429 (Rate Limit)
-                            if '429' in error_str or 'rate limit' in error_lower or 'rate_limit' in error_lower:
-                                # Пытаемся извлечь время ожидания из ошибки
-                                # Ищем различные форматы: "retry after 30", "retry-after: 30", "wait 30 seconds" и т.д.
-                                wait_seconds = None
-                                
-                                # Паттерн 1: retry after / retry-after
-                                retry_after_match = re.search(r'retry[_-]?after[:\s]+(\d+)', error_str, re.IGNORECASE)
-                                if retry_after_match:
-                                    wait_seconds = int(retry_after_match.group(1))
-                                else:
-                                    # Паттерн 2: wait / wait for
-                                    wait_match = re.search(r'wait[:\s]+(\d+)', error_str, re.IGNORECASE)
-                                    if wait_match:
-                                        wait_seconds = int(wait_match.group(1))
-                                    else:
-                                        # Паттерн 3: просто число в секундах (обычно рядом со словами second/секунд)
-                                        seconds_match = re.search(r'(\d+)\s*(?:second|секунд)', error_str, re.IGNORECASE)
-                                        if seconds_match:
-                                            wait_seconds = int(seconds_match.group(1))
-                                
-                                # Форматируем время ожидания
-                                if wait_seconds:
-                                    if wait_seconds < 60:
-                                        wait_time = f"{wait_seconds} секунд"
-                                    elif wait_seconds < 3600:
-                                        minutes = (wait_seconds + 59) // 60  # Округляем вверх
-                                        wait_time = f"{minutes} минут"
-                                    else:
-                                        hours = (wait_seconds + 3599) // 3600
-                                        wait_time = f"{hours} час" + ("а" if hours < 5 else "")
-                                else:
-                                    # Если не нашли точное время, используем дефолтное (30 запросов в минуту = ~2 секунды между запросами)
-                                    wait_time = "2 минуты"
-                                
-                                self.bot.send_message(
-                                    message.chat.id,
-                                    f"⏳ <b>Слишком много запросов</b>\n\n"
-                                    f"Системные ограничения: максимально 30 запросов в минуту.\n\n"
-                                    f"Пожалуйста, подождите <b>{wait_time}</b> перед следующим сообщением.\n\n"
-                                    f"<i>После этого времени вы сможете снова обращаться к боту.</i>",
-                                    parse_mode='HTML'
-                                )
-                                return
-                            # Обработка ошибки модели (404, model not found и т.д.)
-                            elif '404' in error_str or 'not found' in error_lower or 'model' in error_lower and ('invalid' in error_lower or 'unknown' in error_lower):
-                                print(f"❌ Ошибка модели: {api_error}", flush=True)
-                                self.bot.send_message(
-                                    message.chat.id,
-                                    "⚠️ <b>Ошибка AI модели</b>\n\n"
-                                    "К сожалению, сейчас AI недоступен. Пожалуйста, попробуйте позже или используйте команду /manager для связи с менеджером.",
-                                    parse_mode='HTML'
-                                )
-                                return
-                            else:
-                                # Другие ошибки API - логируем и сообщаем пользователю
-                                print(f"❌ Ошибка API: {api_error}", flush=True)
-                                self.bot.send_message(
-                                    message.chat.id,
-                                    "⚠️ <b>Временная ошибка</b>\n\n"
-                                    "Произошла ошибка при обработке запроса. Пожалуйста, попробуйте позже или используйте команду /manager.",
-                                    parse_mode='HTML'
-                                )
-                                return
-                         
-                        if response_text:
-                            # Очищаем thinking tags и подобные конструкции
-                            response_text = self._clean_thinking_tags(response_text)
-                            
-                            # Кешируем ответ для частых вопросов
-                            self._cache_response(user_question, response_text)
-                            
-                            # ЛОГИКА ВСТАВКИ ТОВАРОВ В СООБЩЕНИЕ
-                            final_response = response_text
-                            if 'products_text' in locals() and products_text:
-                                placeholder = "[ДАННЫЕ_О_ТОВАРАХ]"
-                                if placeholder in response_text:
-                                    final_response = response_text.replace(placeholder, f"\n\n{products_text}")
-                                else:
-                                    # Если AI забыл про тег, просто добавляем товары в конец
-                                    final_response = f"{response_text}\n\n{products_text}"
-                            
-                            # Отправляем ответ клиенту
-                            try:
-                                self.bot.send_message(
-                                    message.chat.id,
-                                    final_response,
-                                    parse_mode='HTML'
-                                )
-                            except Exception as e:
-                                print(f"⚠️ Ошибка отправки (HTML): {e}")
-                                self.bot.send_message(message.chat.id, final_response)
-                                
-                            # Сохраняем в историю
-                            self._update_history(user_id, user_question, final_response)
-                        else:
-                            raise Exception("Пустой ответ от модели")
+                    if found_products_list:
+                        count = len(found_products_list)
+                        names = ", ".join([p['name'] for p in found_products_list[:15]]) # Только имена для контекста
+                        products_context = f"ТОВАРЫ В МАГАЗИНЕ:\nНайдено всего: {count} шт.\nСписок (кратко): {names}\nЧтобы показать товары, используй [ТОВАРЫ:старт,стоп]."
+                        if is_more_request:
+                            current = session.get('current_offset', 0)
+                            products_context += f"\nПользователь просит ЕЩЕ. Ты уже показала товары до индекса {current}. Используй [{current},{current+10}]."
                     else:
-                        raise Exception("Модель не инициализирована (self.client is None)")
-                        
-                except Exception as e:
-                    raise e  # Пробрасываем ошибку выше
+                        products_context = "ТОВАРЫ В МАГАЗИНЕ:\nВ наличии ничего не найдено по этому запросу. Предложи заглянуть на сайт или спросить по-другому."
+
+                # Генерируем ответ AI
+                if self.client:
+                    sys_msg = f"{self.system_prompt}\n\nКОНТЕКСТ:\n{products_context}"
+                    if is_simple_greeting:
+                        sys_msg += "\n\nВНИМАНИЕ: Это просто приветствие. Будь дружелюбна, НЕ используй тег товаров."
+
+                    messages = [{"role": "system", "content": sys_msg}]
                     
-            except Exception as e:
-                error_msg = f"❌ Ошибка генерации: {e}"
-                print(error_msg, flush=True)
-                
-                # ОТЛАДКА: Отправляем текст ошибки прямо в чат, чтобы пользователь увидел его
-                self.bot.send_message(message.chat.id, f"DEBUG ERROR: {e}")
+                    # История
+                    for msg in session['history'][-6:]:
+                        messages.append({"role": "user" if msg['role'] == "user" else "assistant", "content": msg['text']})
+                    
+                    messages.append({"role": "user", "content": user_question})
 
-                # Fallback: Если есть информация о заказе...
-                if order_info and "ИНФОРМАЦИЯ О ЗАКАЗЕ" in order_info and "не найден" not in order_info:
+                    completion = self.client.chat.completions.create(
+                        model=self.model_name,
+                        messages=messages,
+                        temperature=0.7,
+                        max_tokens=800
+                    )
+                    
+                    response_text = self._clean_thinking_tags(completion.choices[0].message.content)
+                    
+                    # 4. Обработка тега [ТОВАРЫ:a,b]
+                    final_response = response_text
+                    tag_match = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', response_text)
+                    
+                    if tag_match and found_products_list:
+                        start = int(tag_match.group(1))
+                        end = int(tag_match.group(2))
+                        session['current_offset'] = end
+                        
+                        # Вызываем "красивую функцию"
+                        pretty_list = self._get_formatted_products(found_products_list, start, end - start)
+                        
+                        if pretty_list:
+                            final_response = response_text.replace(tag_match.group(0), f"\n\n{pretty_list}")
+                        else:
+                            final_response = response_text.replace(tag_match.group(0), "\n\n(К сожалению, больше товаров в этом списке нет) ✨")
+                    
+                    # Финальная отправка
                     try:
-                        clean_info = order_info.replace("\n\nИНФОРМАЦИЯ О ЗАКАЗЕ:\n", "").replace("\n(Используй эту информацию, чтобы ответить клиенту о статусе его заказа)", "")
-                        self.bot.send_message(
-                            message.chat.id,
-                            f"🤖 <b>Автоматический ответ:</b>\n\n{clean_info}\n\n<i>(AI временно недоступен, но я нашел ваш заказ в базе)</i>",
-                            parse_mode='HTML'
-                        )
-                        return
+                        self.bot.send_message(message.chat.id, final_response, parse_mode='HTML', disable_web_page_preview=True)
                     except Exception:
-                        pass
+                        self.bot.send_message(message.chat.id, final_response)
+                        
+                    self._update_history(user_id, user_question, final_response)
+                else:
+                    self.bot.send_message(message.chat.id, "Mona сейчас отдыхает, попробуйте позже! ✨")
+            except Exception as e:
+                print(f"❌ Error in handle_question: {e}")
+                self.bot.send_message(message.chat.id, "Произошла небольшая заминка, я уже исправляюсь! ✨")
 
-                self.bot.send_message(
-                    message.chat.id,
-                    "😔 Извините, произошла техническая ошибка или сеть перегружена.\n"
-                    "Попробуйте позже или свяжитесь с менеджером через /manager."
-                )
     
     def _update_history(self, user_id, user_text, bot_text):
         """Обновление истории сообщений"""

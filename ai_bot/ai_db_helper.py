@@ -241,6 +241,10 @@ def get_all_products_info():
                 c.name as category_name
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
+            WHERE EXISTS (
+                SELECT 1 FROM product_inventory pi 
+                WHERE pi.product_id = p.id AND pi.quantity > 0
+            )
             ORDER BY p.name
         ''')
         
@@ -305,6 +309,10 @@ def search_products(query):
                     c.name as category_name
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
+                WHERE EXISTS (
+                    SELECT 1 FROM product_inventory pi 
+                    WHERE pi.product_id = p.id AND pi.quantity > 0
+                )
                 ORDER BY p.category_id, p.name
                 LIMIT 10
             ''')
@@ -333,7 +341,10 @@ def search_products(query):
                     c.name as category_name
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
-                WHERE 
+                WHERE (EXISTS (
+                SELECT 1 FROM product_inventory pi 
+                WHERE pi.product_id = p.id AND pi.quantity > 0
+            )) AND (
             '''
             
             conditions = []
@@ -345,7 +356,7 @@ def search_products(query):
                 params.extend([pattern, pattern, pattern])
                 
             if conditions:
-                sql_query += " OR ".join(conditions)
+                sql_query += "(" + " OR ".join(conditions) + "))"
             else:
                 # Fallback
                 sql_query += " LOWER(p.name) LIKE %s "

@@ -86,8 +86,7 @@ class AICustomerBot:
 КРИТИЧЕСКИ ВАЖНО - НОВЫЙ ФОРМАТ ВЫВОДА ТОВАРОВ:
 - ✅ Теперь товары в наличии отправляет <b>специальная функция</b> в отдельном сообщении.
 - ✅ Твоя задача — <b>подтвердить</b> вывод товаров и предложить помощь.
-- ✅ Если пользователь спрашивает про товары в наличии, начни свой ответ с фразы: "<b>Вот несколько товаров в наличии:</b>" (или "Вот еще несколько товаров из наличия:").
-- ✅ Твой ответ должен быть <b>коротким</b>. Не дублируй список товаров, который отправила функция.
+- ✅ Твой ответ должен быть <b>коротким</b>. Не дублируй список товаров, который будет прикреплен к твоему сообщению.
 - ✅ В конце ответа ОБЯЗАТЕЛЬНО добавь: "Я могу проконсультировать по каждому товару или скажите 'еще', и я отправлю больше товаров из наличия ✨".
 - ✅ Ты должна понимать, что функция показывает только <b>ЧАСТЬ</b> товаров (3-4 штуки). На сайте их гораздо больше.
 
@@ -311,15 +310,17 @@ class AICustomerBot:
                 'expires': datetime.now() + self.CACHE_TTL
             }
     
-    def _send_formatted_products(self, message, products, offset=0, limit=4):
+    def _get_formatted_products(self, products, offset=0, limit=4):
         """
-        Отправляет список товаров в структурированном виде
+        Возвращает отформатированную строку со списком товаров
         
         Args:
-            message (telebot.types.Message): Сообщение от пользователя
             products (list): Полный список найденных товаров
             offset (int): Начальный индекс
             limit (int): Количество товаров для отображения
+            
+        Returns:
+            str: Отформатированный текст или пустая строка
         """
         if not products:
             return False
@@ -365,13 +366,7 @@ class AICustomerBot:
         # Подвал
         text += "🛍️ Вы можете посетить наш <a href=\"https://monvoir.shop/\"><b>полный каталог</b></a> на сайте."
         
-        try:
-            self.bot.send_message(message.chat.id, text, parse_mode='HTML', disable_web_page_preview=False)
-            return True
-        except Exception as e:
-            print(f"❌ Ошибка отправки списка товаров: {e}")
-            self.bot.send_message(message.chat.id, text[:4000]) # Fallback
-            return True
+        return text
 
     def _clean_thinking_tags(self, text):
         """
@@ -594,8 +589,8 @@ class AICustomerBot:
                         found_products_list = session['last_products']
                         
                         if session['current_offset'] < len(found_products_list):
-                            # Отправляем товары
-                            self._send_formatted_products(message, found_products_list, session['current_offset'])
+                            # Получаем текст товаров
+                            products_text = self._get_formatted_products(found_products_list, session['current_offset'])
                             products_context = format_products_for_ai(found_products_list[session['current_offset']:session['current_offset']+4])
                             user_question = f"Я отправил еще товары. Пожалуйста, подтверди это и спроси, нужно ли еще или консультация."
                         else:
@@ -611,17 +606,16 @@ class AICustomerBot:
                         
                         if found_products_list:
                             session['last_products'] = found_products_list
-                            # Сначала отправляем СТРУКТУРИРОВАННЫЙ СПИСОК
-                            self._send_formatted_products(message, found_products_list, 0)
+                            # Подготавливаем текст товаров
+                            products_text = self._get_formatted_products(found_products_list, 0)
                             
                             # Подготавливаем контекст для AI
                             products_context = format_products_for_ai(found_products_list[:4])
-                            # AI должен просто подтвердить и предложить помощь
                         elif is_general:
                             all_products = get_all_products_info()
                             if all_products:
                                 session['last_products'] = all_products
-                                self._send_formatted_products(message, all_products, 0)
+                                products_text = self._get_formatted_products(all_products, 0)
                                 products_context = format_products_for_ai(all_products[:4])
                             else:
                                 products_context = "ТОВАРЫ В МАГАЗИНЕ:\n\nВ каталоге пока нет товаров."
@@ -778,20 +772,25 @@ class AICustomerBot:
                              # Кешируем ответ для частых вопросов
                              self._cache_response(user_question, response_text)
                              
-                             # Отправляем ответ клиенту
-                             try:
-                                 self.bot.send_message(
-                                     message.chat.id,
-                                     response_text,
-                                     parse_mode='HTML'
-                                 )
-                             except Exception as e:
-                                 print(f"⚠️ Ошибка отправки (HTML): {e}")
-                                 # Пробуем без Markdown/HTML если ошибка парсинга
-                                 self.bot.send_message(message.chat.id, response_text)
-                                 
-                             # Сохраняем в историю
-                             self._update_history(user_id, user_question, response_text)
+                              # Если есть товары, добавляем их к ответу
+                              final_response = response_text
+                              if 'products_text' in locals() and products_text:
+                                  final_response = f"{response_text}\n\n{products_text}"
+                              
+                              # Отправляем ответ клиенту
+                              try:
+                                  self.bot.send_message(
+                                      message.chat.id,
+                                      final_response,
+                                      parse_mode='HTML'
+                                  )
+                              except Exception as e:
+                                  print(f"⚠️ Ошибка отправки (HTML): {e}")
+                                  # Пробуем без Markdown/HTML если ошибка парсинга
+                                  self.bot.send_message(message.chat.id, final_response)
+                                  
+                              # Сохраняем в историю
+                              self._update_history(user_id, user_question, final_response)
                         else:
                              raise Exception("Пустой ответ от модели")
                     else:

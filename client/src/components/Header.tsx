@@ -22,11 +22,6 @@ export default function Header({
 	const { config } = useConfig()
 	const { user } = useAuth()
 	const logoSize = config?.logoSize || 32
-	
-	// Debug: проверка наличия telegramBotUrl
-	if (config && !config.telegramBotUrl) {
-		console.log('telegramBotUrl не найден в конфиге:', config)
-	}
 
 	return (
 		<header

@@ -277,17 +277,26 @@ def get_all_products_info():
         return []
 
 
-def search_products(query):
+def search_products(query, include_out_of_stock=False):
     """
     Поиск товаров по ключевым словам
     
     Args:
         query (str): Поисковый запрос
+        include_out_of_stock (bool): Включать ли товары, которых нет в наличии
         
     Returns:
         list: Найденные товары
     """
     try:
+        norm_query = query.lower().strip()
+        
+        # Проверка кеша
+        if norm_query in _product_search_cache:
+            cache_data = _product_search_cache[norm_query]
+            if datetime.now() < cache_data['expires']:
+                return cache_data['products']
+                
         conn = get_db_connection()
         cur = conn.cursor()
         
@@ -297,7 +306,8 @@ def search_products(query):
         
         # Если общий запрос - возвращаем примеры из разных категорий
         if is_general:
-            cur.execute('''
+            inventory_filter = "WHERE EXISTS (SELECT 1 FROM product_inventory pi WHERE pi.product_id = p.id AND pi.quantity > 0)" if not include_out_of_stock else ""
+            cur.execute(f'''
                 SELECT DISTINCT ON (p.category_id)
                     p.id,
                     p.name,
@@ -309,10 +319,7 @@ def search_products(query):
                     c.name as category_name
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
-                WHERE EXISTS (
-                    SELECT 1 FROM product_inventory pi 
-                    WHERE pi.product_id = p.id AND pi.quantity > 0
-                )
+                {inventory_filter}
                 ORDER BY p.category_id, p.name
                 LIMIT 10
             ''')
@@ -329,7 +336,9 @@ def search_products(query):
                 return []
 
             # Формируем динамический SQL запрос для поиска по любому из ключевых слов
-            sql_query = '''
+            inventory_clause = "(EXISTS (SELECT 1 FROM product_inventory pi WHERE pi.product_id = p.id AND pi.quantity > 0))" if not include_out_of_stock else "1=1"
+            
+            sql_query = f'''
                 SELECT DISTINCT
                     p.id,
                     p.name,
@@ -341,10 +350,7 @@ def search_products(query):
                     c.name as category_name
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
-                WHERE (EXISTS (
-                SELECT 1 FROM product_inventory pi 
-                WHERE pi.product_id = p.id AND pi.quantity > 0
-            )) AND (
+                WHERE {inventory_clause} AND (
             '''
             
             conditions = []
@@ -380,7 +386,7 @@ def search_products(query):
         conn.close()
         
         # Сохраняем в кеш
-        _product_search_cache[normalized_query] = {
+        _product_search_cache[norm_query] = {
             'products': products,
             'expires': datetime.now() + _cache_ttl
         }

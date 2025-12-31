@@ -77,20 +77,29 @@ class AICustomerBot:
         
         # Системный промпт для AI (оптимизирован)
         self.system_prompt = """
-Ты — <b>Mona</b>, очаровательная, умная и всегда готовая помочь девушка-ассистент магазина мужской одежды Monvoir (<a href="https://monvoir.shop"><b>monvoir.shop</b></a>).
+Ты — <b>Mona</b>, очаровательная, умная и всегда готовая помочь девушка-ассистент магазина мужской одежды <b>Monvoir</b> (<a href="https://monvoir.shop"><b>monvoir.shop</b></a>).
 
-ТВОЯ РОЛЬ:
-- Ты — лицо магазина. Общайся мягко, вежливо и по-женски тепло. 
-- Всегда представляйся: "Привет! Я Mona ✨". 
-- Используй женские формы глаголов (я нашла, я подготовила, я рада).
-- Для вывода товаров используй тег: <code>[ТОВАРЫ:старт,стоп]</code>.
+О МАГАЗИНЕ:
+- <b>Monvoir</b> — это премиальный магазин стильной мужской одежды и аксессуаров.
+- Мы предлагаем: костюмы, пиджаки, рубашки, поло, верхнюю одежду, обувь и аксессуары высшего качества.
+- Твоя цель — помочь мужчине выглядеть безупречно.
+
+ТВОИ ИНСТРУМЕНТЫ (ВНУТРЕННИЕ - ТЫ ПИШЕШЬ ИХ, Я ОТВЕЧАЮ):
+1. <code>[ПОИСК:запрос]</code> — Ищет товары в каталоге по ключевому слову. Возвращает список `ID: Название` (даже если их нет в наличии). Используй это первым делом, если спросили о виде товара (например, "есть пальто?").
+2. <code>[ИНФО:id]</code> — Получает полные детали товара по его ID (цена, описание, цвета, наличие). Используй это ПОСЛЕ поиска, если нашла подходящий ID, чтобы ответить на вопрос точно.
+
+ТВОЙ ВЫВОД (ДЛЯ КЛИЕНТА):
+- <code>[ТОВАРЫ:старт,стоп]</code> — Выводит в чат красивые карточки товаров. Используй это, когда хочешь ПОКАЗАТЬ товары клиенту в чате (по умолчанию 0,10).
 
 КРИТИЧЕСКИЕ ПРАВИЛА:
-1. <b>ССЫЛКИ</b>: Ссылку на сайт ВСЕГДА делай жирной: <a href="https://monvoir.shop"><b>monvoir.shop</b></a>.
-2. <b>НИКОГДА</b> не пиши списки товаров сама. Только тег <code>[ТОВАРЫ:a,b]</code>.
-3. <b>ПРИВЕТСТВИЕ</b>: Сначала теплое приветствие и знакомство, потом всё остальное.
-4. <b>ЛОГИКА</b>: Твой текст должен обволакивать список товаров. Сначала превью, потом тег, потом нежное завершение.
-5. <b>СТИЛЬ</b>: Используй много "женских" и уютных эмодзи: ✨, 💖, 💕, 🌸, 👔, 🛍️, ✅.
+1. <b>АЛГОРИТМ ПОИСКА</b>: Если спросили про товар:
+   - Сначала напиши <code>[ПОИСК:слово]</code> (и ничего больше клиент не увидит).
+   - Если поиск вернул ID, напиши <code>[ИНФО:id]</code> (и снова клиент не увидит).
+   - Зная детали, дай человечный ответ. Если нужно показать их в чате — добавь <code>[ТОВАРЫ:a,b]</code>.
+2. <b>ССЫЛКИ</b>: Ссылку на сайт ВСЕГДА делай жирной: <a href="https://monvoir.shop"><b>monvoir.shop</b></a>.
+3. <b>НИКОГДА</b> не пиши списки товаров сама. Используй теги.
+4. <b>ПРИВЕТСТВИЕ</b>: Всегда представляйся: "Привет! Я Mona ✨".
+5. <b>СТИЛЬ</b>: Женственный, вежливый, уютные эмодзи: ✨, 💖, 👔, 🛍️, ✅.
 
 ИНФОРМАЦИЯ О ТОВАРАХ (ТОВАРЫ В МАГАЗИНЕ):
 Я буду присылать тебе список названий найденных товаров, чтобы ты понимала ассортимент, но НЕ ДУБЛИРУЙ их названия в тексте, их выведет функция.
@@ -299,7 +308,7 @@ class AICustomerBot:
                 'expires': datetime.now() + self.CACHE_TTL
             }
     
-    def _get_formatted_products(self, products, offset=0, limit=4):
+    def _get_formatted_products(self, products, offset=0, limit=10):
         """
         Возвращает отформатированную строку со списком товаров
         
@@ -318,23 +327,24 @@ class AICustomerBot:
         if not current_batch:
             return False
             
-        text = "👔💼 <b>Вот несколько товаров в наличии! ✨</b>\n\n"
+        text = "👔💼 <b>Список товаров из нашего каталога:</b>\n\n"
         
         for idx, product in enumerate(current_batch, offset + 1):
             product_url = f"https://monvoir.shop/product/{product['id']}"
             price_formatted = f"{product['price']:,} сум"
             
-            text += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a> - <b>{price_formatted}</b> ✅ В наличии"
-            
-            # Добавляем краткую информацию о наличии (цвета/размеры)
+            # Проверка наличия
             inventory = product.get('inventory', [])
-            if inventory:
-                available_variants = [item for item in inventory if item['quantity'] > 0]
-                if available_variants:
-                    variants_parts = []
-                    # Берем первые 2 уникальных варианта для краткости
-                    seen_variants = set()
-                    for item in available_variants:
+            is_in_stock = any(item['quantity'] > 0 for item in inventory) if inventory else False
+            
+            status_icon = "✅ В наличии" if is_in_stock else "❌ Нет в наличии"
+            text += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a> - <b>{price_formatted}</b> {status_icon}"
+            
+            if is_in_stock:
+                variants_parts = []
+                seen_variants = set()
+                for item in inventory:
+                    if item['quantity'] > 0:
                         parts = []
                         if item.get('color'):
                             parts.append(format_colors([item['color']]))
@@ -346,14 +356,13 @@ class AICustomerBot:
                             variants_parts.append(variant_str)
                             seen_variants.add(variant_str)
                             if len(variants_parts) >= 2: break
-                    
-                    if variants_parts:
-                        text += f": {'; '.join(variants_parts)}"
+                
+                if variants_parts:
+                    text += f": {'; '.join(variants_parts)}"
             
             text += "\n\n"
             
-        # Подвал
-        text += "🛍️ Вы можете посетить наш <a href=\"https://monvoir.shop/\"><b>полный каталог</b></a> на сайте."
+        text += "🛍️ Весь ассортимент доступен на нашем сайте: <a href=\"https://monvoir.shop/\"><b>monvoir.shop</b></a>"
         
         return text
 
@@ -501,138 +510,126 @@ class AICustomerBot:
         
         @self.bot.message_handler(content_types=['text', 'photo'])
         def handle_question(message):
-            """Обработка вопросов от клиентов"""
+            """Обработка вопросов от клиентов с интеллектуальным поиском"""
             user_id = message.from_user.id
             
             # Защита от спама
             if self._check_spam(user_id):
-                self.bot.send_message(
-                    message.chat.id,
-                    "⏳ Пожалуйста, подождите немного перед следующим сообщением. Слишком много запросов за короткое время."
-                )
+                self.bot.send_message(message.chat.id, "⏳ Пожалуйста, подождите немного.")
                 return
             
             user_question = message.text or ""
-            clean_question = user_question.lower().strip()
-            
-            # 1. Проверка на приветствие (чтобы не дергать БД лишний раз и не путать Мону)
-            greetings = ['привет', 'здравствуй', 'добрый день', 'добрый вечер', 'доброе утро', 'хай', 'hi', 'hello']
-            is_simple_greeting = any(word == clean_question for word in greetings) or clean_question == "start"
-            
-            # 2. Проверка: Ждем ли мы сообщение для менеджера или поиска?
             if user_id in self.waiting_for_support or user_id in self.waiting_for_search:
                 self._forward_to_admin(message, "Поиск по фото" if user_id in self.waiting_for_search else "Запрос менеджера")
                 return
 
-            # Проверка наличия ID заказа в сообщении
-            potential_ids = []
-            potential_ids.extend(re.findall(r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', clean_question))
-            potential_ids.extend(re.findall(r'\b[0-9a-f]{6,}\b', clean_question))
-            
-            if potential_ids:
-                for oid in potential_ids:
-                    short_info = get_order_status(oid, detailed=False)
-                    if short_info and "Заказ #" in short_info:
-                        self.bot.send_message(message.chat.id, short_info, parse_mode='HTML')
-                        found_order_full = get_order_status(oid, detailed=True)
-                        self._update_history(user_id, user_question, found_order_full)
-                        return
-            
-            # Получаем сессию
+            # Проверка заказов
+            potential_order_id = re.search(r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b|\b[0-9a-f]{6,}\b', user_question.lower())
+            if potential_order_id:
+                status = get_order_status(potential_order_id.group(0), detailed=False)
+                if status:
+                    self.bot.send_message(message.chat.id, status, parse_mode='HTML')
+                    self._update_history(user_id, user_question, status)
+                    return
+
             session = self._get_user_session(user_id)
-            products_text = None  
-            
             self.bot.send_chat_action(message.chat.id, 'typing')
             
+            # 1. Формируем контекст сообщений для AI
+            messages = [{"role": "system", "content": self.system_prompt}]
+            
+            # Добавляем историю
+            for h in session['history'][-10:]: # Последние 10 сообщений
+                messages.append({"role": "user", "content": h['user']})
+                messages.append({"role": "assistant", "content": h['bot']})
+            
+            # Добавляем текущий вопрос
+            messages.append({"role": "user", "content": user_question})
+            
             try:
-                # 3. Подготовка контекста товаров
-                products_context = ""
+                iteration = 0
+                max_iterations = 3
                 found_products_list = []
+                last_ai_response = ""
                 
-                # Если это НЕ просто приветствие - ищем товары
-                if not is_simple_greeting:
-                    # Проверяем, просит ли пользователь "еще"
-                    more_keywords = ['еще', 'другие', 'покажи еще', 'еще товары', 'больше', 'дальше', 'next']
-                    is_more_request = any(keyword in clean_question for keyword in more_keywords)
-                    
-                    if is_more_request and session.get('last_products'):
-                        # Берем предыдущий поиск
-                        found_products_list = session['last_products']
-                    else:
-                        # Новый поиск
-                        # Определяем, общий ли это запрос
-                        general_questions = ['какие товары', 'что есть', 'что у вас', 'ассортимент', 'в наличии', 'каталог']
-                        is_general = any(phrase in clean_question for phrase in general_questions)
-                        
-                        if is_general:
-                            found_products_list = get_all_products_info()
-                        else:
-                            found_products_list = search_products(user_question)
-                        
-                        session['last_products'] = found_products_list
-
-                    if found_products_list:
-                        count = len(found_products_list)
-                        names = ", ".join([p['name'] for p in found_products_list[:15]]) # Только имена для контекста
-                        products_context = f"ТОВАРЫ В МАГАЗИНЕ:\nНайдено всего: {count} шт.\nСписок (кратко): {names}\nЧтобы показать товары, используй [ТОВАРЫ:старт,стоп]."
-                        if is_more_request:
-                            current = session.get('current_offset', 0)
-                            products_context += f"\nПользователь просит ЕЩЕ. Ты уже показала товары до индекса {current}. Используй [{current},{current+10}]."
-                    else:
-                        products_context = "ТОВАРЫ В МАГАЗИНЕ:\nВ наличии ничего не найдено по этому запросу. Предложи заглянуть на сайт или спросить по-другому."
-
-                # Генерируем ответ AI
-                if self.client:
-                    sys_msg = f"{self.system_prompt}\n\nКОНТЕКСТ:\n{products_context}"
-                    if is_simple_greeting:
-                        sys_msg += "\n\nВНИМАНИЕ: Это просто приветствие. Будь дружелюбна, НЕ используй тег товаров."
-
-                    messages = [{"role": "system", "content": sys_msg}]
-                    
-                    # История
-                    for msg in session['history'][-6:]:
-                        messages.append({"role": "user" if msg['role'] == "user" else "assistant", "content": msg['text']})
-                    
-                    messages.append({"role": "user", "content": user_question})
-
+                while iteration < max_iterations:
+                    iteration += 1
                     completion = self.client.chat.completions.create(
                         model=self.model_name,
                         messages=messages,
                         temperature=0.7,
-                        max_tokens=800
+                        max_tokens=2048
                     )
                     
-                    response_text = self._clean_thinking_tags(completion.choices[0].message.content)
+                    ai_response = self._clean_thinking_tags(completion.choices[0].message.content)
+                    last_ai_response = ai_response
                     
-                    # 4. Обработка тега [ТОВАРЫ:a,b]
-                    final_response = response_text
-                    tag_match = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', response_text)
+                    # Ищем внутренние теги: [ПОИСК:...] или [ИНФО:...]
+                    search_match = re.search(r'\[ПОИСК:([^\]]+)\]', ai_response)
+                    info_match = re.search(r'\[ИНФО:([^\]]+)\]', ai_response)
                     
-                    if tag_match and found_products_list:
-                        start = int(tag_match.group(1))
-                        end = int(tag_match.group(2))
-                        session['current_offset'] = end
-                        
-                        # Вызываем "красивую функцию"
-                        pretty_list = self._get_formatted_products(found_products_list, start, end - start)
-                        
-                        if pretty_list:
-                            final_response = response_text.replace(tag_match.group(0), f"\n\n{pretty_list}")
+                    if search_match:
+                        query = search_match.group(1).strip()
+                        # Сначала ищем в наличии
+                        results = search_products(query, include_out_of_stock=False)
+                        if not results:
+                            # Если нет в наличии, ищем вообще в каталоге
+                            results = search_products(query, include_out_of_stock=True)
+                            results_text = "РЕЗУЛЬТАТЫ ПОИСКА (В КАТАЛОГЕ, НО НЕТ В НАЛИЧИИ):\n"
                         else:
-                            final_response = response_text.replace(tag_match.group(0), "\n\n(К сожалению, больше товаров в этом списке нет) ✨")
-                    
-                    # Финальная отправка
-                    try:
-                        self.bot.send_message(message.chat.id, final_response, parse_mode='HTML', disable_web_page_preview=True)
-                    except Exception:
-                        self.bot.send_message(message.chat.id, final_response)
+                            results_text = "РЕЗУЛЬТАТЫ ПОИСКА (В НАЛИЧИИ):\n"
                         
-                    self._update_history(user_id, user_question, final_response)
-                else:
-                    self.bot.send_message(message.chat.id, "Mona сейчас отдыхает, попробуйте позже! ✨")
+                        if results:
+                            found_products_list = results
+                            session['last_products'] = results
+                            for p in results[:10]:
+                                results_text += f"- ID: {p['id']}, Название: {p['name']}\n"
+                        else:
+                            results_text = "Ничего не найдено по этому запросу."
+                        
+                        messages.append({"role": "assistant", "content": ai_response})
+                        messages.append({"role": "user", "content": f"РЕЗУЛЬТАТ ПОИСКА: {results_text}"})
+                        continue # Снова вызываем AI с результатами
+                        
+                    elif info_match:
+                        prod_id = info_match.group(1).strip()
+                        product = get_product_details(prod_id)
+                        if product:
+                            info_text = format_products_for_ai([product])
+                        else:
+                            info_text = "Товар с таким ID не найден."
+                            
+                        messages.append({"role": "assistant", "content": ai_response})
+                        messages.append({"role": "user", "content": f"ДЕТАЛИ ТОВАРА: {info_text}"})
+                        continue # Снова вызываем AI с деталями
+                    
+                    # Если внутренних тегов нет - это финальный ответ
+                    break
+                
+                # 2. Обработка финального ответа и тега [ТОВАРЫ:...]
+                final_response = last_ai_response
+                tag_match = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', final_response)
+                
+                # Пробуем использовать найденный список товаров
+                products_to_show = session.get('last_products', [])
+                
+                if tag_match and products_to_show:
+                    start = int(tag_match.group(1))
+                    end = int(tag_match.group(2))
+                    pretty_list = self._get_formatted_products(products_to_show, start, end - start)
+                    if pretty_list:
+                        final_response = final_response.replace(tag_match.group(0), f"\n\n{pretty_list}")
+                
+                # Чистим от всех тегов перед отправкой пользователю
+                final_response = re.sub(r'\[(ПОИСК|ИНФО|ТОВАРЫ):[^\]]*\]', '', final_response).strip()
+                
+                if final_response:
+                    self.bot.send_message(message.chat.id, final_response, parse_mode='HTML', disable_web_page_preview=True)
+                    self._update_history(user_id, user_question, last_ai_response)
+                
             except Exception as e:
-                print(f"❌ Error in handle_question: {e}")
-                self.bot.send_message(message.chat.id, "Произошла небольшая заминка, я уже исправляюсь! ✨")
+                print(f"❌ Ошибка в handle_question: {e}")
+                self.bot.send_message(message.chat.id, "✨ Прошу прощения, я немного задумалась. Пожалуйста, попробуйте еще раз! 💖")
 
     
     def _update_history(self, user_id, user_text, bot_text):

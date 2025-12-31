@@ -10,6 +10,8 @@ from telebot import types
 from groq import Groq
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+import logging
+import traceback
 
 # Добавляем родительскую директорию в путь для импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -41,19 +43,32 @@ class AICustomerBot:
         """
         self.bot = telebot.TeleBot(bot_token)
         
+        # Настройка логирования первым делом
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.FileHandler("ai_bot.log", encoding='utf-8'),
+                logging.StreamHandler(sys.stdout)
+            ]
+        )
+        self.logger = logging.getLogger("AICustomerBot")
+        self.logger.info("AICustomerBot initializing...")
+
         # Инициализация Groq клиента
         self.api_key = os.getenv('GROQ_API_KEY')
         if not self.api_key:
-            print("⚠️ GROQ_API_KEY не найден в .env! AI не будет работать.")
+            self.logger.warning("GROQ_API_KEY not found in .env! AI will not work.")
             self.client = None
         else:
             try:
                 self.client = Groq(api_key=self.api_key)
+                
                 # Используем модель llama-4-scout для инструкций
                 self.model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
-                print(f"✅ Модель: Groq {self.model_name} подключена", flush=True)
+                self.logger.info(f"Groq client initialized with model: {self.model_name}")
             except Exception as e:
-                print(f"⚠️ Ошибка инициализации Groq: {e}", flush=True)
+                self.logger.error(f"Error initializing Groq client: {e}", exc_info=True)
                 self.client = None
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime, 'last_search_offset': int}}
@@ -79,29 +94,24 @@ class AICustomerBot:
         self.system_prompt = """
 Ты — <b>Mona</b>, очаровательная, умная и всегда готовая помочь девушка-ассистент магазина мужской одежды <b>Monvoir</b> (<a href="https://monvoir.shop"><b>monvoir.shop</b></a>).
 
-О МАГАЗИНЕ:
-- <b>Monvoir</b> — это премиальный магазин стильной мужской одежды и аксессуаров.
-- Мы предлагаем: костюмы, пиджаки, рубашки, поло, верхнюю одежду, обувь и аксессуары высшего качества.
-
 ТВОЙ ОБРАЗ:
 - Ты — ДЕВУШКА. Общайся мягко, вежливо и по-женски тепло. 
 - Используй СТРОГО женские формы глаголов: <b>"я нашла", "я рада", "я подготовила", "я увидела"</b>. 
 - НИКОГДА не используй мужской род или "рад(а)". Только женский.
 
 ТВОИ ИНСТРУМЕНТЫ (ВНУТРЕННИЕ - ПИШИ ТОЛЬКО ТЕГ, БЕЗ ТЕКСТА):
-1. <code>[ПОИСК:запрос]</code> — Ищет товары. Если нужен общий список, пиши <code>[ПОИСК:все]</code>. 
-   <b>ВАЖНО</b>: Когда пишешь этот тег, больше ничего в сообщении быть НЕ ДОЛЖНО.
-2. <code>[ИНФО:id]</code> — Получает детали. Пиши ТОЛЬКО тег.
+1. <code>[ПОИСК:запрос]</code> — Ищет товары. 
+2. <code>[ИНФО:id]</code> — Получает детали. 
 
 ТВОЙ ВЫВОД (ДЛЯ КЛИЕНТА):
-- <code>[ТОВАРЫ:старт,стоп]</code> — Выводит карточки. Его можно совмещать с твоим текстом.
+- <code>[ТОВАРЫ:старт,стоп]</code> — Выводит карточки. <b>ВНИМАНИЕ</b>: Если ты не добавишь этот тег в свой FINAL ответ, клиент НЕ УВИДИТ список товаров. 
 
 КРИТИЧЕСКИЕ ПРАВИЛА:
-1. <b>НИКАКИХ РУЧНЫХ СПИСКОВ</b>: Если клиент просит товары или ты хочешь их предложить — ты <b>ОБЯЗАНА</b> сначала вызвать <code>[ПОИСК:...]</code>, а затем вывести результат через <code>[ТОВАРЫ:a,b]</code>. НИКОГДА не перечисляй названия товаров просто текстом.
-2. <b>ВСЕ ТОВАРЫ — ЭТО ССЫЛКИ</b>: Функция <code>[ТОВАРЫ:a,b]</code> сама сделает названия ссылками. Не пытайся делать это вручную.
-3. <b>ПРИВЕТСТВИЕ</b>: Всегда представляйся: "Привет! Я Mona ✨".
-4. <b>ССЫЛКИ</b>: Ссылку на сайт ВСЕГДА делай жирной: <a href="https://monvoir.shop"><b>monvoir.shop</b></a>.
-ИНФОРМАЦИЯ О ТОВАРАХ (ТОВАРЫ В МАГАЗИНЕ):
+1. <b>НИКОГДА</b> не перечисляй товары текстом. Если ты нашла подходящие вещи — ты ДОЛЖНА использовать тег <code>[ТОВАРЫ:0,10]</code>. Без этого тега твой ответ считается бесполезным.
+2. <b>ПРИВЕТСТВИЕ</b>: Представляйся ("Привет! Я Mona ✨") ТОЛЬКО если я пришлю тебе <code>GREETING_REQUIRED: True</code>. Если в контексте стоит <code>False</code> — сразу переходи к помощи, не здоровайся повторно.
+3. <b>ССЫЛКИ</b>: Ссылку на сайт ВСЕГДА делай жирной: <a href="https://monvoir.shop"><b>monvoir.shop</b></a>.
+4. <b>СТИЛЬ</b>: Женственный, уютные эмодзи: ✨, 💖, 👔, 🛍️, ✅.
+МАГАЗИНЕ):
 Я буду присылать тебе список названий найденных товаров, чтобы ты понимала ассортимент, но НЕ ДУБЛИРУЙ их названия в тексте, их выведет функция.
 """
         
@@ -149,7 +159,8 @@ class AICustomerBot:
                     'history': [], 
                     'last_active': now,
                     'last_products': [],
-                    'current_offset': 0
+                    'current_offset': 0,
+                    'is_greeted': False
                 }
                 return self.sessions[user_id]
             
@@ -525,10 +536,13 @@ class AICustomerBot:
                     return
 
             session = self._get_user_session(user_id)
+            self.logger.info(f"User {user_id} asked: {user_question}")
             self.bot.send_chat_action(message.chat.id, 'typing')
             
             # 1. Формируем контекст сообщений для AI
-            messages = [{"role": "system", "content": self.system_prompt}]
+            greeting_needed = not session.get('is_greeted', False)
+            context_instruction = f"GREETING_REQUIRED: {'True' if greeting_needed else 'False'}"
+            messages = [{"role": "system", "content": f"{self.system_prompt}\n\n{context_instruction}"}]
             
             # Добавляем историю
             recent_messages = session['history'][-10:] # Последние 10 сообщений
@@ -548,6 +562,8 @@ class AICustomerBot:
                 
                 while iteration < max_iterations:
                     iteration += 1
+                    self.logger.info(f"Iteration {iteration} for user {user_id}")
+                    
                     completion = self.client.chat.completions.create(
                         model=self.model_name,
                         messages=messages,
@@ -557,6 +573,7 @@ class AICustomerBot:
                     
                     ai_response = self._clean_thinking_tags(completion.choices[0].message.content)
                     last_ai_response = ai_response
+                    self.logger.debug(f"AI response (pre-tool): {ai_response[:100]}...")
                     
                     # Ищем внутренние теги: [ПОИСК:...] или [ИНФО:...]
                     search_match = re.search(r'\[ПОИСК:([^\]]+)\]', ai_response)
@@ -564,6 +581,7 @@ class AICustomerBot:
                     
                     if search_match:
                         query = search_match.group(1).strip()
+                        self.logger.info(f"Tool call: [ПОИСК:{query}]")
                         # Сначала ищем в наличии
                         results = search_products(query, include_out_of_stock=False)
                         if not results:
@@ -581,18 +599,21 @@ class AICustomerBot:
                         else:
                             results_text = "Ничего не найдено по этому запросу."
                         
+                        self.logger.info(f"Search results: {len(results)} found")
                         messages.append({"role": "assistant", "content": ai_response})
                         messages.append({"role": "user", "content": f"РЕЗУЛЬТАТ ПОИСКА: {results_text}"})
                         continue # Снова вызываем AI с результатами
                         
                     elif info_match:
                         prod_id = info_match.group(1).strip()
+                        self.logger.info(f"Tool call: [ИНФО:{prod_id}]")
                         product = get_product_details(prod_id)
                         if product:
                             info_text = format_products_for_ai([product])
                         else:
                             info_text = "Товар с таким ID не найден."
                             
+                        self.logger.info(f"Info results: {'Found' if product else 'Not found'}")
                         messages.append({"role": "assistant", "content": ai_response})
                         messages.append({"role": "user", "content": f"ДЕТАЛИ ТОВАРА: {info_text}"})
                         continue # Снова вызываем AI с деталями
@@ -610,19 +631,27 @@ class AICustomerBot:
                 if tag_match and products_to_show:
                     start = int(tag_match.group(1))
                     end = int(tag_match.group(2))
+                    self.logger.info(f"Formatting products tag: [{start},{end}]")
                     pretty_list = self._get_formatted_products(products_to_show, start, end - start)
                     if pretty_list:
                         final_response = final_response.replace(tag_match.group(0), f"\n\n{pretty_list}")
+                        self.logger.info("Products list embedded successfully")
                 
                 # Чистим от всех тегов перед отправкой пользователю
                 final_response = re.sub(r'\[(ПОИСК|ИНФО|ТОВАРЫ):[^\]]*\]', '', final_response).strip()
                 
                 if final_response:
+                    if greeting_needed and "Mona" in final_response:
+                        session['is_greeted'] = True
+                        self.logger.info(f"Greeting marked for user {user_id}")
+                    
                     self.bot.send_message(message.chat.id, final_response, parse_mode='HTML', disable_web_page_preview=True)
                     self._update_history(user_id, user_question, last_ai_response)
+                    self.logger.info(f"Response sent to user {user_id}")
                 
             except Exception as e:
-                print(f"❌ Ошибка в handle_question: {e}")
+                self.logger.error(f"Error in handle_question: {e}")
+                self.logger.error(traceback.format_exc())
                 self.bot.send_message(message.chat.id, "✨ Прошу прощения, я немного задумалась. Пожалуйста, попробуйте еще раз! 💖")
 
     

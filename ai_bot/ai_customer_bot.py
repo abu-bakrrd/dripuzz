@@ -62,6 +62,8 @@ class AICustomerBot:
             self.client = None
         else:
             try:
+                self.client = Groq(api_key=self.api_key)
+                
                 # Используем стабильную модель Llama 3.1
                 self.model_name = "llama-3.1-70b-versatile"
                 self.logger.info(f"Groq client initialized with model: {self.model_name}")

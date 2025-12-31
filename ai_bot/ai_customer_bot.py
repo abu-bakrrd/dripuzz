@@ -62,10 +62,8 @@ class AICustomerBot:
             self.client = None
         else:
             try:
-                self.client = Groq(api_key=self.api_key)
-                
-                # Используем модель llama-4-scout для инструкций
-                self.model_name = "meta-llama/llama-4-scout-17b-16e-instruct"
+                # Используем стабильную модель Llama 3.1
+                self.model_name = "llama-3.1-70b-versatile"
                 self.logger.info(f"Groq client initialized with model: {self.model_name}")
             except Exception as e:
                 self.logger.error(f"Error initializing Groq client: {e}", exc_info=True)
@@ -558,17 +556,20 @@ class AICustomerBot:
             
             try:
                 iteration = 0
-                max_iterations = 4 # Увеличим для возможности поиска по каталогу
+                max_iterations = 3
                 last_ai_response = ""
                 
                 while iteration < max_iterations:
                     iteration += 1
                     self.logger.info(f"Iteration {iteration} for user {user_id}")
                     
+                    if not self.client:
+                        raise Exception("Groq client not initialized")
+
                     completion = self.client.chat.completions.create(
                         model=self.model_name,
                         messages=messages,
-                        temperature=0.3, # Понизим температуру для точности тегов
+                        temperature=0.1, # Очень низкая температура для точности
                         max_tokens=2048
                     )
                     
@@ -588,55 +589,52 @@ class AICustomerBot:
                         results_text = "Ничего не найдено."
                         if results:
                             session['last_products'] = results
-                            results_text = "НАЙДЕНО (ID: Название):\n" + "\n".join([f"- {p['id']}: {p['name']}" for p in results[:10]])
+                            results_text = "НАЙДЕНО ТОВАРОВ (ID и Название):\n" + "\n".join([f"- {p['id']}: {p['name']}" for p in results[:10]])
                         
                         messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"РЕЗУЛЬТАТ ПОИСКА: {results_text}"})
+                        messages.append({"role": "user", "content": f"СИСТЕМА: Результаты поиска: {results_text}"})
                         continue
                         
                     elif catalog_match:
                         self.logger.info("Tool: [КАТАЛОГ]")
                         titles = get_catalog_titles()
-                        catalog_text = "ПОЛНЫЙ КАТАЛОГ (ID: Название):\n" + "\n".join([f"- {t['id']}: {t['name']}" for t in titles])
+                        catalog_text = "ВЕСЬ КАТАЛОГ МАГАЗИНА (ID: Название):\n" + "\n".join([f"- {t['id']}: {t['name']}" for t in titles])
                         
                         messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": catalog_text})
+                        messages.append({"role": "user", "content": f"СИСТЕМА: {catalog_text}"})
                         continue
 
                     elif info_match:
                         prod_id = info_match.group(1).strip()
                         self.logger.info(f"Tool: [ИНФО:{prod_id}]")
                         product = get_product_details(prod_id)
-                        info_text = format_products_for_ai([product]) if product else "Не найдено."
                         
-                        # ДЛЯ ИНФО: Принудительно заменяем список текущим товаром, чтобы [ТОВАРЫ:0,1] показал именно его
                         if product:
                             session['last_products'] = [product]
+                            info_text = format_products_for_ai([product])
+                        else:
+                            info_text = "Товар с таким ID не найден."
 
                         messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"ДЕТАЛИ: {info_text}"})
+                        messages.append({"role": "user", "content": f"СИСТЕМА: Данные товара: {info_text}"})
                         continue
                     
                     break
                 
-                # 2. Обработка финального ответа и тега [ТОВАРЫ:...]
+                # Финальный ответ
                 final_response = last_ai_response
                 tag_match = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', final_response)
                 
-                # Пробуем использовать найденный список товаров
                 products_to_show = session.get('last_products', [])
                 
                 if tag_match and products_to_show:
-                    start = int(tag_match.group(1))
-                    end = int(tag_match.group(2))
-                    self.logger.info(f"Formatting products tag: [{start},{end}]")
-                    pretty_list = self._get_formatted_products(products_to_show, start, end - start)
+                    pretty_list = self._get_formatted_products(products_to_show, 0, 10)
                     if pretty_list:
                         final_response = final_response.replace(tag_match.group(0), f"\n\n{pretty_list}")
-                        self.logger.info("Products list embedded successfully")
                 
-                # Чистим от всех тегов перед отправкой пользователю
-                final_response = re.sub(r'\[(ПОИСК|ИНФО|ТОВАРЫ):[^\]]*\]', '', final_response).strip()
+                # Очистка
+                final_response = re.sub(r'\[(ПОИСК|ИНФО|ТОВАРЫ|КАТАЛОГ):[^\]]*\]', '', final_response).strip()
+                final_response = re.sub(r'\[КАТАЛОГ\]', '', final_response).strip()
                 
                 if final_response:
                     if greeting_needed and "Mona" in final_response:

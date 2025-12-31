@@ -531,7 +531,8 @@ def get_order_status(order_id, detailed=True):
         
         # 1. Поиск по началу ID (стандартный)
         cur.execute('''
-            SELECT id, status, total, created_at, delivery_address, customer_name, customer_phone, payment_method
+            SELECT id, status, total, created_at, delivery_address, customer_name, customer_phone, payment_method,
+                   has_backorder, backorder_delivery_date, estimated_delivery_days
             FROM orders
             WHERE id::text ILIKE %s
         ''', (f'{order_id}%',))
@@ -562,21 +563,40 @@ def get_order_status(order_id, detailed=True):
             
             # Формируем детальный отчет
             created_at = order['created_at']
-            est_delivery = created_at + timedelta(days=2)
+            
+            # Вычисляем дату доставки на основе реальных данных из базы
+            if order.get('backorder_delivery_date'):
+                # Если есть точная дата доставки для под заказ - используем её
+                est_delivery = order['backorder_delivery_date']
+            elif order.get('estimated_delivery_days'):
+                # Если есть количество дней - вычисляем дату
+                est_delivery = created_at + timedelta(days=order['estimated_delivery_days'])
+            else:
+                # Fallback: используем стандартные 2 дня (для старых заказов)
+                est_delivery = created_at + timedelta(days=2)
+            
+            # Формируем информацию о доставке с учетом под заказ
+            has_backorder = order.get('has_backorder', False)
+            delivery_info = f"📅 <b>Доставка:</b> ~{est_delivery.strftime('%d.%m.%Y')}"
+            if has_backorder:
+                delivery_info += " <i>(под заказ)</i>"
             
             # КРАТКАЯ ВЕРСИЯ (ПО УМОЛЧАНИЮ ДЛЯ ПОЛЬЗОВАТЕЛЯ)
             if not detailed:
                 short_msg = (
                     f"🛍 <b>Заказ #{order['id'].split('-')[0].upper()}</b>\n\n"
                     f"🔄 <b>Статус:</b> {status_text}\n"
-                    f"📅 <b>Доставка:</b> ~{est_delivery.strftime('%d.%m.%Y')}"
+                    f"{delivery_info}"
                 )
                 return short_msg
 
             # ПОЛНАЯ ВЕРСИЯ (ДЛЯ ИСТОРИИ И AI)
             details = f"🛍 <b>ЗАКАЗ #{order['id']}</b>\n"
-            details += f"📅 Дата: {created_at.strftime('%Y-%m-%d %H:%M')}\n"
-            details += f"🏁 Доставка: до {est_delivery.strftime('%Y-%m-%d')}\n"
+            details += f"📅 Дата создания: {created_at.strftime('%Y-%m-%d %H:%M')}\n"
+            if has_backorder:
+                details += f"🏁 Доставка: до {est_delivery.strftime('%Y-%m-%d')} <i>(под заказ)</i>\n"
+            else:
+                details += f"🏁 Доставка: до {est_delivery.strftime('%Y-%m-%d')} <i>(в наличии)</i>\n"
             details += f"🔄 Статус: {status_text}\n"
             details += f"💰 Сумма: {order.get('total', 0):,} сум\n"
             details += f"💳 Оплата: {order.get('payment_method', 'Не указано')}\n"

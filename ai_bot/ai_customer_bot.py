@@ -598,21 +598,44 @@ class AICustomerBot:
                             # Обработка ошибки 429 (Rate Limit)
                             if '429' in error_str or 'rate limit' in error_lower or 'rate_limit' in error_lower:
                                 # Пытаемся извлечь время ожидания из ошибки
-                                # re уже импортирован глобально
+                                # Ищем различные форматы: "retry after 30", "retry-after: 30", "wait 30 seconds" и т.д.
+                                wait_seconds = None
+                                
+                                # Паттерн 1: retry after / retry-after
                                 retry_after_match = re.search(r'retry[_-]?after[:\s]+(\d+)', error_str, re.IGNORECASE)
                                 if retry_after_match:
-                                    seconds = int(retry_after_match.group(1))
-                                    minutes = (seconds + 59) // 60  # Округляем вверх
-                                    wait_time = f"{minutes} минут" if minutes > 0 else f"{seconds} секунд"
+                                    wait_seconds = int(retry_after_match.group(1))
                                 else:
-                                    # Если не нашли точное время, используем дефолтное
-                                    wait_time = "1-2 минуты"
+                                    # Паттерн 2: wait / wait for
+                                    wait_match = re.search(r'wait[:\s]+(\d+)', error_str, re.IGNORECASE)
+                                    if wait_match:
+                                        wait_seconds = int(wait_match.group(1))
+                                    else:
+                                        # Паттерн 3: просто число в секундах (обычно рядом со словами second/секунд)
+                                        seconds_match = re.search(r'(\d+)\s*(?:second|секунд)', error_str, re.IGNORECASE)
+                                        if seconds_match:
+                                            wait_seconds = int(seconds_match.group(1))
+                                
+                                # Форматируем время ожидания
+                                if wait_seconds:
+                                    if wait_seconds < 60:
+                                        wait_time = f"{wait_seconds} секунд"
+                                    elif wait_seconds < 3600:
+                                        minutes = (wait_seconds + 59) // 60  # Округляем вверх
+                                        wait_time = f"{minutes} минут"
+                                    else:
+                                        hours = (wait_seconds + 3599) // 3600
+                                        wait_time = f"{hours} час" + ("а" if hours < 5 else "")
+                                else:
+                                    # Если не нашли точное время, используем дефолтное (30 запросов в минуту = ~2 секунды между запросами)
+                                    wait_time = "2 минуты"
                                 
                                 self.bot.send_message(
                                     message.chat.id,
                                     f"⏳ <b>Слишком много запросов</b>\n\n"
+                                    f"Системные ограничения: максимально 30 запросов в минуту.\n\n"
                                     f"Пожалуйста, подождите <b>{wait_time}</b> перед следующим сообщением.\n\n"
-                                    f"<i>Система временно ограничила количество запросов для обеспечения стабильной работы.</i>",
+                                    f"<i>После этого времени вы сможете снова обращаться к боту.</i>",
                                     parse_mode='HTML'
                                 )
                                 return

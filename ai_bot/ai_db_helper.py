@@ -472,55 +472,40 @@ def get_product_details(product_id):
 
 def format_products_for_ai(products):
     """
-    Форматирует список товаров в текст для AI
-    
-    Args:
-        products (list): Список товаров
-        
-    Returns:
-        str: Отформатированный текст
+    Форматирует список товаров в ТЕКСТ для AI (с описанием и всеми деталями)
     """
     if not products:
         return "В базе данных нет товаров."
     
-    context = "ТОВАРЫ В МАГАЗИНЕ:\n\n"
+    context = "ДАННЫЕ ИЗ БАЗЫ (ДЛЯ ТЕБЯ):\n\n"
     
     for idx, product in enumerate(products, 1):
-        product_url = f"https://monvoir.shop/product/{product['id']}"
-        context += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a> - <b>{product['price']:,} сум</b>\n"
+        context += f"ТОВАР {idx}: {product['name']} (ID: {product['id']})\n"
+        context += f"ОПИСАНИЕ: {product.get('description', 'Описание отсутствует')}\n"
+        context += f"ЦЕНА: {product['price']:,} сум\n"
         
-        # Наличие - только краткая информация
         inventory = product.get('inventory', [])
         if inventory:
-            # Фильтруем только те варианты, где quantity > 0
             available_items = [item for item in inventory if item['quantity'] > 0]
-            
             if available_items:
-                # Собираем краткую информацию о вариантах
-                variants_info = []
-                for item in available_items[:3]:  # Максимум 3 варианта
+                context += "ДОСТУПНО: "
+                variants = []
+                for item in available_items:
                     parts = []
                     if item.get('color'):
-                        color_name = format_colors([item['color']])
-                        parts.append(color_name)
+                        parts.append(format_colors([item['color']]))
                     if item.get('attribute1_value'):
                         parts.append(item['attribute1_value'])
                     if item.get('attribute2_value'):
                         parts.append(item['attribute2_value'])
-                    
-                    if parts:
-                        variants_info.append(', '.join(parts))
-                
-                if variants_info:
-                    context += f"   <i>В наличии: {', '.join(variants_info[:2])}</i>\n"  # Максимум 2 варианта
-                else:
-                    context += f"   <i>В наличии</i>\n"
+                    variants.append(", ".join(parts))
+                context += " | ".join(variants) + "\n"
             else:
-                context += f"   <i>Нет в наличии</i>\n"
+                context += "СТАТУС: ВРЕМЕННО НЕТ В НАЛИЧИИ ❌\n"
         else:
-            context += f"   <i>Нет в наличии</i>\n"
+            context += "СТАТУС: НЕТ В НАЛИЧИИ ❌\n"
         
-        context += "\n"  # Пустая строка между товарами
+        context += "-" * 20 + "\n\n"
             
     return context
 

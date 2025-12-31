@@ -493,27 +493,30 @@ class AICustomerBot:
             self.bot.send_chat_action(message.chat.id, 'typing')
             
             try:
-                # 2. Получаем контекст товаров
+                # 2. Получаем контекст товаров - ВСЕГДА используем поиск
                 products_context = "Информацию о товарах пока получить не удалось."
                 found_products_list = []  # Для проверки наличия товаров
                 is_search_query = False  # Флаг: был ли это поиск конкретного товара
                 try:
-                    # Поиск, если вопрос о конкретном товаре
-                    search_keywords = ['найди', 'покажи', 'есть ли', 'цена', 'сколько', 'ищу', 'нужен', 'хочу', 'имеется']
-                    if any(word in user_question.lower() for word in search_keywords):
+                    # Определяем, является ли запрос общим вопросом
+                    general_questions = ['какие товары', 'что есть', 'что у вас', 'покажи все', 'какой ассортимент', 'что продаете', 'что в наличии']
+                    is_general = any(phrase in user_question.lower() for phrase in general_questions)
+                    
+                    # ВСЕГДА используем поиск, даже для общих вопросов
+                    found_products_list = search_products(user_question)
+                    
+                    if found_products_list:
+                        # Ограничиваем до 3-5 товаров максимум
                         is_search_query = True
-                        # Простой поиск по ключевым словам из вопроса
-                        found_products_list = search_products(user_question)
-                        if found_products_list:
-                             products_context = format_products_for_ai(found_products_list[:5])
-                        else:
-                            # Если ничего не нашли - товара нет в каталоге
-                            products_context = "ТОВАРЫ В МАГАЗИНЕ:\n\nТовар не найден в каталоге."
-                    else:
-                        # По умолчанию показываем топ товаров
+                        products_context = format_products_for_ai(found_products_list[:3])
+                    elif is_general:
+                        # Если общий вопрос и ничего не найдено - показываем несколько примеров
                         all_products = get_all_products_info()
-                        found_products_list = all_products[:10] if all_products else []
+                        found_products_list = all_products[:3] if all_products else []
                         products_context = format_products_for_ai(found_products_list) if found_products_list else "ТОВАРЫ В МАГАЗИНЕ:\n\nВ каталоге пока нет товаров."
+                    else:
+                        # Конкретный запрос, но ничего не найдено
+                        products_context = "ТОВАРЫ В МАГАЗИНЕ:\n\nТовар не найден в каталоге."
                 except Exception as e:
                     print(f"⚠️ Ошибка получения товаров: {e}")
 

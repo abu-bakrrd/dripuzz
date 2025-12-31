@@ -283,56 +283,81 @@ def search_products(query):
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # Разбиваем запрос на слова и убираем "мусор"
-        stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'привет', 'mona', 'мона'}
-        keywords = [word for word in query.lower().split() if word not in stop_words and len(word) > 2]
+        # Определяем, является ли запрос общим вопросом
+        general_phrases = ['какие товары', 'что есть', 'что у вас', 'покажи все', 'какой ассортимент', 'что продаете', 'что в наличии', 'какие есть товары']
+        is_general = any(phrase in query.lower() for phrase in general_phrases)
         
-        if not keywords:
-            # Если после очистки ничего не осталось, ищем по оригиналу (на всякий случай)
-            keywords = [query.lower()]
-
-        # Формируем динамический SQL запрос для поиска по любому из ключевых слов
-        sql_query = '''
-            SELECT DISTINCT
-                p.id,
-                p.name,
-                p.description,
-                p.price,
-                p.colors,
-                p.attributes,
-                p.category_id,
-                c.name as category_name
-            FROM products p
-            LEFT JOIN categories c ON p.category_id = c.id
-            WHERE 
-        '''
-        
-        conditions = []
-        params = []
-        
-        for word in keywords:
-            conditions.append("(LOWER(p.name) LIKE %s OR LOWER(p.description) LIKE %s OR LOWER(c.name) LIKE %s)")
-            pattern = f'%{word}%'
-            params.extend([pattern, pattern, pattern])
-            
-        if conditions:
-            sql_query += " OR ".join(conditions)
+        # Если общий запрос - возвращаем примеры из разных категорий
+        if is_general:
+            cur.execute('''
+                SELECT DISTINCT ON (p.category_id)
+                    p.id,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.colors,
+                    p.attributes,
+                    p.category_id,
+                    c.name as category_name
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                ORDER BY p.category_id, p.name
+                LIMIT 3
+            ''')
+            products = cur.fetchall()
         else:
-            # Fallback
-            sql_query += " LOWER(p.name) LIKE %s "
-            params = [f'%{query}%']
+            # Разбиваем запрос на слова и убираем "мусор"
+            stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'привет', 'mona', 'мона', 'какие', 'товары', 'что', 'все'}
+            keywords = [word for word in query.lower().split() if word not in stop_words and len(word) > 2]
+            
+            if not keywords:
+                # Если после очистки ничего не осталось, возвращаем пустой список
+                cur.close()
+                conn.close()
+                return []
 
-        sql_query += ' ORDER BY p.name LIMIT 5' # Ограничиваем выдачу
+            # Формируем динамический SQL запрос для поиска по любому из ключевых слов
+            sql_query = '''
+                SELECT DISTINCT
+                    p.id,
+                    p.name,
+                    p.description,
+                    p.price,
+                    p.colors,
+                    p.attributes,
+                    p.category_id,
+                    c.name as category_name
+                FROM products p
+                LEFT JOIN categories c ON p.category_id = c.id
+                WHERE 
+            '''
+            
+            conditions = []
+            params = []
+            
+            for word in keywords:
+                conditions.append("(LOWER(p.name) LIKE %s OR LOWER(p.description) LIKE %s OR LOWER(c.name) LIKE %s)")
+                pattern = f'%{word}%'
+                params.extend([pattern, pattern, pattern])
+                
+            if conditions:
+                sql_query += " OR ".join(conditions)
+            else:
+                # Fallback
+                sql_query += " LOWER(p.name) LIKE %s "
+                params = [f'%{query}%']
 
-        cur.execute(sql_query, tuple(params))
-        products = cur.fetchall()
+            sql_query += ' ORDER BY p.name LIMIT 3'  # Ограничиваем до 3 товаров
+
+            cur.execute(sql_query, tuple(params))
+            products = cur.fetchall()
         
         # Добавляем информацию о наличии
         for product in products:
             cur.execute('''
                 SELECT color, attribute1_value, attribute2_value, quantity
                 FROM product_inventory
-                WHERE product_id = %s
+                WHERE product_id = %s AND quantity > 0
             ''', (product['id'],))
             product['inventory'] = cur.fetchall()
         
@@ -411,57 +436,40 @@ def format_products_for_ai(products):
     
     for idx, product in enumerate(products, 1):
         product_url = f"https://monvoir.shop/product/{product['id']}"
-        context += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a>\n"
-        context += f"   Цена: {product['price']:,} сум\n"
+        context += f"{idx}. <a href=\"{product_url}\"><b>{product['name']}</b></a> - <b>{product['price']:,} сум</b>\n"
         
-        if product.get('description'):
-            context += f"   Описание: {product['description']}\n"
-        
-        if product.get('category_name'):
-            context += f"   Категория: {product['category_name']}\n"
-        
-        # Цвета (конвертируем HEX-коды в названия)
-        if product.get('colors'):
-            colors_str = format_colors(product['colors'])
-            context += f"   Доступные цвета: {colors_str}\n"
-        
-        # Атрибуты (размеры и т.д.)
-        if product.get('attributes'):
-            attrs = product['attributes']
-            if isinstance(attrs, str):
-                attrs = json.loads(attrs)
-            
-            for attr in attrs:
-                attr_name = attr.get('name', 'Характеристика')
-                attr_values = ', '.join(attr.get('values', []))
-                context += f"   {attr_name}: {attr_values}\n"
-        
-        # Наличие
+        # Наличие - только краткая информация
         inventory = product.get('inventory', [])
         if inventory:
             # Фильтруем только те варианты, где quantity > 0
             available_items = [item for item in inventory if item['quantity'] > 0]
             
             if available_items:
-                context += f"   В наличии:\n"
-                for item in available_items:
+                # Собираем краткую информацию о вариантах
+                variants_info = []
+                for item in available_items[:3]:  # Максимум 3 варианта
                     parts = []
                     if item.get('color'):
-                        # Конвертируем HEX-код в название цвета
                         color_name = format_colors([item['color']])
-                        parts.append(f"цвет {color_name}")
+                        parts.append(color_name)
                     if item.get('attribute1_value'):
                         parts.append(item['attribute1_value'])
                     if item.get('attribute2_value'):
                         parts.append(item['attribute2_value'])
                     
-                    variant = ', '.join(parts) if parts else 'стандартный'
-                    # НЕ показываем цифры даже боту, чтобы он случайно не проговорился
-                    context += f"      - {variant}: Есть в наличии\n"
+                    if parts:
+                        variants_info.append(', '.join(parts))
+                
+                if variants_info:
+                    context += f"   <i>В наличии: {', '.join(variants_info[:2])}</i>\n"  # Максимум 2 варианта
+                else:
+                    context += f"   <i>В наличии</i>\n"
             else:
-                context += f"   Статус: Нет в наличии (раскуплен)\n"
+                context += f"   <i>Нет в наличии</i>\n"
         else:
-            context += f"   Статус: Нет в наличии\n"
+            context += f"   <i>Нет в наличии</i>\n"
+        
+        context += "\n"  # Пустая строка между товарами
             
     return context
 

@@ -65,7 +65,7 @@ class AICustomerBot:
                 self.client = Groq(api_key=self.api_key)
                 
                 # Настройка моделей (основная и запасная)
-                self.primary_model = "qwen/qwen-2.5-coder-32b-instruct" # Используем актуальную версию Qwen
+                self.primary_model = "qwen/qwen3-32b"
                 self.fallback_model = "meta-llama/llama-4-scout-17b-16e-instruct"
                 self.model_name = self.primary_model
                 self.logger.info(f"Groq client initialized. Primary: {self.primary_model}, Fallback: {self.fallback_model}")

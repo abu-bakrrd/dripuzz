@@ -64,9 +64,11 @@ class AICustomerBot:
             try:
                 self.client = Groq(api_key=self.api_key)
                 
-                # Используем стабильную модель Llama 3.1
-                self.model_name = "llama-3.1-70b-versatile"
-                self.logger.info(f"Groq client initialized with model: {self.model_name}")
+                # Настройка моделей (основная и запасная)
+                self.primary_model = "qwen/qwen-2.5-coder-32b-instruct" # Используем актуальную версию Qwen
+                self.fallback_model = "meta-llama/llama-4-scout-17b-16e-instruct"
+                self.model_name = self.primary_model
+                self.logger.info(f"Groq client initialized. Primary: {self.primary_model}, Fallback: {self.fallback_model}")
             except Exception as e:
                 self.logger.error(f"Error initializing Groq client: {e}", exc_info=True)
                 self.client = None
@@ -568,12 +570,26 @@ class AICustomerBot:
                     if not self.client:
                         raise Exception("Groq client not initialized")
 
-                    completion = self.client.chat.completions.create(
-                        model=self.model_name,
-                        messages=messages,
-                        temperature=0.1, # Очень низкая температура для точности
-                        max_tokens=2048
-                    )
+                    try:
+                        completion = self.client.chat.completions.create(
+                            model=self.model_name,
+                            messages=messages,
+                            temperature=0.1,
+                            max_tokens=2048
+                        )
+                    except Exception as e:
+                        if "429" in str(e) and self.model_name == self.primary_model:
+                            self.logger.warning(f"Primary model {self.primary_model} rate limited (429). Switching to fallback {self.fallback_model}.")
+                            self.model_name = self.fallback_model
+                            # Повторяем запрос с запасной моделью
+                            completion = self.client.chat.completions.create(
+                                model=self.model_name,
+                                messages=messages,
+                                temperature=0.1,
+                                max_tokens=2048
+                            )
+                        else:
+                            raise e
                     
                     ai_response = self._clean_thinking_tags(completion.choices[0].message.content)
                     last_ai_response = ai_response

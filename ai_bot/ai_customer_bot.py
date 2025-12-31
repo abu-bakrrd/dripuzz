@@ -767,38 +767,38 @@ class AICustomerBot:
                                 return
                          
                         if response_text:
-                             # Очищаем thinking tags и подобные конструкции
-                             response_text = self._clean_thinking_tags(response_text)
-                             
-                             # Кешируем ответ для частых вопросов
-                             self._cache_response(user_question, response_text)
-                             
-                              # Если есть товары, добавляем их к ответу
-                              final_response = response_text
-                              if 'products_text' in locals() and products_text:
-                                  final_response = f"{response_text}\n\n{products_text}"
-                              
-                              # Отправляем ответ клиенту
-                              try:
-                                  self.bot.send_message(
-                                      message.chat.id,
-                                      final_response,
-                                      parse_mode='HTML'
-                                  )
-                              except Exception as e:
-                                  print(f"⚠️ Ошибка отправки (HTML): {e}")
-                                  # Пробуем без Markdown/HTML если ошибка парсинга
-                                  self.bot.send_message(message.chat.id, final_response)
-                                  
-                              # Сохраняем в историю
-                              self._update_history(user_id, user_question, final_response)
+                            # Очищаем thinking tags и подобные конструкции
+                            response_text = self._clean_thinking_tags(response_text)
+                            
+                            # Кешируем ответ для частых вопросов
+                            self._cache_response(user_question, response_text)
+                            
+                            # Если есть товары, добавляем их к ответу
+                            final_response = response_text
+                            if 'products_text' in locals() and products_text:
+                                final_response = f"{response_text}\n\n{products_text}"
+                            
+                            # Отправляем ответ клиенту
+                            try:
+                                self.bot.send_message(
+                                    message.chat.id,
+                                    final_response,
+                                    parse_mode='HTML'
+                                )
+                            except Exception as e:
+                                print(f"⚠️ Ошибка отправки (HTML): {e}")
+                                # Пробуем без Markdown/HTML если ошибка парсинга
+                                self.bot.send_message(message.chat.id, final_response)
+                                
+                            # Сохраняем в историю
+                            self._update_history(user_id, user_question, final_response)
                         else:
-                             raise Exception("Пустой ответ от модели")
+                            raise Exception("Пустой ответ от модели")
                     else:
                         raise Exception("Модель не инициализирована (self.client is None)")
                         
                 except Exception as e:
-                     raise e  # Пробрасываем ошибку выше
+                    raise e  # Пробрасываем ошибку выше
                     
             except Exception as e:
                 error_msg = f"❌ Ошибка генерации: {e}"

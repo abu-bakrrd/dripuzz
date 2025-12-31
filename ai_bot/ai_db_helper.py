@@ -301,8 +301,8 @@ def search_products(query, include_out_of_stock=False):
         cur = conn.cursor()
         
         # Определяем, является ли запрос общим вопросом
-        general_phrases = ['какие товары', 'что есть', 'что у вас', 'покажи все', 'какой ассортимент', 'что продаете', 'что в наличии', 'какие есть товары']
-        is_general = any(phrase in query.lower() for phrase in general_phrases)
+        general_phrases = ['какие товары', 'что есть', 'что у вас', 'покажи все', 'какой ассортимент', 'что продаете', 'что в наличии', 'какие есть товары', 'все', 'каталог', 'ассортимент']
+        is_general = any(phrase == norm_query or phrase in norm_query for phrase in general_phrases)
         
         # Если общий запрос - возвращаем примеры из разных категорий
         if is_general:
@@ -326,8 +326,8 @@ def search_products(query, include_out_of_stock=False):
             products = cur.fetchall()
         else:
             # Разбиваем запрос на слова и убираем "мусор"
-            stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'привет', 'mona', 'мона', 'какие', 'товары', 'что', 'все'}
-            keywords = [word for word in query.lower().split() if word not in stop_words and len(word) > 2]
+            stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'привет', 'mona', 'мона', 'какие'}
+            keywords = [word for word in norm_query.split() if word not in stop_words and len(word) > 2]
             
             if not keywords:
                 # Если после очистки ничего не осталось, возвращаем пустой список

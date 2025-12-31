@@ -10,6 +10,10 @@ import json
 import re
 from datetime import datetime, timedelta
 
+# Кеш для результатов поиска товаров
+_product_search_cache = {}
+_cache_ttl = timedelta(seconds=60)  # Кеш на 60 секунд
+
 
 def hex_to_color_name(hex_color):
     """
@@ -363,6 +367,19 @@ def search_products(query):
         
         cur.close()
         conn.close()
+        
+        # Сохраняем в кеш
+        _product_search_cache[normalized_query] = {
+            'products': products,
+            'expires': datetime.now() + _cache_ttl
+        }
+        
+        # Очищаем старый кеш (оставляем только последние 50 записей)
+        if len(_product_search_cache) > 50:
+            # Удаляем самые старые записи
+            sorted_cache = sorted(_product_search_cache.items(), key=lambda x: x[1]['expires'])
+            for key, _ in sorted_cache[:-50]:
+                del _product_search_cache[key]
         
         return products
     except Exception as e:

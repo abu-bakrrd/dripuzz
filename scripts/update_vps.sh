@@ -64,19 +64,10 @@ fi
 # Обновление кода (если используется git)
 if [ -d "$APP_DIR/.git" ]; then
     print_step "Получение обновлений из Git..."
-    
     cd $APP_DIR
-    
-    # Отбрасываем все локальные изменения и берем версию из GitHub
-    print_step "Отбрасывание локальных изменений..."
     sudo -u $APP_USER git reset --hard HEAD
     sudo -u $APP_USER git clean -fd
-    
-    # Получаем последнюю версию из GitHub
-    print_step "Загрузка обновлений из GitHub..."
     sudo -u $APP_USER git pull
-    
-    print_step "Код успешно обновлен из GitHub"
 else
     print_warning "Git репозиторий не найден. Убедитесь, что вы вручную обновили файлы."
 fi

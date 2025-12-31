@@ -394,30 +394,24 @@ def search_products(query, include_out_of_stock=False):
             cur.execute(sql_query, tuple(params))
             products = cur.fetchall()
         
-        # Добавляем информацию о наличии
-        for product in products:
-            cur.execute('''
-                SELECT color, attribute1_value, attribute2_value, quantity
-                FROM product_inventory
-                WHERE product_id = %s AND quantity > 0
-            ''', (product['id'],))
-            product['inventory'] = cur.fetchall()
+        # Добавляем информацию о наличии (размеры/цвета) для каждого найденного товара
+        if products:
+            for product in products:
+                cur.execute('''
+                    SELECT color, attribute1_value, attribute2_value, quantity
+                    FROM product_inventory
+                    WHERE product_id = %s
+                ''', (product['id'],))
+                product['inventory'] = cur.fetchall()
+        
+        # Обновляем кеш
+        _product_search_cache[norm_query] = {
+            'products': products,
+            'expires': datetime.now() + timedelta(minutes=5)
+        }
         
         cur.close()
         conn.close()
-        
-        # Сохраняем в кеш
-        _product_search_cache[norm_query] = {
-            'products': products,
-            'expires': datetime.now() + _cache_ttl
-        }
-        
-        # Очищаем старый кеш (оставляем только последние 50 записей)
-        if len(_product_search_cache) > 50:
-            # Удаляем самые старые записи
-            sorted_cache = sorted(_product_search_cache.items(), key=lambda x: x[1]['expires'])
-            for key, _ in sorted_cache[:-50]:
-                del _product_search_cache[key]
         
         return products
     except Exception as e:

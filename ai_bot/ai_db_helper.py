@@ -277,6 +277,23 @@ def get_all_products_info():
         return []
 
 
+def get_catalog_titles():
+    """
+    Получить только названия и ID всех товаров для анализа AI
+    """
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT id, name FROM products ORDER BY name")
+        titles = cur.fetchall()
+        cur.close()
+        conn.close()
+        return titles
+    except Exception as e:
+        print(f"❌ Ошибка получения каталога: {e}")
+        return []
+
+
 def search_products(query, include_out_of_stock=False):
     """
     Поиск товаров по ключевым словам

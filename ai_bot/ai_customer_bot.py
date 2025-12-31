@@ -20,7 +20,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 3.1 (GROQ INTEGRATION)", flush=True)
 
 import re
-from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details
+from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles
 
 # Загрузка переменных окружения (явно указываем путь)
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
@@ -92,27 +92,33 @@ class AICustomerBot:
         
         # Системный промпт для AI (оптимизирован)
         self.system_prompt = """
-Ты — <b>Mona</b>, очаровательная, умная и всегда готовая помочь девушка-ассистент магазина мужской одежды <b>Monvoir</b> (<a href="https://monvoir.shop"><b>monvoir.shop</b></a>).
+Ты — <b>Mona</b>, очаровательная, умная девушка-ассистент магазина мужской одежды <b>Monvoir</b> (<a href="https://monvoir.shop"><b>monvoir.shop</b></a>).
 
-ТВОЙ ОБРАЗ:
+ТВОЙ ОБРАЗ И ТОН:
 - Ты — ДЕВУШКА. Общайся мягко, вежливо и по-женски тепло. 
-- Используй СТРОГО женские формы глаголов: <b>"я нашла", "я рада", "я подготовила", "я увидела"</b>. 
-- НИКОГДА не используй мужской род или "рад(а)". Только женский.
+- Используй СТРОГО женские формы глаголов: <b>"я нашла", "я рада", "я подготовила"</b>. 
+- <b>ВАЖНО</b>: Общайся с клиентом СТРОГО на "Вы". Никакого "ты". Это премиальный магазин.
 
-ТВОИ ИНСТРУМЕНТЫ (ВНУТРЕННИЕ - ПИШИ ТОЛЬКО ТЕГ, БЕЗ ТЕКСТА):
-1. <code>[ПОИСК:запрос]</code> — Ищет товары. 
-2. <code>[ИНФО:id]</code> — Получает детали. 
+ТВОИ ИНСТРУМЕНТЫ (ВНУТРЕННИЕ):
+1. <code>[ПОИСК:запрос]</code> — Ищет товары по ключевым словам. Используй это ПЕРВЫМ ДЕЛОМ.
+2. <code>[КАТАЛОГ]</code> — Возвращает список НАЗВАНИЙ всех товаров магазина. Используй это, если `[ПОИСК]` ничего не нашел, чтобы найти аналоги по смыслу (например, если нет кроссовок, предложи кеды).
+3. <code>[ИНФО:id]</code> — Получает полные детали товара. Используй это, когда выбрала подходящие ID.
 
 ТВОЙ ВЫВОД (ДЛЯ КЛИЕНТА):
-- <code>[ТОВАРЫ:старт,стоп]</code> — Выводит карточки. <b>ВНИМАНИЕ</b>: Если ты не добавишь этот тег в свой FINAL ответ, клиент НЕ УВИДИТ список товаров. 
+- <code>[ТОВАРЫ:старт,стоп]</code> — Выводит карточки товаров. <b>БЕЗ ЭТОГО ТЕГА КЛИЕНТ НЕ УВИДИТ ТОВАРЫ</b>.
+
+АЛГОРИТМ ПОИСКА (ДЕЙСТВУЙ ТАК):
+1. Сначала попробуй <code>[ПОИСК:слово]</code>.
+2. Если пусто — вызови <code>[КАТАЛОГ]</code>. Проанализируй названия. Если нашла что-то похожее по стилю/смыслу (аналоги), выбери их ID.
+3. По лучшим ID вызови <code>[ИНФО:id]</code>.
+4. Ответь клиенту вежливо на "Вы", предложив аналоги, если оригинала нет.
+5. <b>ОБЯЗАТЕЛЬНО</b> добавь <code>[ТОВАРЫ:0,10]</code> в финальный ответ, если есть что показать.
 
 КРИТИЧЕСКИЕ ПРАВИЛА:
-1. <b>НИКОГДА</b> не перечисляй товары текстом. Если ты нашла подходящие вещи — ты ДОЛЖНА использовать тег <code>[ТОВАРЫ:0,10]</code>. Без этого тега твой ответ считается бесполезным.
-2. <b>ПРИВЕТСТВИЕ</b>: Представляйся ("Привет! Я Mona ✨") ТОЛЬКО если я пришлю тебе <code>GREETING_REQUIRED: True</code>. Если в контексте стоит <code>False</code> — сразу переходи к помощи, не здоровайся повторно.
+1. <b>НИКОГДА</b> не перечисляй товары просто текстом. Используй тег `[ТОВАРЫ]`.
+2. <b>ПРИВЕТСТВИЕ</b>: Представляйся только если <code>GREETING_REQUIRED: True</code>.
 3. <b>ССЫЛКИ</b>: Ссылку на сайт ВСЕГДА делай жирной: <a href="https://monvoir.shop"><b>monvoir.shop</b></a>.
-4. <b>СТИЛЬ</b>: Женственный, уютные эмодзи: ✨, 💖, 👔, 🛍️, ✅.
-МАГАЗИНЕ):
-Я буду присылать тебе список названий найденных товаров, чтобы ты понимала ассортимент, но НЕ ДУБЛИРУЙ их названия в тексте, их выведет функция.
+4. <b>СТИЛЬ</b>: Уютные эмодзи: ✨, 💖, 👔, 🛍️, ✅.
 """
         
         # Регистрация обработчиков
@@ -540,12 +546,19 @@ class AICustomerBot:
             self.bot.send_chat_action(message.chat.id, 'typing')
             
             # 1. Формируем контекст сообщений для AI
+            session = self._get_user_session(user_id)
+            # ПРИНУДИТЕЛЬНО очищаем старые результаты поиска для нового вопроса
+            session['last_products'] = []
+            
+            self.logger.info(f"User {user_id} asked: {user_question}")
+            self.bot.send_chat_action(message.chat.id, 'typing')
+            
             greeting_needed = not session.get('is_greeted', False)
             context_instruction = f"GREETING_REQUIRED: {'True' if greeting_needed else 'False'}"
             messages = [{"role": "system", "content": f"{self.system_prompt}\n\n{context_instruction}"}]
             
             # Добавляем историю
-            recent_messages = session['history'][-10:] # Последние 10 сообщений
+            recent_messages = session['history'][-10:] 
             for msg in recent_messages:
                 role = "assistant" if msg.get('role') == 'assistant' else 'user'
                 content = msg.get('text') or msg.get('content') or ""
@@ -556,8 +569,7 @@ class AICustomerBot:
             
             try:
                 iteration = 0
-                max_iterations = 3
-                found_products_list = []
+                max_iterations = 4 # Увеличим для возможности поиска по каталогу
                 last_ai_response = ""
                 
                 while iteration < max_iterations:
@@ -567,58 +579,56 @@ class AICustomerBot:
                     completion = self.client.chat.completions.create(
                         model=self.model_name,
                         messages=messages,
-                        temperature=0.7,
+                        temperature=0.3, # Понизим температуру для точности тегов
                         max_tokens=2048
                     )
                     
                     ai_response = self._clean_thinking_tags(completion.choices[0].message.content)
                     last_ai_response = ai_response
-                    self.logger.debug(f"AI response (pre-tool): {ai_response[:100]}...")
                     
-                    # Ищем внутренние теги: [ПОИСК:...] или [ИНФО:...]
+                    # Ищем теги
                     search_match = re.search(r'\[ПОИСК:([^\]]+)\]', ai_response)
                     info_match = re.search(r'\[ИНФО:([^\]]+)\]', ai_response)
+                    catalog_match = re.search(r'\[КАТАЛОГ\]', ai_response)
                     
                     if search_match:
                         query = search_match.group(1).strip()
-                        self.logger.info(f"Tool call: [ПОИСК:{query}]")
-                        # Сначала ищем в наличии
-                        results = search_products(query, include_out_of_stock=False)
-                        if not results:
-                            # Если нет в наличии, ищем вообще в каталоге
-                            results = search_products(query, include_out_of_stock=True)
-                            results_text = "РЕЗУЛЬТАТЫ ПОИСКА (В КАТАЛОГЕ, НО НЕТ В НАЛИЧИИ):\n"
-                        else:
-                            results_text = "РЕЗУЛЬТАТЫ ПОИСКА (В НАЛИЧИИ):\n"
+                        self.logger.info(f"Tool: [ПОИСК:{query}]")
+                        results = search_products(query, include_out_of_stock=False) or search_products(query, include_out_of_stock=True)
                         
+                        results_text = "Ничего не найдено."
                         if results:
-                            found_products_list = results
                             session['last_products'] = results
-                            for p in results[:10]:
-                                results_text += f"- ID: {p['id']}, Название: {p['name']}\n"
-                        else:
-                            results_text = "Ничего не найдено по этому запросу."
+                            results_text = "НАЙДЕНО (ID: Название):\n" + "\n".join([f"- {p['id']}: {p['name']}" for p in results[:10]])
                         
-                        self.logger.info(f"Search results: {len(results)} found")
                         messages.append({"role": "assistant", "content": ai_response})
                         messages.append({"role": "user", "content": f"РЕЗУЛЬТАТ ПОИСКА: {results_text}"})
-                        continue # Снова вызываем AI с результатами
+                        continue
                         
+                    elif catalog_match:
+                        self.logger.info("Tool: [КАТАЛОГ]")
+                        titles = get_catalog_titles()
+                        catalog_text = "ПОЛНЫЙ КАТАЛОГ (ID: Название):\n" + "\n".join([f"- {t['id']}: {t['name']}" for t in titles])
+                        
+                        messages.append({"role": "assistant", "content": ai_response})
+                        messages.append({"role": "user", "content": catalog_text})
+                        continue
+
                     elif info_match:
                         prod_id = info_match.group(1).strip()
-                        self.logger.info(f"Tool call: [ИНФО:{prod_id}]")
+                        self.logger.info(f"Tool: [ИНФО:{prod_id}]")
                         product = get_product_details(prod_id)
+                        info_text = format_products_for_ai([product]) if product else "Не найдено."
+                        
+                        # Если мы нашли детали через ИНФО, добавим этот товар в список для вывода, если его там нет
                         if product:
-                            info_text = format_products_for_ai([product])
-                        else:
-                            info_text = "Товар с таким ID не найден."
-                            
-                        self.logger.info(f"Info results: {'Found' if product else 'Not found'}")
+                            if not any(p['id'] == product['id'] for p in session['last_products']):
+                                session['last_products'].append(product)
+
                         messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"ДЕТАЛИ ТОВАРА: {info_text}"})
-                        continue # Снова вызываем AI с деталями
+                        messages.append({"role": "user", "content": f"ДЕТАЛИ: {info_text}"})
+                        continue
                     
-                    # Если внутренних тегов нет - это финальный ответ
                     break
                 
                 # 2. Обработка финального ответа и тега [ТОВАРЫ:...]

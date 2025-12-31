@@ -564,6 +564,7 @@ class AICustomerBot:
             
             # Получаем сессию
             session = self._get_user_session(user_id)
+            products_text = None  # Инициализация для объединения сообщений
             
             # Отправляем индикатор "печатает..."
             self.bot.send_chat_action(message.chat.id, 'typing')

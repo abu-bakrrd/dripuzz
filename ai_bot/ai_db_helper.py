@@ -359,7 +359,7 @@ def search_products(query):
                 sql_query += "(" + " OR ".join(conditions) + "))"
             else:
                 # Fallback
-                sql_query += " LOWER(p.name) LIKE %s "
+                sql_query += " LOWER(p.name) LIKE %s )"
                 params = [f'%{query}%']
 
             sql_query += ' ORDER BY p.name LIMIT 10'  # Увеличиваем лимит для возможности показать больше

@@ -481,31 +481,28 @@ def format_products_for_ai(products):
     if not products:
         return "В базе данных нет товаров."
     
-    context = "ДАННЫЕ ИЗ БАЗЫ (ДЛЯ ТЕБЯ):\n\n"
+    context = "=== DATABASE_RAW_DATA (FOR_INTERNAL_USE_ONLY) ===\n\n"
     
     for idx, product in enumerate(products, 1):
-        context += f"ТОВАР {idx}: {product['name']} (ID: {product['id']})\n"
-        context += f"ОПИСАНИЕ: {product.get('description', 'Описание отсутствует')}\n"
-        context += f"ЦЕНА: {product['price']:,} сум\n"
+        context += f"PRODUCT_ENTRY_{idx}:\n"
+        context += f"system_name: {product['name']}\n"
+        context += f"internal_id: {product['id']}\n"
+        context += f"db_description: {product.get('description') or 'NULL_DATA'}\n"
+        context += f"db_price: {product['price']}\n"
         
         inventory = product.get('inventory', [])
         if inventory:
-            context += "ВАРИАНТЫ ТОВАРА (ЦВЕТ, РАЗМЕР, СТАТУС):\n"
+            context += "INVENTORY_MATRIX:\n"
             for item in inventory:
-                parts = []
-                if item.get('color'):
-                    parts.append(format_colors([item['color']]))
-                if item.get('attribute1_value'):
-                    parts.append(item['attribute1_value'])
-                if item.get('attribute2_value'):
-                    parts.append(item['attribute2_value'])
-                
-                status = "✅ В наличии" if item['quantity'] > 0 else "❌ Нет в наличии"
-                context += f"- {', '.join(parts)}: {status}\n"
+                color = format_colors([item['color']]) if item.get('color') else "N/A"
+                size = item.get('attribute1_value') or "N/A"
+                qty = item.get('quantity', 0)
+                status = "IN_STOCK" if qty > 0 else "OUT_OF_STOCK"
+                context += f"- VARIANT: [Color: {color}, Size: {size}] -> STATUS: {status} (Qty: {qty})\n"
         else:
-            context += "СТАТУС: ДАННЫЕ О ВАРИАНТАХ ОТСУТСТВУЮТ\n"
+            context += "INVENTORY_STATUS: NO_DATA_FOUND\n"
         
-        context += "-" * 20 + "\n\n"
+        context += "=== END_ENTRY ===\n\n"
             
     return context
 

@@ -480,9 +480,8 @@ def format_products_for_ai(products):
     for idx, product in enumerate(products, 1):
         context += f"PRODUCT_ENTRY_{idx}:\n"
         context += f"system_name: {product['name']}\n"
-        context += f"internal_id: {product['id']}\n"
+        context += f"db_price: {product['price']} сум\n"
         context += f"db_description: {product.get('description') or 'NULL_DATA'}\n"
-        context += f"db_price: {product['price']}\n"
         
         inventory = product.get('inventory', [])
         if inventory:
@@ -496,6 +495,7 @@ def format_products_for_ai(products):
         else:
             context += "INVENTORY_STATUS: NO_DATA_FOUND\n"
         
+        context += f"SYSTEM_UID_KEEP_SECRET: {product['id']}\n"
         context += "=== END_ENTRY ===\n\n"
             
     return context

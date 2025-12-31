@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { useConfig } from '@/hooks/useConfig'
-import { Heart, ShoppingCart } from 'lucide-react'
+import { Heart, ShoppingCart, MessageCircle } from 'lucide-react'
 import ProfileDropdown from './ProfileDropdown'
 
 interface HeaderProps {
@@ -60,6 +60,19 @@ export default function Header({
 							data-testid='button-account'
 						>
 							Войти
+						</Button>
+					)}
+
+					{config?.telegramBotUrl && (
+						<Button
+							size='icon'
+							variant='ghost'
+							onClick={() => window.open(config.telegramBotUrl, '_blank')}
+							className='relative'
+							data-testid='button-telegram-bot'
+							title='Открыть Telegram бота'
+						>
+							<MessageCircle className='w-5 h-5' />
 						</Button>
 					)}
 

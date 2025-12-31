@@ -15,7 +15,8 @@
 		"code": "UZS",
 		"position": "after"
 	},
-	"managerContact": "@gayupov_a",
+	"managerContact": "@MonvoirAI_bot",
+	"telegramBotUrl": "https://t.me/MonvoirAI_bot",
 	"colorScheme": {
 		"background": "#FEFEFE",
 		"foreground": "#1A1A1A",

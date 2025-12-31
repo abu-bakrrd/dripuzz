@@ -17,6 +17,7 @@ export interface AppConfig {
 		position: 'before' | 'after'
 	}
 	managerContact: string
+	telegramBotUrl?: string
 	categories: Array<{
 		id: string
 		name: string

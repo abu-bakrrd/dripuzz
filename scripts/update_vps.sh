@@ -66,7 +66,7 @@ if [ -d "$APP_DIR/.git" ]; then
     print_step "Получение обновлений из Git..."
     cd $APP_DIR
     sudo -u $APP_USER git reset --hard HEAD
-    sudo -u $APP_USER git clean -fd
+    sudo -u $APP_USER git clean -fd 2>/dev/null || true
     sudo -u $APP_USER git pull
 else
     print_warning "Git репозиторий не найден. Убедитесь, что вы вручную обновили файлы."

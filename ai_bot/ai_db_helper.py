@@ -306,7 +306,7 @@ def search_products(query):
                 FROM products p
                 LEFT JOIN categories c ON p.category_id = c.id
                 ORDER BY p.category_id, p.name
-                LIMIT 3
+                LIMIT 10
             ''')
             products = cur.fetchall()
         else:
@@ -351,7 +351,7 @@ def search_products(query):
                 sql_query += " LOWER(p.name) LIKE %s "
                 params = [f'%{query}%']
 
-            sql_query += ' ORDER BY p.name LIMIT 3'  # Ограничиваем до 3 товаров
+            sql_query += ' ORDER BY p.name LIMIT 10'  # Увеличиваем лимит для возможности показать больше
 
             cur.execute(sql_query, tuple(params))
             products = cur.fetchall()

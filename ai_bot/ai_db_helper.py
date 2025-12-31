@@ -486,24 +486,20 @@ def format_products_for_ai(products):
         
         inventory = product.get('inventory', [])
         if inventory:
-            available_items = [item for item in inventory if item['quantity'] > 0]
-            if available_items:
-                context += "ДОСТУПНО: "
-                variants = []
-                for item in available_items:
-                    parts = []
-                    if item.get('color'):
-                        parts.append(format_colors([item['color']]))
-                    if item.get('attribute1_value'):
-                        parts.append(item['attribute1_value'])
-                    if item.get('attribute2_value'):
-                        parts.append(item['attribute2_value'])
-                    variants.append(", ".join(parts))
-                context += " | ".join(variants) + "\n"
-            else:
-                context += "СТАТУС: ВРЕМЕННО НЕТ В НАЛИЧИИ ❌\n"
+            context += "ВАРИАНТЫ ТОВАРА (ЦВЕТ, РАЗМЕР, СТАТУС):\n"
+            for item in inventory:
+                parts = []
+                if item.get('color'):
+                    parts.append(format_colors([item['color']]))
+                if item.get('attribute1_value'):
+                    parts.append(item['attribute1_value'])
+                if item.get('attribute2_value'):
+                    parts.append(item['attribute2_value'])
+                
+                status = "✅ В наличии" if item['quantity'] > 0 else "❌ Нет в наличии"
+                context += f"- {', '.join(parts)}: {status}\n"
         else:
-            context += "СТАТУС: НЕТ В НАЛИЧИИ ❌\n"
+            context += "СТАТУС: ДАННЫЕ О ВАРИАНТАХ ОТСУТСТВУЮТ\n"
         
         context += "-" * 20 + "\n\n"
             

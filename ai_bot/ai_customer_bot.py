@@ -179,8 +179,9 @@ class AICustomerBot:
         total_length = len(conversation_text)
         
         for msg in reversed(recent_messages):  # Идем с конца
-            role = "КЛИЕНТ" if msg['role'] == 'user' else "ТЫ (БОТ)"
-            msg_text = msg['text']
+            role_raw = msg.get('role', 'user')
+            role = "КЛИЕНТ" if role_raw == 'user' else "ТЫ (БОТ)"
+            msg_text = msg.get('text') or msg.get('content') or ""
             
             # Обрезаем слишком длинные сообщения
             if len(msg_text) > 300:
@@ -539,9 +540,11 @@ class AICustomerBot:
             messages = [{"role": "system", "content": self.system_prompt}]
             
             # Добавляем историю
-            for h in session['history'][-10:]: # Последние 10 сообщений
-                messages.append({"role": "user", "content": h['user']})
-                messages.append({"role": "assistant", "content": h['bot']})
+            recent_messages = session['history'][-10:] # Последние 10 сообщений
+            for msg in recent_messages:
+                role = "assistant" if msg.get('role') == 'assistant' else 'user'
+                content = msg.get('text') or msg.get('content') or ""
+                messages.append({"role": role, "content": content})
             
             # Добавляем текущий вопрос
             messages.append({"role": "user", "content": user_question})
@@ -638,8 +641,8 @@ class AICustomerBot:
             self._get_user_session(user_id)
             
         session = self.sessions[user_id]
-        session['history'].append({'role': 'user', 'text': user_text})
-        session['history'].append({'role': 'model', 'text': bot_text})
+        session['history'].append({'role': 'user', 'content': user_text})
+        session['history'].append({'role': 'assistant', 'content': bot_text})
         
         # Ограничиваем историю (последние 20 сообщений)
         if len(session['history']) > 20:

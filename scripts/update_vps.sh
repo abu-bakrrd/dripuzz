@@ -65,46 +65,18 @@ fi
 if [ -d "$APP_DIR/.git" ]; then
     print_step "Получение обновлений из Git..."
     
-    # Сохраняем локальные изменения в config/settings.json перед pull
-    CONFIG_FILE="$APP_DIR/config/settings.json"
-    CONFIG_BACKUP="$APP_DIR/config/settings.json.local"
+    cd $APP_DIR
     
-    if [ -f "$CONFIG_FILE" ]; then
-        # Проверяем, есть ли локальные изменения
-        cd $APP_DIR
-        if sudo -u $APP_USER git diff --quiet config/settings.json 2>/dev/null; then
-            # Нет локальных изменений
-            print_step "Локальных изменений в config/settings.json не обнаружено"
-        else
-            # Есть локальные изменения - сохраняем их
-            print_warning "Обнаружены локальные изменения в config/settings.json"
-            print_step "Сохранение локальных настроек..."
-            sudo -u $APP_USER cp "$CONFIG_FILE" "$CONFIG_BACKUP"
-        fi
-    fi
+    # Отбрасываем все локальные изменения и берем версию из GitHub
+    print_step "Отбрасывание локальных изменений..."
+    sudo -u $APP_USER git reset --hard HEAD
+    sudo -u $APP_USER git clean -fd
     
-    # Делаем pull
-    if sudo -u $APP_USER git pull; then
-        print_step "Код успешно обновлен из Git"
-        
-        # Восстанавливаем локальные изменения, если они были сохранены
-        if [ -f "$CONFIG_BACKUP" ]; then
-            print_step "Восстановление локальных настроек config/settings.json..."
-            sudo -u $APP_USER cp "$CONFIG_BACKUP" "$CONFIG_FILE"
-            print_warning "Локальные настройки восстановлены. Убедитесь, что они корректны."
-        fi
-    else
-        print_error "Ошибка при обновлении из Git"
-        print_warning "Попытка принудительного обновления с сохранением локальных изменений..."
-        
-        # Пытаемся использовать стратегию merge, которая сохранит локальные изменения
-        cd $APP_DIR
-        sudo -u $APP_USER git stash
-        sudo -u $APP_USER git pull
-        sudo -u $APP_USER git stash pop || true
-        
-        print_warning "Если есть конфликты, разрешите их вручную"
-    fi
+    # Получаем последнюю версию из GitHub
+    print_step "Загрузка обновлений из GitHub..."
+    sudo -u $APP_USER git pull
+    
+    print_step "Код успешно обновлен из GitHub"
 else
     print_warning "Git репозиторий не найден. Убедитесь, что вы вручную обновили файлы."
 fi

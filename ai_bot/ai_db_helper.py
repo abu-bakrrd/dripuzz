@@ -477,8 +477,8 @@ def get_pretty_product_info(product_id):
 # --- CORE AI FUNCTIONS (Requested) ---
 
 def search(keywords):
-    """Поиск товаров по ключевым словам для AI"""
-    results = search_products(keywords)
+    """Поиск всех подходящих товаров (включая под заказ)"""
+    results = search_products(keywords, include_out_of_stock=True)
     return results
 
 def catalog():

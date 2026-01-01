@@ -13,9 +13,9 @@ from groq import Groq
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ai_bot.ai_db_helper import (
-    search_products, get_product_details, get_catalog_titles, 
-    get_order_status, format_products_for_ai, get_pretty_product_info,
-    format_colors
+    search, info, catalog, order, in_stock,
+    format_products_for_ai, get_pretty_product_info,
+    format_colors, search_products
 )
 
 # Загружаем ключи

@@ -12,12 +12,14 @@ from dotenv import load_dotenv
 from datetime import datetime, timedelta
 import logging
 import traceback
+import requests
+import json
 
 # Добавляем родительскую директорию в путь для импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 4.7 (FULL DATA & ACCURACY)", flush=True)
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.0 (OPENROUTER INTELLIGENCE)", flush=True)
 
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles, get_pretty_product_info
@@ -55,22 +57,21 @@ class AICustomerBot:
         self.logger = logging.getLogger("AICustomerBot")
         self.logger.info("AICustomerBot initializing...")
 
-        # Инициализация Groq клиента
-        self.api_key = os.getenv('GROQ_API_KEY')
-        if not self.api_key:
-            self.logger.warning("GROQ_API_KEY not found in .env! AI will not work.")
+        # Инициализация OpenRouter
+        self.openrouter_key = os.getenv('OPENROUTER_API_KEY')
+        if not self.openrouter_key:
+            self.logger.warning("OPENROUTER_API_KEY not found in .env! AI will not work.")
             self.client = None
         else:
             try:
-                self.client = Groq(api_key=self.api_key)
-                
-                # Настройка моделей (основная и запасная)
-                self.primary_model = "qwen/qwen3-32b"
-                self.fallback_model = "meta-llama/llama-4-scout-17b-16e-instruct"
+                # Настройка моделей OpenRouter
+                self.primary_model = "google/gemini-2.0-flash-exp:free"
+                self.fallback_model = "google/gemini-flash-1.5:free"
                 self.model_name = self.primary_model
-                self.logger.info(f"Groq client initialized. Primary: {self.primary_model}, Fallback: {self.fallback_model}")
+                self.client = True # Флаг готовности
+                self.logger.info(f"OpenRouter initialized. Primary: {self.primary_model}")
             except Exception as e:
-                self.logger.error(f"Error initializing Groq client: {e}", exc_info=True)
+                self.logger.error(f"Error initializing AI: {e}", exc_info=True)
                 self.client = None
         
         # Хранилище сессий: {user_id: {'history': [], 'last_active': datetime, 'last_search_offset': int}}
@@ -96,10 +97,10 @@ class AICustomerBot:
         self.system_prompt = """
 Ты — **Mona**, элитный эксперт-консультант магазина мужской одежды Monvoir. Твоя миссия — не просто отвечать на вопросы, а сопровождать клиента в мире высокой моды, обеспечивая безупречный сервис и абсолютную точность данных.
 
-### 🧠 ТВОЯ ФИЛОСОФИЯ И ЛОГИКА (v4.6)
- Ты не просто бот, ты — интеллект. Твои инструменты имеют два режима:
-- **Внутренний (Мысли)**: Вызывай их для получения данных. **КРИТИЧЕСКИ ВАЖНО**: Прежде чем подтвердить наличие товара ("свитера"), проверь его Название в результатах `[ПОИСК]`. Если поиск по запросу "свитер" выдал "Ветровка", ты ОБЯЗАНА сказать, что свитеров нет, и только потом предложить ветровки как альтернативу. Не ври клиенту!
-- **Внешний (Ответ)**: Всегда оборачивай "Pretty-теги" в свой текст. Никогда не отправляй тег `[ИНФО]` или `[ТОВАРЫ]` в пустом сообщении. Добавляй приветственную фразу перед ним и вежливое завершение после.
+### 🧠 ТВОЯ ФИЛОСОФИЯ И ЛОГИКА (v5.0)
+ Ты не просто бот, ты — совершенный интеллект. Ты — элитная хозяйка бутика Monvoir.
+- **Внутренний (Мысли)**: Вызывай инструменты для получения точных данных. **КРИТИЧЕСКИ ВАЖНО**: Тщательно проверяй Названия товаров. Если поиск по "свитер" выдал "Ветровку", ты ОБЯЗАНА сообщить об отсутствии свитеров и предложить альтернативу. Никогда не путай категории!
+- **Внешний (Ответ)**: Твой голос — голос бренда. Всегда представляй свои находки (карточки) вежливо и завершай беседу вопросом или предложением помощи.
 
 #### 1. ТВОИ ИНСТРУМЕНТЫ:
 - **`[ПОИСК:запрос]`**: Твои глаза. Тщательно проверяй совпадение категории!
@@ -440,7 +441,7 @@ class AICustomerBot:
             welcome_text = f"""
 👋 Привет, <b>{username}</b>! 💕
 
-Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v4.7)
+Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.0)
 
 Я помогу тебе найти идеальные вещи и ответить на любые вопросы:
 
@@ -606,30 +607,17 @@ class AICustomerBot:
                     self.logger.info(f"Iteration {iteration} for user {user_id}")
                     
                     if not self.client:
-                        raise Exception("Groq client not initialized")
+                        raise Exception("AI client not initialized")
 
                     try:
-                        completion = self.client.chat.completions.create(
-                            model=self.model_name,
-                            messages=messages,
-                            temperature=0.1,
-                            max_tokens=2048
-                        )
+                        ai_response_raw = self._call_openrouter(messages)
+                        if not ai_response_raw:
+                            raise Exception("Empty response from OpenRouter")
                     except Exception as e:
-                        if "429" in str(e) and self.model_name == self.primary_model:
-                            self.logger.warning(f"Primary model {self.primary_model} rate limited (429). Switching to fallback {self.fallback_model}.")
-                            self.model_name = self.fallback_model
-                            # Повторяем запрос с запасной моделью
-                            completion = self.client.chat.completions.create(
-                                model=self.model_name,
-                                messages=messages,
-                                temperature=0.1,
-                                max_tokens=2048
-                            )
-                        else:
-                            raise e
+                        self.logger.error(f"API Error: {e}")
+                        raise e
                     
-                    ai_response = self._clean_thinking_tags(completion.choices[0].message.content)
+                    ai_response = self._clean_thinking_tags(ai_response_raw)
                     last_ai_response = ai_response
                     
                     # Ищем теги
@@ -720,7 +708,7 @@ class AICustomerBot:
                 final_response = final_response.replace('[КАТАЛОГ]', '').strip()
                 
                 if final_response:
-                    if greeting_needed and "Mona" in final_response:
+                    if greeting_needed:
                         session['is_greeted'] = True
                         self.logger.info(f"Greeting marked for user {user_id}")
                     
@@ -775,9 +763,46 @@ class AICustomerBot:
             print(f"❌ Ошибка Forward: {e}")
             self.bot.send_message(message.chat.id, "Ошибка отправки.")
 
+    
+    def _call_openrouter(self, messages):
+        """Метод для прямого вызова API OpenRouter"""
+        try:
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {self.openrouter_key}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://monvoir.shop", # Опционально для OpenRouter
+                "X-Title": "Monvoir Mona AI" # Опционально для OpenRouter
+            }
+            
+            data = {
+                "model": self.model_name,
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 2048
+            }
+            
+            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=60)
+            
+            if response.status_code != 200:
+                self.logger.error(f"OpenRouter Error {response.status_code}: {response.text}")
+                # Пробуем переключиться на fallback если 429 или 5xx
+                if response.status_code in [429, 500, 502, 503, 504] and self.model_name == self.primary_model:
+                    self.logger.warning(f"Switching to fallback model {self.fallback_model}")
+                    self.model_name = self.fallback_model
+                    data["model"] = self.model_name
+                    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=60)
+                
+            response.raise_for_status()
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        except Exception as e:
+            self.logger.error(f"Error calling OpenRouter: {e}")
+            return None
+
     def run(self):
         """Запуск бота в режиме polling"""
-        print("🤖 AI Customer Bot запущен и готов к работе (v4.7 STABLE)...")
+        print("🤖 AI Customer Bot запущен и готов к работе (v5.0 STABLE)...")
         print(f"✅ Модель: {self.model_name if self.client else 'Не подключена'}")
         print("✅ Память: включена (тайм-аут 6 часов)")
         print(f"📊 Бот: @{self.bot.get_me().username}")

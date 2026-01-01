@@ -19,7 +19,7 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 6.0 (THE BOUTIQUE ENGINE - JSON)", flush=True)
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 6.1 (EMERGENCY RESILIENCE)", flush=True)
 
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles, get_pretty_product_info
@@ -64,16 +64,17 @@ class AICustomerBot:
             self.client = None
         else:
             try:
-                # Настройка цепочки моделей для максимальной стабильности
+                # Настройка цепочки моделей (ТОЛЬКО проверенные на Jan 2026)
                 self.models_priority = [
                     "google/gemini-2.0-flash-exp:free",
-                    "meta-llama/llama-3.3-70b-instruct:free",
-                    "google/gemini-flash-1.5-8b",
-                    "mistralai/mistral-7b-instruct:free"
+                    "meta-llama/llama-3.1-8b-instruct:free",
+                    "qwen/qwen-2.5-72b-instruct:free",
+                    "google/gemini-flash-1.5",
+                    "meta-llama/llama-3.3-70b-instruct:free"
                 ]
                 self.model_name = self.models_priority[0]
                 self.client = True # Флаг готовности
-                self.logger.info(f"OpenRouter Resilience v5.6. Models: {self.models_priority}")
+                self.logger.info(f"Mona v6.1 Resilience: {self.models_priority}")
             except Exception as e:
                 self.logger.error(f"Error initializing AI: {e}", exc_info=True)
                 self.client = None
@@ -444,7 +445,7 @@ class AICustomerBot:
             welcome_text = f"""
 👋 Привет, <b>{username}</b>! 💕
 
-Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v6.0)
+Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v6.1)
 
 Я помогу тебе найти идеальные вещи и ответить на любые вопросы:
 
@@ -616,7 +617,12 @@ class AICustomerBot:
 
                     ai_response_raw = self._call_openrouter(messages)
                     if not ai_response_raw:
-                        raise Exception("Empty response from OpenRouter")
+                        # Если совсем беда, Мона вежливо просит минутку
+                        self.logger.error("AI SILENCE: All models failed to respond.")
+                        last_ai_response = {
+                            "response": "✨ <i>В нашем онлайн-бутике сейчас очень много гостей. Я внимательно изучаю Ваш вопрос, пожалуйста, подождите минутку...</i> 💖"
+                        }
+                        break
                     
                     # Извлекаем JSON из ответа
                     ai_data = self._extract_json(ai_response_raw)
@@ -814,14 +820,20 @@ class AICustomerBot:
                     result = response.json()
                     content = result.get('choices', [{}])[0].get('message', {}).get('content')
                     if content:
-                        # Если успешно, запоминаем работающую модель (опционально)
                         return content
                 
-                # Если 429 или 404 (модель не найдена) -> Переключаемся на следующую
-                if response.status_code in [429, 404, 500, 502, 503, 504]:
-                    self.logger.warning(f"Error {response.status_code} with {model_to_use}. Switching model...")
+                # Если 429 (Rate Limit) -> Специальное ожидание
+                if response.status_code == 429:
+                    self.logger.warning(f"429 Rate Limit for {model_to_use}. Backing off 1.5s...")
+                    time.sleep(1.5) # Даем серверу передышку
                     current_model_idx = (current_model_idx + 1) % len(self.models_priority)
-                    time.sleep(retry_delay)
+                    continue
+
+                # Если 404 или ошибки сервера
+                if response.status_code in [404, 500, 502, 503, 504]:
+                    self.logger.warning(f"Error {response.status_code} with {model_to_use}. Skipping model.")
+                    current_model_idx = (current_model_idx + 1) % len(self.models_priority)
+                    time.sleep(0.5)
                     continue
                 
                 else:
@@ -862,7 +874,7 @@ class AICustomerBot:
 
     def run(self):
         """Запуск бота в режиме polling"""
-        print("🤖 AI Customer Bot запущен и готов к работе (v6.0 JSON)...")
+        print("🤖 AI Customer Bot запущен и готов к работе (v6.1 RESILIENCE)...")
         print(f"✅ Модель: {self.model_name if self.client else 'Не подключена'}")
         print("✅ Память: включена (тайм-аут 6 часов)")
         print(f"📊 Бот: @{self.bot.get_me().username}")

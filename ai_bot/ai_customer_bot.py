@@ -209,7 +209,7 @@ class MonaBot:
             variants = []
             for item in p.get('inventory', [])[:4]: # Не более 4 вариантов для компактности
                 parts = []
-                if item.get('color'): parts.append(format_colors([item['color']]))
+                if item.get('color'): parts.append(db_helper.format_colors([item['color']]))
                 if item.get('attribute1_value'): parts.append(item['attribute1_value'])
                 v_str = " ".join(parts)
                 if v_str and v_str not in variants: variants.append(v_str)

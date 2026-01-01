@@ -117,25 +117,61 @@ class MonaBot:
 
     # --- AI CORE: Thinking Process ---
     def _ai_think(self, messages):
-        """Запрос к мозгу Groq. Возвращает сложный JSON-план."""
+        """Запрос к мозгу Groq с системой Fallback (перебор моделей при 429)."""
         if not self.groq:
             return {"thoughts": "No brain", "action": {"tool": "none"}, "response": "🧠 Мозг отключен (нет API Key)."}
         
-        try:
-            # Добавляем системный промпт в начало всегда
-            full_msgs = [{"role": "system", "content": self.system_prompt}] + messages
-            
-            completion = self.groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=full_msgs,
-                temperature=0.1, # Максимальная точность
-                response_format={"type": "json_object"}
-            )
-            raw = completion.choices[0].message.content
-            return json.loads(raw)
-        except Exception as e:
-            self.logger.error(f"Brain Freeze: {e}")
-            return None
+        # Приоритетный список моделей
+        MODELS = [
+            "meta-llama/llama-4-scout-17b-16e-instruct",
+            "qwen/qwen3-32b",
+            "llama-3.3-70b-versatile",
+            "openai/gpt-oss-120b"
+        ]
+        
+        last_error = ""
+        wait_time = "несколько секунд"
+
+        for model_name in MODELS:
+            try:
+                self.logger.info(f"🤖 Пытаюсь использовать модель: {model_name}")
+                full_msgs = [{"role": "system", "content": self.system_prompt}] + messages
+                
+                completion = self.groq.chat.completions.create(
+                    model=model_name,
+                    messages=full_msgs,
+                    temperature=0.1,
+                    response_format={"type": "json_object"}
+                )
+                raw = completion.choices[0].message.content
+                return json.loads(raw)
+
+            except Exception as e:
+                err_msg = str(e).lower()
+                self.logger.warning(f"⚠️ Модель {model_name} дала сбой: {e}")
+                
+                # Если это ошибка лимитов (429) - пробуем следующую
+                if "429" in err_msg or "rate limit" in err_msg:
+                    last_error = "overloaded"
+                    # Пытаемся вытащить время ожидания (часто есть в тексте ошибки Groq)
+                    # Пример: "Please try again in 15s"
+                    match = re.search(r'in (\d+m?\s?\d*s)', err_msg)
+                    if match:
+                        wait_time = match.group(1)
+                    continue 
+                else:
+                    # Если ошибка другая (например, 404 модель не найдена или 400), лучше тоже попробовать другую
+                    continue
+
+        # Если дошли сюда - все модели упали или перегружены
+        if last_error == "overloaded":
+            return {
+                "thoughts": "All models are overloaded.",
+                "action": {"tool": "none"},
+                "response": f"✨ Извините, сейчас мои нейронные цепи немного перегружены заказами. Пожалуйста, напишите мне снова через {wait_time}. 🙏"
+            }
+        
+        return None
 
     # --- DATA CORE: Action Execution ---
     def _execute_tool(self, action_data, session):

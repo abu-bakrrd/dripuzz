@@ -210,9 +210,11 @@ class MonaBot:
             # Показываем, что бот "печатает" (думает)
             self.bot.send_chat_action(m.chat.id, 'typing')
 
-            # Формируем историю для контекста (последние 6 сообщений)
-            context_messages = session['history'][-6:]
+            # Формируем историю для контекста (последние 20 сообщений)
+            context_messages = session['history'][-20:]
             context_messages.append({"role": "user", "content": user_text})
+            # Начинаем записывать текущий ход в историю сессии
+            session['history'].append({"role": "user", "content": user_text})
 
             try:
                 # === ORCHESTRATION LOOP (Think -> Act -> See) ===
@@ -243,20 +245,23 @@ class MonaBot:
                     tool_result = self._execute_tool(action, session)
                     self.logger.info(f"👁 SEE: {str(tool_result)[:50]}...")
                     
-                    # D. FEEDBACK: Добавляем результат в контекст
-                    context_messages.append({"role": "assistant", "content": json.dumps(ai_plan, ensure_ascii=False)})
-                    context_messages.append({"role": "user", "content": f"SYSTEM_OBSERVATION: {tool_result}"})
+                    # D. FEEDBACK: Добавляем в локальный контекст И в историю сессии
+                    assistant_msg = {"role": "assistant", "content": json.dumps(ai_plan, ensure_ascii=False)}
+                    observation_msg = {"role": "user", "content": f"SYSTEM_OBSERVATION: {tool_result}"}
+                    
+                    context_messages.append(assistant_msg)
+                    context_messages.append(observation_msg)
+                    
+                    session['history'].append(assistant_msg)
+                    session['history'].append(observation_msg)
                 
                 # === FINAL RESPONSE ===
-                # Мона полностью ответственна за финальный текст
                 final_msg = final_ai_response.get("response", "✨")
-                
                 self.bot.send_message(m.chat.id, final_msg, parse_mode='HTML', disable_web_page_preview=True)
                 
-                # Сохраняем в историю пользователя
-                session['history'].append({"role": "user", "content": user_text})
+                # Сохраняем финальный ответ в историю
                 session['history'].append({"role": "assistant", "content": json.dumps(final_ai_response, ensure_ascii=False)})
-                session['history'] = session['history'][-6:] # Лимит 6 сообщений
+                session['history'] = session['history'][-20:] # Лимит 20 сообщений
 
             except Exception as e:
                 self.logger.error(f"Main Loop Error: {e}")

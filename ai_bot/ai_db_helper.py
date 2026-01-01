@@ -591,14 +591,23 @@ def get_order_status(order_id, detailed=True):
             if has_backorder:
                 delivery_info += " <i>(под заказ)</i>"
             
-            # КРАТКАЯ ВЕРСИЯ (ПО УМОЛЧАНИЮ ДЛЯ ПОЛЬЗОВАТЕЛЯ)
-            if not detailed:
-                short_msg = (
-                    f"🛍 <b>Заказ #{order['id'].split('-')[0].upper()}</b>\n\n"
-                    f"🔄 <b>Статус:</b> {status_text}\n"
-                    f"{delivery_info}"
-                )
-                return short_msg
+            # ВСЕГДА ВОЗВРАЩАЕМ ПОЛНУЮ ИНФОРМАЦИЮ (для v4.7 клиента)
+            full_msg = (
+                f"🛍 <b>Заказ #{order['id'].split('-')[0].upper()}</b>\n"
+                f"📅 <b>Дата:</b> {created_at.strftime('%d.%m.%Y')}\n"
+                f"🔄 <b>Статус:</b> {status_text}\n"
+                f"{delivery_info}\n"
+                f"💳 <b>Оплата:</b> {order.get('payment_method', 'Карта/Наличные')}\n"
+                f"\n🛒 <b>Состав:</b>\n"
+            )
+            
+            for item in items:
+                item_line = f"• {item['name']} (x{item['quantity']})"
+                if item.get('selected_color'):
+                    item_line += f", {item['selected_color']}"
+                full_msg += f"{item_line}\n"
+
+            return full_msg
 
             # ПОЛНАЯ ВЕРСИЯ (ДЛЯ ИСТОРИИ И AI)
             details = f"🛍 <b>ЗАКАЗ #{order['id']}</b>\n"

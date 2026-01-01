@@ -286,13 +286,17 @@ def search_products(query, include_out_of_stock=False):
             params.extend([p, p, p])
 
         sql = f'''
-            SELECT p.id, p.name, p.price, p.description, c.name as category_name
+            SELECT p.id, p.name, p.price, p.description, c.name as category_name,
+                   (CASE WHEN LOWER(p.name) LIKE %s THEN 2 ELSE 1 END) as rank
             FROM products p
             LEFT JOIN categories c ON p.category_id = c.id
             WHERE {inventory_clause} AND ({" OR ".join(conditions)})
+            ORDER BY rank DESC, p.name ASC
             LIMIT 10
         '''
-        cur.execute(sql, tuple(params))
+        # Добавляем первый параметр для ранжирования (по первому слову)
+        first_word = f'%{words[0]}%'
+        cur.execute(sql, (first_word,) + tuple(params))
         products = cur.fetchall()
 
         for p in products:
@@ -479,14 +483,13 @@ def get_pretty_product_info(product_id):
 def search(keywords):
     """Поиск всех подходящих товаров (включая под заказ). Возвращает JSON."""
     results = search_products(keywords, include_out_of_stock=True)
-    # Оставляем только нужные поля, чтобы не перегружать контекст
     clean_res = []
     for p in results:
         clean_res.append({
             "id": p['id'],
             "name": p['name'],
             "price": p['price'],
-            "in_stock": sum(i.get('quantity', 0) for i in p.get('inventory', [])) > 0
+            "inventory": p.get('inventory', []) # Передаем инвентарь для UI
         })
     return json.dumps(clean_res, ensure_ascii=False)
 
@@ -550,10 +553,14 @@ def in_stock(start=0, stop=5):
                     "id": pid,
                     "name": item['name'],
                     "price": item['price'],
-                    "stock": []
+                    "inventory": [] # Используем 'inventory' везде
                 }
             color_name = hex_to_color_name(item['color']) if '#' in str(item['color']) else item['color']
-            products[pid]["stock"].append(f"{color_name}/{item['size']}:{item['quantity']}")
+            products[pid]["inventory"].append({
+                "color": color_name,
+                "attribute1_value": item['size'],
+                "quantity": item['quantity']
+            })
             
         return json.dumps(list(products.values()), ensure_ascii=False)
     except Exception as e:

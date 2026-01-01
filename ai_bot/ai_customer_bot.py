@@ -205,8 +205,14 @@ class MonaBot:
         
         lines = []
         for idx, p in enumerate(batch, offset + 1):
-            # Проверяем наличие хотя бы 1 единицы
-            total_qty = sum(item.get('quantity', 0) for item in p.get('inventory', []))
+            # Универсальный расчет остатка (через inventory или in_stock boolean)
+            inv = p.get('inventory', [])
+            total_qty = sum(item.get('quantity', 0) for item in inv) if isinstance(inv, list) else 0
+            
+            # Если инвентарь пуст, но есть пометка in_stock (для старых инструментов)
+            if not inv and p.get('in_stock'):
+                total_qty = 1
+            
             status_icon = "✅" if total_qty > 0 else "⏳"
             
             url = f"https://monvoir.shop/product/{p['id']}"

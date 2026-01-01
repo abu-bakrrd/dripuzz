@@ -473,7 +473,7 @@ def format_products_for_ai(products):
     Форматирует список товаров в ТЕКСТ для AI (с описанием и всеми деталями)
     """
     if not products:
-        return "В базе данных нет товаров."
+        return "[SYSTEM_REPORT: NO_PRODUCTS_FOUND_FOR_THIS_QUERY]"
     
     context = "=== DATABASE_RAW_DATA (FOR_INTERNAL_USE_ONLY) ===\n\n"
     
@@ -484,16 +484,23 @@ def format_products_for_ai(products):
         context += f"db_description: {product.get('description') or 'NULL_DATA'}\n"
         
         inventory = product.get('inventory', [])
+        total_qty = 0
         if inventory:
             context += "INVENTORY_MATRIX:\n"
             for item in inventory:
                 color = format_colors([item['color']]) if item.get('color') else "N/A"
                 size = item.get('attribute1_value') or "N/A"
                 qty = item.get('quantity', 0)
+                total_qty += qty
                 status = "IN_STOCK" if qty > 0 else "OUT_OF_STOCK"
                 context += f"- VARIANT: [Color: {color}, Size: {size}] -> STATUS: {status} (Qty: {qty})\n"
-        else:
-            context += "INVENTORY_STATUS: NO_DATA_FOUND\n"
+        
+        # Резюме для ИИ, чтобы он не гадал
+        overall_status = "AVAILABLE_IN_STOCK" if total_qty > 0 else "OUT_OF_STOCK"
+        context += f"TOTAL_STOCK_STATUS: {overall_status} (Total Qty: {total_qty})\n"
+        
+        if not inventory:
+            context += "INVENTORY_STATUS: NO_DATA_FOUND (Contact manager to verify stock)\n"
         
         context += f"SYSTEM_UID_KEEP_SECRET: {product['id']}\n"
         context += "=== END_ENTRY ===\n\n"

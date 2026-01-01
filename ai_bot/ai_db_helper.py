@@ -527,10 +527,11 @@ def get_categories():
         return []
 
 
-def get_order_status(order_id, detailed=True):
+def get_order_status(order_id, detailed=True, internal_raw=False):
     """
     Получить статус заказа по ID
     detailed: Если False, возвращает только статус и дату доставки (для краткого ответа)
+    internal_raw: Если True, возвращает плоский текст для AI
     """
     try:
         conn = get_db_connection()
@@ -543,9 +544,6 @@ def get_order_status(order_id, detailed=True):
             conn.close()
             return "Сайт пока не поддерживает отслеживание заказов через бота."
             
-        # Создаем новый курсор для второго запроса
-        cur = conn.cursor()
-        
         # 1. Поиск по началу ID (стандартный)
         cur.execute('''
             SELECT id, status, total, created_at, delivery_address, customer_name, customer_phone, payment_method,
@@ -577,22 +575,27 @@ def get_order_status(order_id, detailed=True):
                 'reviewing': '🧐 На проверке'
             }
             status_text = status_map.get(order['status'], order['status'])
-            
-            # Формируем детальный отчет
             created_at = order['created_at']
-            
-            # Вычисляем дату доставки на основе реальных данных из базы
+
+            # Если нужен плоский текст для AI
+            if internal_raw:
+                raw_info = f"ORDER_ID: {order['id']}\n"
+                raw_info += f"STATUS: {order['status']} ({status_text})\n"
+                raw_info += f"TOTAL: {order['total']} сум\n"
+                raw_info += f"DATE: {created_at.strftime('%Y-%m-%d')}\n"
+                raw_info += f"ITEMS: {len(items)} items\n"
+                for i in items:
+                    raw_info += f"- {i['name']} (x{i['quantity']}): {i['price']} сум, Color: {i['selected_color']}, Size: {i['selected_attributes']}\n"
+                return raw_info
+
+            # Формируем детальный отчет
             if order.get('backorder_delivery_date'):
-                # Если есть точная дата доставки для под заказ - используем её
                 est_delivery = order['backorder_delivery_date']
             elif order.get('estimated_delivery_days'):
-                # Если есть количество дней - вычисляем дату
                 est_delivery = created_at + timedelta(days=order['estimated_delivery_days'])
             else:
-                # Fallback: используем стандартные 2 дня (для старых заказов)
                 est_delivery = created_at + timedelta(days=2)
             
-            # Формируем информацию о доставке с учетом под заказ
             has_backorder = order.get('has_backorder', False)
             delivery_info = f"📅 <b>Доставка:</b> ~{est_delivery.strftime('%d.%m.%Y')}"
             if has_backorder:

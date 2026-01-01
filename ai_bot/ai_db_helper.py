@@ -523,10 +523,14 @@ def info(product_id):
 def in_stock(start=0, stop=5):
     """Список товаров в наличии. Возвращает JSON."""
     try:
+        # Принудительно приводим к int, если AI прислал строки
+        start = int(start)
+        stop = int(stop)
+        
         conn = get_db_connection()
         cur = conn.cursor()
         
-        limit = stop - start
+        limit = max(0, stop - start)
         offset = start
         
         cur.execute('''

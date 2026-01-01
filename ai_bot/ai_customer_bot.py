@@ -15,123 +15,55 @@ import traceback
 import requests
 import json
 
-# ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 7.0 (THE REBIRTH)", flush=True)
+from ai_bot.ai_engine import MonaAI
 
 # Добавляем родительскую директорию в путь для импорта
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import re
-from ai_bot.ai_db_helper import (
-    get_all_products_info, search_products, format_products_for_ai, 
-    get_order_status, get_product_details, get_catalog_titles, get_pretty_product_info,
-    format_colors
-)
 
 # Загрузка переменных окружения
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
 load_dotenv(env_path)
 
 class AICustomerBot:
-    """Mona v7.0 - Элитный AI-движок бутика Monvoir"""
+    """Mona v7.0 - Telegram Интерфейс элитного бутика Monvoir"""
     
     def __init__(self, bot_token, gemini_key):
         self.bot = telebot.TeleBot(bot_token)
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            handlers=[logging.FileHandler("ai_bot.log", encoding='utf-8'), logging.StreamHandler(sys.stdout)]
-        )
-        self.logger = logging.getLogger("Mona7")
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.logger = logging.getLogger("MonaBot")
         
-        # Интеграция Groq (Основное сердце)
-        self.groq_key = os.getenv('GROQ_API_KEY')
-        self.groq = Groq(api_key=self.groq_key) if self.groq_key else None
-        
-        # Интеграция Gemini (Запасной интеллект)
-        self.gemini_key = gemini_key
+        # Инициализация ИИ-движка (Набор готовых функций)
+        self.ai = MonaAI()
         
         self.sessions = {}
         self.ADMIN_ID = 5644397480
         self.waiting_for_support = set()
-        self.waiting_for_search = set()
-        self.support_messages = {}
-
-        self.system_prompt = """
-### 💎 MONA v7.0: ЭЛИТНЫЙ ПРОТОКОЛ
-Ты — Mona, голос бренда Monvoir. Твой интеллект работает на данных, а стиль — на безупречности.
-
-#### 📤 ФОРМАТ ОТВЕТА (JSON):
-Ты всегда отвечаешь ТОЛЬКО структурированным JSON:
-{
-  "thoughts": "Твоя стратегия (почему ты делаешь это действие).",
-  "action": { "tool": "search|info|catalog|order", "args": { "query": "str", "id": "id" } },
-  "response": "Итоговый, роскошный ответ для клиента (используй [ИНФО:id], [ТОВАРЫ:0,5], [ЗАКАЗ:id])."
-}
-
-#### 🛠 ИНСТРУМЕНТЫ:
-- `search`: Поиск ID товаров.
-- `info`: Детальные данные из базы (наличие, размеры). **Всегда проверяй info перед тем как подтвердить наличие.**
-- `catalog`: Список всех категорий.
-- `order`: Проверка статуса заказа.
-
-#### 🎨 ПРАВИЛА БРЕНДА:
-- Не используй [ТОВАРЫ], если не уверена в ID.
-- Если товара нет, предложи альтернативу из той же категории.
-- Никогда не упоминай технические детали (JSON, ID) или названия инструментов (search, info, order) в поле 'response'.
-"""
         self._register_handlers()
 
     def _get_session(self, user_id):
         if user_id not in self.sessions:
-            self.sessions[user_id] = {'history': [], 'last_active': datetime.now(), 'greeted': False}
+            self.sessions[user_id] = {'history': [], 'last_active': datetime.now()}
         return self.sessions[user_id]
-
-    def _call_ai(self, messages):
-        """Прямой вызов Groq с мгновенным ответом"""
-        try:
-            if not self.groq: return None
-            completion = self.groq.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages,
-                temperature=0.1,
-                response_format={"type": "json_object"}
-            )
-            return completion.choices[0].message.content
-        except Exception as e:
-            self.logger.error(f"Groq Error: {e}")
-            return None
-
-    def _extract_json(self, text):
-        try:
-            return json.loads(text)
-        except:
-            match = re.search(r'(\{.*\})', text, re.DOTALL)
-            if match:
-                try: return json.loads(match.group(1))
-                except: pass
-        return None
 
     def _register_handlers(self):
         @self.bot.message_handler(commands=['start'])
         def welcome(m):
             session = self._get_session(m.from_user.id)
             session['history'] = []
-            msg = "✨ <b>Mona v7.0 приветствует Вас!</b>\n\nЯ Ваш персональный гид в мире Monvoir. Чем я могу быть полезна сегодня? 👗👔"
+            msg = "✨ <b>Mona v7.0 приветствует Вас!</b>\nЧем я могу быть полезна сегодня?"
             self.bot.send_message(m.chat.id, msg, parse_mode='HTML')
 
         @self.bot.message_handler(commands=['manager'])
         def manager(m):
             self.waiting_for_support.add(m.from_user.id)
-            self.bot.send_message(m.chat.id, "👨‍💼 Напишите Ваш вопрос, и я передам его менеджеру.")
+            self.bot.send_message(m.chat.id, "👨‍💼 Напишите Ваш вопрос менеджеру.")
 
         @self.bot.message_handler(func=lambda m: m.chat.id == self.ADMIN_ID and m.reply_to_message)
         def admin_reply(m):
-            # Простой форвард ответа админа (логика v7.0 - все через reply)
             try:
                 self.bot.send_message(m.reply_to_message.forward_from.id, f"👨‍💼 <b>Ответ менеджера:</b>\n\n{m.text}", parse_mode='HTML')
-                self.bot.reply_to(m, "✅ Ответ отправлен.")
-            except: self.bot.reply_to(m, "❌ Не удалось отправить (пользователь скрыт или бот заблокирован).")
+                self.bot.reply_to(m, "✅ Отправлено.")
+            except: self.bot.reply_to(m, "❌ Ошибка отправки.")
 
         @self.bot.message_handler(content_types=['text', 'photo'])
         def handle(m):
@@ -139,135 +71,66 @@ class AICustomerBot:
             if user_id in self.waiting_for_support:
                 self.bot.forward_message(self.ADMIN_ID, m.chat.id, m.message_id)
                 self.waiting_for_support.remove(user_id)
-                self.bot.send_message(m.chat.id, "✅ Ваш запрос отправлен.")
+                self.bot.send_message(m.chat.id, "✅ Отправлено.")
                 return
 
             session = self._get_session(user_id)
             user_text = m.text or "[Фото]"
             self.bot.send_chat_action(m.chat.id, 'typing')
 
-            messages = [{"role": "system", "content": self.system_prompt}]
-            for h in session['history'][-8:]: messages.append(h)
+            # 1. Формируем контекст
+            messages = session['history'][-8:]
             messages.append({"role": "user", "content": user_text})
 
             try:
+                # ЦИКЛ ОРКЕСТРАЦИИ (Request -> See -> Think -> Respond)
                 iteration = 0
-                final_json = {"response": "✨ Я уточняю информацию..."}
+                final_data = {"response": "✨ Я уточняю информацию..."}
+                
                 while iteration < 3:
                     iteration += 1
-                    raw = self._call_ai(messages)
-                    data = self._extract_json(raw) if raw else None
-                    if not data: break
+                    # A. Запрос к ИИ (Get Information Request)
+                    ai_json = self.ai.generate(messages)
+                    if not ai_json: break
                     
-                    final_json = data
-                    action = data.get("action", {})
-                    tool = action.get("tool")
+                    final_data = ai_json
+                    action = ai_json.get("action", {})
                     
-                    if not tool or tool == "none": break
+                    # B. Проверка, нужно ли действие (Act)
+                    if not action or action.get("tool") == "none":
+                        break
+                        
+                    # C. Получение данных (See)
+                    result = self.ai.execute_action(action, session)
+                    self.logger.info(f"Mona v7.0 Data Result: {result[:50]}...")
                     
-                    # Выполнение инструментов
-                    result = "Data not found."
-                    if tool == "search":
-                        res = search_products(action.get("args", {}).get("query", ""))
-                        session['last_results'] = res
-                        result = f"FOUND_IDS: {[{'id':p['id'], 'name':p['name']} for p in res]}"
-                    elif tool == "info":
-                        res = get_product_details(action.get("args", {}).get("id", ""))
-                        result = format_products_for_ai([res]) if res else "Not found."
-                    elif tool == "catalog":
-                        result = str(get_catalog_titles())
-                    elif tool == "order":
-                        result = get_order_status(action.get("args", {}).get("id", ""))
-
-                    self.logger.info(f"Mona v7.0 Tool [{tool}]: {result[:100]}...")
-                    messages.append({"role": "assistant", "content": json.dumps(data, ensure_ascii=False)})
+                    # D. Добавление данных в контекст для "обдумывания" (Think)
+                    messages.append({"role": "assistant", "content": json.dumps(ai_json, ensure_ascii=False)})
                     messages.append({"role": "user", "content": f"SYSTEM_RESULT: {result}"})
                 
-                # Пост-процессинг ответа
-                resp = final_json.get("response", "✨ Я уточняю информацию...")
-                
-                # Замена тегов [ИНФО:id]
-                for match in re.findall(r'\[ИНФО:([^\]]+)\]', resp):
-                    resp = resp.replace(f"[ИНФО:{match}]", get_pretty_product_info(match.strip()))
-                
-                # Замена тегов [ТОВАРЫ:start,stop]
-                tag_tov = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', resp)
-                if tag_tov:
-                    start, stop = int(tag_tov.group(1)), int(tag_tov.group(2))
-                    list_text = self._get_formatted_products(session.get('last_results', []), start, stop-start)
-                    resp = resp.replace(tag_tov.group(0), list_text or "Цены и наличие уточняйте у менеджера.")
+                # 2. Финальное оформление ответа (UI Format)
+                resp_text = final_data.get("response", "✨")
+                formatted_resp = self.ai.format_ui(resp_text, session)
 
-                # Замена тегов [ЗАКАЗ:id]
-                for match in re.findall(r'\[ЗАКАЗ:([^\]]+)\]', resp):
-                    resp = resp.replace(f"[ЗАКАЗ:{match}]", get_order_status(match.strip(), detailed=True))
-
-                self.bot.send_message(m.chat.id, resp, parse_mode='HTML', disable_web_page_preview=True)
+                # 3. Отправка и сохранение истории
+                self.bot.send_message(m.chat.id, formatted_resp, parse_mode='HTML', disable_web_page_preview=True)
                 session['history'].append({"role": "user", "content": user_text})
-                session['history'].append({"role": "assistant", "content": json.dumps(final_json, ensure_ascii=False)})
+                session['history'].append({"role": "assistant", "content": json.dumps(final_data, ensure_ascii=False)})
                 
             except Exception as e:
                 self.logger.error(f"Handle Error: {e}")
-                self.bot.send_message(m.chat.id, "✨ Произошла небольшая заминка. Повторите запрос через секунду.")
-
-    def _get_formatted_products(self, products, offset=0, limit=10):
-        """Форматирует список товаров для Telegram (красивый UI)"""
-        if not products: return ""
-        
-        # Только товары в наличии (хотя search_products в v7.0 уже может их фильтровать)
-        in_stock = [p for p in products if any(item.get('quantity', 0) > 0 for item in p.get('inventory', []))]
-        if not in_stock: return ""
-        
-        batch = in_stock[offset:offset + limit]
-        if not batch: return ""
-            
-        lines = []
-        for idx, p in enumerate(batch, offset + 1):
-            url = f"https://monvoir.shop/product/{p['id']}"
-            price = f"{p['price']:,} сум".replace(',', ' ')
-            line = f"{idx}. <a href=\"{url}\"><b>{p['name']}</b></a> — <b>{price}</b> ✅"
-            
-            # Варианты (цвета/размеры)
-            variants = []
-            for item in p.get('inventory', [])[:5]:
-                v_parts = []
-                if item.get('color'): v_parts.append(format_colors([item['color']]))
-                if item.get('attribute1_value'): v_parts.append(item['attribute1_value'])
-                if item.get('attribute2_value'): v_parts.append(item['attribute2_value'])
-                v_str = ", ".join(v_parts)
-                if v_str and v_str not in variants: variants.append(v_str)
-            
-            if variants:
-                line += f"\n   <i>{'; '.join(variants)}</i>"
-            lines.append(line)
-        
-        return "\n\n".join(lines)
+                self.bot.send_message(m.chat.id, "✨ Произошла небольшая заминка. Повторите запрос.")
 
     def run(self):
         print("💎 Mona v7.0: The Rebirth запущен")
         self.bot.infinity_polling()
 
-
 def main():
-    """Главная функция запуска бота"""
-    # Получаем токены из переменных окружения
     bot_token = os.getenv('AI_BOT_TOKEN')
     gemini_key = os.getenv('GEMINI_API_KEY')
-    
-    if not bot_token:
-        print("❌ ОШИБКА: AI_BOT_TOKEN не найден в переменных окружения!")
-        return
-    
-    if not gemini_key:
-        print("❌ ОШИБКА: GEMINI_API_KEY не найден в переменных окружения!")
-        return
-    
-    # Создаем и запускаем бота
-    try:
+    if bot_token:
         bot = AICustomerBot(bot_token, gemini_key)
         bot.run()
-    except Exception as e:
-        print(f"❌ Ошибка запуска бота: {e}")
-
 
 if __name__ == "__main__":
     main()

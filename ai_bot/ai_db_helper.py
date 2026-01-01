@@ -271,8 +271,9 @@ def search_products(query, include_out_of_stock=False):
         cur = conn.cursor()
 
         # Очистка запроса
+        clean_query = re.sub(r'[!?.,;:]', '', norm_query)
         stop_words = {'есть', 'ли', 'у', 'вас', 'цена', 'сколько', 'стоит', 'покажи', 'найди', 'хочу', 'купить', 'в наличии'}
-        words = [w for w in norm_query.split() if w not in stop_words and len(w) > 2]
+        words = [w for w in clean_query.split() if w not in stop_words and len(w) > 2]
         
         if not words: words = [norm_query]
 

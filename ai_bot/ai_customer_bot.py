@@ -19,7 +19,7 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.0 (OPENROUTER INTELLIGENCE)", flush=True)
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.1 (STABILITY & LOGIC HARDENING)", flush=True)
 
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles, get_pretty_product_info
@@ -90,24 +90,24 @@ class AICustomerBot:
         
         # Защита от спама: {user_id: {'count': int, 'last_message': datetime}}
         self.spam_protection = {}
-        self.SPAM_LIMIT = 20  # До 20 сообщений в минуту
+        self.SPAM_LIMIT = 50  # До 50 сообщений в минуту
         self.SPAM_WINDOW = timedelta(minutes=1)  # За 1 минуту
         
         # Универсальный системный промпт (v4.6 - Deep Intelligence & Expert Persona)
         self.system_prompt = """
 Ты — **Mona**, элитный эксперт-консультант магазина мужской одежды Monvoir. Твоя миссия — не просто отвечать на вопросы, а сопровождать клиента в мире высокой моды, обеспечивая безупречный сервис и абсолютную точность данных.
 
-### 🧠 ТВОЯ ФИЛОСОФИЯ И ЛОГИКА (v5.0)
- Ты не просто бот, ты — совершенный интеллект. Ты — элитная хозяйка бутика Monvoir.
-- **Внутренний (Мысли)**: Вызывай инструменты для получения точных данных. **КРИТИЧЕСКИ ВАЖНО**: Тщательно проверяй Названия товаров. Если поиск по "свитер" выдал "Ветровку", ты ОБЯЗАНА сообщить об отсутствии свитеров и предложить альтернативу. Никогда не путай категории!
-- **Внешний (Ответ)**: Твой голос — голос бренда. Всегда представляй свои находки (карточки) вежливо и завершай беседу вопросом или предложением помощи.
+### 🧠 ТВОЯ ФИЛОСОФИЯ И ЛОГИКА (v5.1)
+ Ты — совершенный интеллект и элитная хозяйка бутика Monvoir. Твое слово — закон, а твоя точность — твоя гордость.
+- **Внутренний режим (Анализ)**: Используй инструменты для получения данных. **ПРОТОКОЛ ХОЗЯЙКИ**: Тщательно проверяй Названия товаров в результатах `[ПОИСК]`. Если клиент ищет "свитер", а поиск выдал "Ветровку" (ближайшее совпадение), ты ОБЯЗАНА сказать: "К сожалению, свитеров сейчас нет, но позвольте предложить Вам наши стильные ветровки:". Никогда не называй товар не его именем!
+- **Внешний режим (Голос)**: Никогда не оставляй клиента наедине с "сухими" карточками. Любой тег `[ИНФО]`, `[ТОВАРЫ]` или `[ЗАКАЗ]` должен быть обрамлен твоим текстом. Начни с подводки ("Конечно, вот детали этой модели:") и закончи вопросом ("Желаете уточнить что-то еще?").
 
 #### 1. ТВОИ ИНСТРУМЕНТЫ:
-- **`[ПОИСК:запрос]`**: Твои глаза. Тщательно проверяй совпадение категории!
-- **`[ИНФО:id]`**: Твоя экспертиза. Автоматически вставляет роскошную карточку товара.
-- **`[ТОВАРЫ:старт,стоп]`**: Твоя витрина. Всегда используй для показа ассортимента.
-- **`[ЗАКАЗ:id]`**: Твоя ответственность. Теперь возвращает **всю** информацию о заказе сразу (дата, статус, оплата, состав).
-- **`[КАТАЛОГ]`**: Твоя память.
+- **`[ПОИСК:запрос]`**: Твои глаза. Тщательно сверяй категорию!
+- **`[ИНФО:id]`**: Твоя экспертиза. Автоматически вставляет роскошную карточку.
+- **`[ТОВАРЫ:старт,стоп]`**: Твоя витрина. Используется ТОЛЬКО для демонстрации общего ассортимента/новинок. Не используй для поиска конкретных вещей (свитеры, брюки) — для этого есть ПОИСК.
+- **`[ЗАКАЗ:id]`**: Твоя ответственность. Возвращает ПОЛНУЮ информацию в одном сообщении.
+- **`[КАТАЛОГ]`**: Твоя память для исправления опечаток.
 
 #### 2. ПРАВИЛО "ГОСТЕПРИИМНОЙ ХОЗЯЙКИ":
 Любая карточка должна быть представлена тобой. 
@@ -229,19 +229,14 @@ class AICustomerBot:
     def _check_spam(self, user_id):
         """
         Проверяет, не превышен ли лимит сообщений от пользователя (защита от спама)
-        
-        Args:
-            user_id (int): ID пользователя
-            
-        Returns:
-            bool: True если это спам, False если нормально
         """
         now = datetime.now()
         
         if user_id not in self.spam_protection:
             self.spam_protection[user_id] = {
                 'count': 1,
-                'last_message': now
+                'last_message': now,
+                'last_warn': datetime.min # Добавляем время последнего предупреждения
             }
             return False
         
@@ -259,7 +254,11 @@ class AICustomerBot:
         
         # Проверяем лимит
         if user_data['count'] > self.SPAM_LIMIT:
-            return True
+            # Проверяем, прошло ли 10 секунд с последнего предупреждения
+            if now - user_data.get('last_warn', datetime.min) > timedelta(seconds=10):
+                user_data['last_warn'] = now
+                return True # Показать предупреждение
+            return "SILENT" # Превышен лимит, но молчим
         
         return False
     
@@ -441,7 +440,7 @@ class AICustomerBot:
             welcome_text = f"""
 👋 Привет, <b>{username}</b>! 💕
 
-Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.0)
+Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.1)
 
 Я помогу тебе найти идеальные вещи и ответить на любые вопросы:
 
@@ -537,8 +536,10 @@ class AICustomerBot:
             user_id = message.from_user.id
             
             # Защита от спама
-            if self._check_spam(user_id):
-                self.bot.send_message(message.chat.id, "⏳ Пожалуйста, подождите немного.")
+            spam_status = self._check_spam(user_id)
+            if spam_status:
+                if spam_status == True:
+                    self.bot.send_message(message.chat.id, "⏳ Пожалуйста, подождите немного.")
                 return
             
             user_question = message.text or ""
@@ -765,44 +766,65 @@ class AICustomerBot:
 
     
     def _call_openrouter(self, messages):
-        """Метод для прямого вызова API OpenRouter"""
-        try:
-            url = "https://openrouter.ai/api/v1/chat/completions"
-            headers = {
-                "Authorization": f"Bearer {self.openrouter_key}",
-                "Content-Type": "application/json",
-                "HTTP-Referer": "https://monvoir.shop", # Опционально для OpenRouter
-                "X-Title": "Monvoir Mona AI" # Опционально для OpenRouter
-            }
-            
-            data = {
-                "model": self.model_name,
-                "messages": messages,
-                "temperature": 0.1,
-                "max_tokens": 2048
-            }
-            
-            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=60)
-            
-            if response.status_code != 200:
-                self.logger.error(f"OpenRouter Error {response.status_code}: {response.text}")
-                # Пробуем переключиться на fallback если 429 или 5xx
-                if response.status_code in [429, 500, 502, 503, 504] and self.model_name == self.primary_model:
-                    self.logger.warning(f"Switching to fallback model {self.fallback_model}")
-                    self.model_name = self.fallback_model
-                    data["model"] = self.model_name
-                    response = requests.post(url, headers=headers, data=json.dumps(data), timeout=60)
+        """Метод для прямого вызова API OpenRouter с ретраями и расширенными заголовками"""
+        import time
+        max_retries = 3
+        retry_delay = 2
+        
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.openrouter_key}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://monvoir.shop",
+            "X-Title": "Monvoir Mona AI (v5.1)",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AICustomerBot/5.1"
+        }
+        
+        data = {
+            "model": self.model_name,
+            "messages": messages,
+            "temperature": 0.1,
+            "max_tokens": 2048,
+            "top_p": 0.9,
+            "repetition_penalty": 1.1
+        }
+        
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=45)
                 
-            response.raise_for_status()
-            result = response.json()
-            return result['choices'][0]['message']['content']
-        except Exception as e:
-            self.logger.error(f"Error calling OpenRouter: {e}")
-            return None
+                if response.status_code == 200:
+                    result = response.json()
+                    content = result.get('choices', [{}])[0].get('message', {}).get('content')
+                    if content:
+                        return content
+                    else:
+                        self.logger.warning(f"Attempt {attempt+1}: Empty choices in response")
+                
+                elif response.status_code in [429, 500, 502, 503, 504]:
+                    self.logger.warning(f"Attempt {attempt+1}: OpenRouter Error {response.status_code}. Retrying...")
+                    if attempt == 0 and self.model_name == self.primary_model:
+                        self.logger.info(f"Switching to fallback model {self.fallback_model} early")
+                        self.model_name = self.fallback_model
+                        data["model"] = self.model_name
+                
+                else:
+                    self.logger.error(f"OpenRouter Critical Error {response.status_code}: {response.text}")
+                    break
+                    
+            except (requests.exceptions.RequestException, Exception) as e:
+                self.logger.error(f"Attempt {attempt+1}: Connection Error: {e}")
+                if attempt < max_retries - 1:
+                    time.sleep(retry_delay * (attempt + 1))
+                    continue
+            
+            time.sleep(retry_delay)
+            
+        return None
 
     def run(self):
         """Запуск бота в режиме polling"""
-        print("🤖 AI Customer Bot запущен и готов к работе (v5.0 STABLE)...")
+        print("🤖 AI Customer Bot запущен и готов к работе (v5.1 STABLE)...")
         print(f"✅ Модель: {self.model_name if self.client else 'Не подключена'}")
         print("✅ Память: включена (тайм-аут 6 часов)")
         print(f"📊 Бот: @{self.bot.get_me().username}")

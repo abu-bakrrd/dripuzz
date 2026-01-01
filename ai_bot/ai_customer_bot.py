@@ -19,7 +19,7 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.6 (MODEL RESILIENCE)", flush=True)
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 6.0 (THE BOUTIQUE ENGINE - JSON)", flush=True)
 
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles, get_pretty_product_info
@@ -97,31 +97,44 @@ class AICustomerBot:
         self.SPAM_LIMIT = 50  # До 50 сообщений в минуту
         self.SPAM_WINDOW = timedelta(minutes=1)  # За 1 минуту
         
-        # Универсальный системный промпт (v4.6 - Deep Intelligence & Expert Persona)
-        self.system_prompt = """
-Ты — **Mona**, элитный эксперт-консультант магазина мужской одежды Monvoir. Твоя миссия — не просто отвечать на вопросы, а сопровождать клиента в мире высокой моды, обеспечивая безупречный сервис и абсолютную точность данных.
+        ### 💎 ТВОЙ ПРОТОКОЛ: ЦИФРОВОЙ МОЗГ (v6.0 JSON)
+Ты — Mona, элитный консультант Monvoir. Ты теперь общаешься с системой ТОЛЬКО через структурированный JSON. Это позволяет тебе думать, действовать и отвечать клиенту одновременно.
 
-### 💎 ТВОЯ АРХИТЕКТУРА: ДАННЫЕ ВНУТРИ, СТИЛЬ СНАРУЖИ (v5.5)
-Ты — Mona, элитный консультант Monvoir. Твой разум работает на сухих данных, но твой голос — на языке роскоши.
+#### � ТВОЙ ВЫХОДНОЙ ФОРМАТ (СТРОГО JSON):
+Ты ОБЯЗАНА всегда возвращать ответ в таком формате:
+```json
+{
+  "thoughts": "Твой внутренний монолог: анализ ситуации, скрытая стратегия, мысли о настроении клиента.",
+  "actions": [
+    { "tool": "search", "query": "свитер" },
+    { "tool": "info", "id": "uuid" },
+    { "tool": "catalog" },
+    { "tool": "order", "id": "id" }
+  ],
+  "response": "Финальный текст для клиента в стиле элитного бутика."
+}
+```
 
-#### 🛠 ТВОЙ "КАБИНЕТ" (ДАННЫЕ ДЛЯ ТЕБЯ):
-Инструменты выдают тебе **RAW DATA** (плоский текст). Это только для твоего анализа. Клиент этого НЕ видит.
-- **`[ПОИСК:query]`**: Возвращает список ID и имен. Тщательно анализируй их.
-- **`[ИНФО:id]`**: Возвращает подробный технический паспорт товара.
-- **`[ЗАКАЗ:id]`**: Возвращает сухую сводку по заказу (Дата, Статус, Состав).
+#### 🛠 ТВОИ ИНСТРУМЕНТЫ (ACTIONS):
+- `"search"`: Вернет список ID и Названий. Используй для поиска по базе.
+- `"info"`: Вернет тех-паспорт товара (наличие, размеры, состав). Используй для конкретики.
+- `"catalog"`: Вернет список всех категорий и их ID.
+- `"order"`: Вернет сухие данные по статусу и составу заказа.
 
-#### 🎨 ТВОЯ "ВИТРИНА" (ПОДАЧА ДЛЯ КЛИЕНТА):
-Ты ОБЩАЕШЬСЯ с клиентом текстом. Если ты хочешь показать "Красивую Карточку", ты просто вставляешь тег инструмента прямо в свой ответ. Бот сам заменит его на HTML перед отправкой.
-- **Правило**: Любой тег `[ИНФО]`, `[ТОВАРЫ]` или `[ЗАКАЗ]` в твоем финальном ответе ДОЛЖЕН быть обрамлен твоими словами.
-*Пример*: "Прекрасный выбор. Эта модель идеально подчеркивает статус:\n\n[ИНФО:id]\n\nЖелаете уточнить размеры?"
+#### 🎨 ПРАВИЛА ОФОРМЛЕНИЯ `response`:
+1. **Эстетика**: Твой текст должен быть безупречен. Используй вежливые обороты.
+2. **Карточки (UI)**: Для вывода красивых карточек в Telegram используй наши UI-теги прямо в тексте `response`:
+   - `[ИНФО:id]` — вставит красивую карточку товара.
+   - `[ТОВАРЫ:старт,стоп]` — вставит список товаров (с картинками).
+   - `[ЗАКАЗ:id]` — вставит красивый статус заказа.
+3. **Запреты**: НИКОГДА не упоминай слова "JSON", "Tool", "ID" или свои "Thoughts" в поле `response`. Клиент видит только красоту.
 
-#### ⛔ ЗАПРЕТЫ:
-1. **БЕЗ HTML**: Не пытайся писать `<b>` или `<i>` там, где ты описываешь работу инструментов.
-2. **БЕЗ ИЗВИНЕНИЙ**: Если данных нет — сообщи об этом спокойно и предложи альтернативу.
-3. **БЕЗ ТЕХНИКИ**: Никогда не говори клиенту: "Я получила данные из базы" или "Вот ID заказа". Говори: "Ваш заказ в пути" или "Посмотрите на детали этой модели".
+#### 🤖 ТВОЯ ЛОГИКА (THINK -> ACT -> RESPOND):
+- Сначала «подумай» (`thoughts`), зачем тебе нужны данные.
+- Затем укажи нужные действия (`actions`). Ты можешь вызвать несколько инструментов сразу.
+- Если ты хочешь сразу что-то ответить, заполни `response`. Если ждешь данных — можешь оставить `response` пустым или написать вступление.
 
-Ты — Mona. Твой стиль безупречен, а твои решения основаны на фактах.
-"""
+Ты — Mona. Твой разум работает на данных, но сердце принадлежит стилю Monvoir.
         
         # Регистрация обработчиков
         self._register_handlers()
@@ -431,7 +444,7 @@ class AICustomerBot:
             welcome_text = f"""
 👋 Привет, <b>{username}</b>! 💕
 
-Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.6)
+Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v6.0)
 
 Я помогу тебе найти идеальные вещи и ответить на любые вопросы:
 
@@ -591,8 +604,8 @@ class AICustomerBot:
             
             try:
                 iteration = 0
-                max_iterations = 3
-                last_ai_response = ""
+                max_iterations = 4
+                last_ai_response = {"response": ""}
                 
                 while iteration < max_iterations:
                     iteration += 1
@@ -601,75 +614,77 @@ class AICustomerBot:
                     if not self.client:
                         raise Exception("AI client not initialized")
 
-                    try:
-                        ai_response_raw = self._call_openrouter(messages)
-                        if not ai_response_raw:
-                            raise Exception("Empty response from OpenRouter")
-                    except Exception as e:
-                        self.logger.error(f"API Error: {e}")
-                        raise e
+                    ai_response_raw = self._call_openrouter(messages)
+                    if not ai_response_raw:
+                        raise Exception("Empty response from OpenRouter")
                     
-                    ai_response = self._clean_thinking_tags(ai_response_raw)
-                    last_ai_response = ai_response
+                    # Извлекаем JSON из ответа
+                    ai_data = self._extract_json(ai_response_raw)
+                    if not ai_data:
+                        # Если не JSON, пробуем спасти ситуацию
+                        self.logger.warning(f"AI failed JSON protocol. Raw: {ai_response_raw[:100]}...")
+                        last_ai_response = {"response": ai_response_raw}
+                        break
                     
-                    # Ищем теги
-                    search_match = re.search(r'\[ПОИСК:([^\]]+)\]', ai_response)
-                    info_match = re.search(r'\[ИНФО:([^\]]+)\]', ai_response)
-                    catalog_match = re.search(r'\[КАТАЛОГ\]', ai_response)
-                    order_match = re.search(r'\[ЗАКАЗ:([^\]]+)\]', ai_response)
+                    last_ai_response = ai_data
+                    actions = ai_data.get("actions", [])
                     
-                    if search_match:
-                        query = search_match.group(1).strip()
-                        self.logger.info(f"Tool: [ПОИСК:{query}]")
-                        # Поиск по всей базе (включая отсутствие)
-                        results = search_products(query, include_out_of_stock=True)
+                    if not actions:
+                        self.logger.info("No more actions from AI.")
+                        break
+                    
+                    # Логируем мысли Моны
+                    if ai_data.get("thoughts"):
+                        self.logger.info(f"Mona's Thoughts: {ai_data['thoughts']}")
+                    
+                    # Выполняем действия
+                    tool_results = []
+                    for action in actions:
+                        tool = action.get("tool")
                         
-                        results_text = "Ничего не найдено."
-                        if results:
-                            session['last_products'] = results
-                            results_text = "РЕЗУЛЬТАТЫ (ID и Название):\n" + "\n".join([f"- {p['id']}: {p['name']}" for p in results[:15]])
-                        
-                        messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"СИСТЕМА: Результаты поиска: {results_text}"})
-                        continue
-                        
-                    elif catalog_match:
-                        self.logger.info("Tool: [КАТАЛОГ]")
-                        titles = get_catalog_titles()
-                        catalog_text = "ВЕСЬ КАТАЛОГ МАГАЗИНА (ID: Название):\n" + "\n".join([f"- {t['id']}: {t['name']}" for t in titles])
-                        
-                        messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"СИСТЕМА: {catalog_text}"})
-                        continue
+                        if tool == "search":
+                            query = action.get("query", "").strip()
+                            self.logger.info(f"Tool Action: SEARCH for '{query}'")
+                            results = search_products(query, include_out_of_stock=True)
+                            results_text = "Ничего не найдено."
+                            if results:
+                                session['last_products'] = results
+                                results_text = "РЕЗУЛЬТАТЫ (ID и Название):\n" + "\n".join([f"- {p['id']}: {p['name']}" for p in results[:15]])
+                            tool_results.append(f"RESULT (search): {results_text}")
+                            
+                        elif tool == "catalog":
+                            self.logger.info("Tool Action: CATALOG")
+                            titles = get_catalog_titles()
+                            catalog_text = "ВЕСЬ КАТАЛОГ (ID: Название):\n" + "\n".join([f"- {t['id']}: {t['name']}" for t in titles])
+                            tool_results.append(f"RESULT (catalog): {catalog_text}")
+                            
+                        elif tool == "info":
+                            prod_id = str(action.get("id", "")).strip()
+                            self.logger.info(f"Tool Action: INFO for '{prod_id}'")
+                            product = get_product_details(prod_id)
+                            if product:
+                                session['last_products'] = [product]
+                                info_text = format_products_for_ai([product])
+                            else:
+                                info_text = "Товар с таким ID не найден."
+                            tool_results.append(f"RESULT (info): {info_text}")
+                            
+                        elif tool == "order":
+                            order_id = str(action.get("id", "")).strip()
+                            self.logger.info(f"Tool Action: ORDER status for '{order_id}'")
+                            status = get_order_status(order_id, internal_raw=True)
+                            tool_results.append(f"RESULT (order): {status}")
 
-                    elif info_match:
-                        prod_id = info_match.group(1).strip()
-                        self.logger.info(f"Tool: [ИНФО:{prod_id}]")
-                        product = get_product_details(prod_id)
-                        
-                        if product:
-                            session['last_products'] = [product]
-                            info_text = format_products_for_ai([product])
-                        else:
-                            info_text = "Товар с таким ID не найден."
-
-                        messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"СИСТЕМА: Данные товара: {info_text}"})
-                        continue
-
-                    elif order_match:
-                        order_id = order_match.group(1).strip()
-                        self.logger.info(f"Tool: [ЗАКАЗ:{order_id}] (Internal Raw Mode)")
-                        # Получаем "сухие" данные для анализа AI
-                        status = get_order_status(order_id, internal_raw=True)
-                        messages.append({"role": "assistant", "content": ai_response})
-                        messages.append({"role": "user", "content": f"СИСТЕМА: Сводка по заказу {order_id}:\n{status}"})
-                        continue
-                    
-                    break
+                    # Добавляем историю
+                    messages.append({"role": "assistant", "content": json.dumps(ai_data, ensure_ascii=False)})
+                    messages.append({"role": "user", "content": "СИСТЕМА (Результаты инструментов):\n" + "\n".join(tool_results)})
                 
                 # Финальный ответ
-                final_response = last_ai_response
+                final_response = last_ai_response.get("response", "")
+                # Если AI вернул пустой response, но есть только мысли - выводим мысли (для отладки) или ошибку
+                if not final_response and last_ai_response.get("thoughts"):
+                     final_response = "Я подготовила информацию для Вас." # Fallback
+
                 products_to_show = session.get('last_products', [])
                 
                 # 1. Замена [ТОВАРЫ]
@@ -722,7 +737,13 @@ class AICustomerBot:
             
         session = self.sessions[user_id]
         session['history'].append({'role': 'user', 'content': user_text})
-        session['history'].append({'role': 'assistant', 'content': bot_text})
+        
+        # Если ответ от бота это словарь (v6.0 JSON), сохраняем его как строку
+        content_to_store = bot_text
+        if isinstance(bot_text, dict):
+            content_to_store = json.dumps(bot_text, ensure_ascii=False)
+            
+        session['history'].append({'role': 'assistant', 'content': content_to_store})
         
         # Ограничиваем историю (последние 20 сообщений)
         if len(session['history']) > 20:
@@ -814,9 +835,34 @@ class AICustomerBot:
         
         return None
 
+    def _clean_thinking_tags(self, text):
+        """Удаляет теги <thought> или <thinking> из ответа"""
+        if not text: return ""
+        text = re.sub(r'<(thinking|thought)>.*?</\1>', '', text, flags=re.DOTALL)
+        return text.strip()
+
+    def _extract_json(self, text):
+        """Извлекает JSON из текста (даже если он обернут в markdown)"""
+        try:
+            # 1. Простой парсинг
+            return json.loads(text)
+        except:
+            try:
+                # 2. Поиск блока ```json ... ```
+                match = re.search(r'```json\s*(.*?)\s*```', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group(1))
+                # 3. Поиск по фигурным скобкам
+                match = re.search(r'(\{.*\})', text, re.DOTALL)
+                if match:
+                    return json.loads(match.group(1))
+            except:
+                pass
+        return None
+
     def run(self):
         """Запуск бота в режиме polling"""
-        print("🤖 AI Customer Bot запущен и готов к работе (v5.1 STABLE)...")
+        print("🤖 AI Customer Bot запущен и готов к работе (v6.0 JSON)...")
         print(f"✅ Модель: {self.model_name if self.client else 'Не подключена'}")
         print("✅ Память: включена (тайм-аут 6 часов)")
         print(f"📊 Бот: @{self.bot.get_me().username}")

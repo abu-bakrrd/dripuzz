@@ -25,18 +25,13 @@
 		<link rel="icon" type="image/svg+xml" href="/config/logo.svg" />
 		<link rel="canonical" href="{{SEO_SITE_URL}}" />
 		<title>{{SEO_TITLE}}</title>
-		
+
 		<!-- Resource hints для ускорения загрузки внешних ресурсов -->
-		<link rel="dns-prefetch" href="https://telegram.org" />
 		<link rel="dns-prefetch" href="https://fonts.googleapis.com" />
 		<link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-		<link rel="preconnect" href="https://telegram.org" />
 		<link rel="preconnect" href="https://fonts.googleapis.com" />
 		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		
-		<!-- Загружаем Telegram WebApp JS асинхронно (не блокирует рендеринг) -->
-		<script src="https://telegram.org/js/telegram-web-app.js" defer></script>
-		
+
 		<!-- Загружаем шрифты асинхронно с font-display: swap для мгновенной отрисовки текста -->
 		<link
 			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
@@ -60,14 +55,14 @@
 			[data-radix-select-content] *::before,
 			[data-radix-dropdown-menu-content] *::after,
 			[data-radix-select-content] *::after,
-			[data-radix-portal] [role="menu"],
-			[data-radix-portal] [role="listbox"],
-			[data-radix-portal] [role="menu"] *,
-			[data-radix-portal] [role="listbox"] *,
-			[data-radix-portal] [role="menu"] *::before,
-			[data-radix-portal] [role="listbox"] *::before,
-			[data-radix-portal] [role="menu"] *::after,
-			[data-radix-portal] [role="listbox"] *::after {
+			[data-radix-portal] [role='menu'],
+			[data-radix-portal] [role='listbox'],
+			[data-radix-portal] [role='menu'] *,
+			[data-radix-portal] [role='listbox'] *,
+			[data-radix-portal] [role='menu'] *::before,
+			[data-radix-portal] [role='listbox'] *::before,
+			[data-radix-portal] [role='menu'] *::after,
+			[data-radix-portal] [role='listbox'] *::after {
 				transition: none !important;
 				transition-property: none !important;
 				transition-duration: 0s !important;
@@ -77,7 +72,7 @@
 				animation-duration: 0s !important;
 				transform: none !important;
 			}
-			
+
 			/* УЛЬТИМАТУМ: Мгновенная смена темы - отключаем transitions для ВСЕХ цветов */
 			/* Применяем ПЕРВЫМ для максимального приоритета */
 			html body *:not(:hover):not(:focus):not(:active),
@@ -85,19 +80,21 @@
 			html body *:not(:hover):not(:focus):not(:active)::after {
 				transition-property: transform, filter, opacity !important;
 			}
-			
+
 			/* Переопределяем transition-colors классы */
 			html body .transition-colors:not(:hover):not(:focus):not(:active),
-			html body [class*="transition-colors"]:not(:hover):not(:focus):not(:active) {
+			html
+				body
+				[class*='transition-colors']:not(:hover):not(:focus):not(:active) {
 				transition-property: transform, filter, opacity !important;
 			}
-			
+
 			/* Переопределяем transition-all классы */
 			html body .transition-all:not(:hover):not(:focus):not(:active),
-			html body [class*="transition-all"]:not(:hover):not(:focus):not(:active) {
+			html body [class*='transition-all']:not(:hover):not(:focus):not(:active) {
 				transition-property: transform, filter, opacity !important;
 			}
-			
+
 			/* Для SVG отключаем fill и stroke */
 			html body svg:not(:hover):not(:focus):not(:active),
 			html body svg *:not(:hover):not(:focus):not(:active) {
@@ -106,103 +103,133 @@
 		</style>
 		<script>
 			// Принудительно применяем transition: none к Radix UI элементам
-			(function() {
+			;(function () {
 				function forceNoTransition() {
 					const selectors = [
 						'[data-radix-dropdown-menu-content]',
 						'[data-radix-select-content]',
 						'[data-radix-portal] [role="menu"]',
-						'[data-radix-portal] [role="listbox"]'
-					];
-					
+						'[data-radix-portal] [role="listbox"]',
+					]
+
 					selectors.forEach(selector => {
-						const elements = document.querySelectorAll(selector);
+						const elements = document.querySelectorAll(selector)
 						elements.forEach(el => {
 							// Применяем через setProperty с important
-							el.style.setProperty('transition', 'none', 'important');
-							el.style.setProperty('transition-property', 'none', 'important');
-							el.style.setProperty('transition-duration', '0s', 'important');
-							el.style.setProperty('transition-delay', '0s', 'important');
-							el.style.setProperty('transition-timing-function', 'none', 'important');
-							el.style.setProperty('animation', 'none', 'important');
-							el.style.setProperty('animation-duration', '0s', 'important');
-							el.style.setProperty('transform', 'none', 'important');
-							
+							el.style.setProperty('transition', 'none', 'important')
+							el.style.setProperty('transition-property', 'none', 'important')
+							el.style.setProperty('transition-duration', '0s', 'important')
+							el.style.setProperty('transition-delay', '0s', 'important')
+							el.style.setProperty(
+								'transition-timing-function',
+								'none',
+								'important'
+							)
+							el.style.setProperty('animation', 'none', 'important')
+							el.style.setProperty('animation-duration', '0s', 'important')
+							el.style.setProperty('transform', 'none', 'important')
+
 							// Применяем к дочерним элементам
-							const children = el.querySelectorAll('*');
+							const children = el.querySelectorAll('*')
 							children.forEach(child => {
-								child.style.setProperty('transition', 'none', 'important');
-								child.style.setProperty('transition-property', 'none', 'important');
-								child.style.setProperty('transition-duration', '0s', 'important');
-								child.style.setProperty('transition-delay', '0s', 'important');
-								child.style.setProperty('animation', 'none', 'important');
-							});
-						});
-					});
+								child.style.setProperty('transition', 'none', 'important')
+								child.style.setProperty(
+									'transition-property',
+									'none',
+									'important'
+								)
+								child.style.setProperty(
+									'transition-duration',
+									'0s',
+									'important'
+								)
+								child.style.setProperty('transition-delay', '0s', 'important')
+								child.style.setProperty('animation', 'none', 'important')
+							})
+						})
+					})
 				}
-				
+
 				// Применяем сразу
-				forceNoTransition();
-				
+				forceNoTransition()
+
 				// Используем requestAnimationFrame для постоянного применения
 				function rafLoop() {
-					forceNoTransition();
-					requestAnimationFrame(rafLoop);
+					forceNoTransition()
+					requestAnimationFrame(rafLoop)
 				}
-				requestAnimationFrame(rafLoop);
-				
+				requestAnimationFrame(rafLoop)
+
 				// Следим за появлением новых элементов и изменениями атрибутов
-				const observer = new MutationObserver((mutations) => {
-					forceNoTransition();
+				const observer = new MutationObserver(mutations => {
+					forceNoTransition()
 					// Также применяем при изменении data-state (открытие/закрытие)
 					mutations.forEach(mutation => {
-						if (mutation.type === 'attributes' && 
-							(mutation.attributeName === 'data-state' || mutation.attributeName === 'style')) {
-							forceNoTransition();
+						if (
+							mutation.type === 'attributes' &&
+							(mutation.attributeName === 'data-state' ||
+								mutation.attributeName === 'style')
+						) {
+							forceNoTransition()
 						}
-					});
-				});
-				
+					})
+				})
+
 				// Начинаем наблюдение после загрузки DOM
 				function startObserving() {
 					observer.observe(document.body, {
 						childList: true,
 						subtree: true,
 						attributes: true,
-						attributeFilter: ['data-state', 'style', 'class']
-					});
-					forceNoTransition();
+						attributeFilter: ['data-state', 'style', 'class'],
+					})
+					forceNoTransition()
 				}
-				
+
 				if (document.readyState === 'loading') {
-					document.addEventListener('DOMContentLoaded', startObserving);
+					document.addEventListener('DOMContentLoaded', startObserving)
 				} else {
-					startObserving();
+					startObserving()
 				}
-				
+
 				// Обработчики событий на клики и открытие меню
-				document.addEventListener('click', () => {
-					setTimeout(forceNoTransition, 0);
-					setTimeout(forceNoTransition, 10);
-					setTimeout(forceNoTransition, 50);
-				}, true);
-				
+				document.addEventListener(
+					'click',
+					() => {
+						setTimeout(forceNoTransition, 0)
+						setTimeout(forceNoTransition, 10)
+						setTimeout(forceNoTransition, 50)
+					},
+					true
+				)
+
 				// Перехватываем изменения стилей через Proxy (если возможно)
 				if (window.CSS && CSS.supports && CSS.supports('transition', 'none')) {
-					const originalSetProperty = CSSStyleDeclaration.prototype.setProperty;
-					CSSStyleDeclaration.prototype.setProperty = function(property, value, priority) {
-						const el = this;
+					const originalSetProperty = CSSStyleDeclaration.prototype.setProperty
+					CSSStyleDeclaration.prototype.setProperty = function (
+						property,
+						value,
+						priority
+					) {
+						const el = this
 						if (el && el.parentElement) {
-							const isRadixElement = el.closest('[data-radix-dropdown-menu-content], [data-radix-select-content], [data-radix-portal] [role="menu"], [data-radix-portal] [role="listbox"]');
-							if (isRadixElement && (property === 'transition' || property === 'transition-property' || property === 'transition-duration')) {
-								return; // Блокируем установку transition для Radix элементов
+							const isRadixElement = el.closest(
+								'[data-radix-dropdown-menu-content], [data-radix-select-content], [data-radix-portal] [role="menu"], [data-radix-portal] [role="listbox"]'
+							)
+							if (
+								isRadixElement &&
+								(property === 'transition' ||
+									property === 'transition-property' ||
+									property === 'transition-duration')
+							) {
+								return // Блокируем установку transition для Radix элементов
 							}
 						}
-						return originalSetProperty.call(this, property, value, priority);
-					};
+						return originalSetProperty.call(this, property, value, priority)
+					}
 				}
-			})();
-			
+			})()
+
 			// Apply theme and accent color immediately to prevent FOUC
 			;(function () {
 				const storageKey = 'vite-ui-theme'

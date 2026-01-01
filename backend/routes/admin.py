@@ -235,3 +235,67 @@ def admin_export_inventory():
     cw.writerows(items)
     return Response(si.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=inventory.csv'})
 
+# Categories Management
+@admin_bp.route('/categories', methods=['GET'])
+def admin_get_categories():
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM categories ORDER BY sort_order ASC, name ASC')
+    categories = cur.fetchall()
+    cur.close()
+    conn.close()
+    return jsonify(categories)
+
+@admin_bp.route('/categories', methods=['POST'])
+def admin_create_category():
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    name = data.get('name')
+    icon = data.get('icon')
+    sort_order = data.get('sort_order', 0)
+    
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+        
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'INSERT INTO categories (name, icon, sort_order) VALUES (%s, %s, %s) RETURNING id',
+        (name, icon, sort_order)
+    )
+    new_id = cur.fetchone()['id']
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'id': new_id, 'message': 'Category created'})
+
+@admin_bp.route('/categories/<category_id>', methods=['PUT'])
+def admin_update_category(category_id):
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    name = data.get('name')
+    icon = data.get('icon')
+    sort_order = data.get('sort_order', 0)
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute(
+        'UPDATE categories SET name = %s, icon = %s, sort_order = %s WHERE id = %s',
+        (name, icon, sort_order, category_id)
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'message': 'Category updated'})
+
+@admin_bp.route('/categories/<category_id>', methods=['DELETE'])
+def admin_delete_category(category_id):
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM categories WHERE id = %s', (category_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+    return jsonify({'message': 'Category deleted'})

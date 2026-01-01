@@ -75,3 +75,58 @@ def get_categories():
         return jsonify(categories)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+@products_bp.route('/favorites/<user_id>', methods=['GET'])
+def get_favorites(user_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('''
+            SELECT p.* FROM favorites f
+            JOIN products p ON f.product_id = p.id
+            WHERE f.user_id = %s
+        ''', (user_id,))
+        favorites = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(favorites)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@products_bp.route('/favorites', methods=['POST'])
+def add_to_favorites():
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        product_id = data.get('product_id')
+        
+        if not user_id or not product_id:
+            return jsonify({'error': 'User ID and Product ID are required'}), 400
+            
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'INSERT INTO favorites (user_id, product_id) VALUES (%s, %s) ON CONFLICT DO NOTHING',
+            (user_id, product_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Added to favorites'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@products_bp.route('/favorites/<user_id>/<product_id>', methods=['DELETE'])
+def remove_from_favorites(user_id, product_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            'DELETE FROM favorites WHERE user_id = %s AND product_id = %s',
+            (user_id, product_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+        return jsonify({'message': 'Removed from favorites'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

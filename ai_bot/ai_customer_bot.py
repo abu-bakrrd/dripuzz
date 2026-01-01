@@ -18,10 +18,14 @@ import json
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
 print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 7.0 (THE REBIRTH)", flush=True)
 
+# Добавляем родительскую директорию в путь для импорта
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import re
 from ai_bot.ai_db_helper import (
     get_all_products_info, search_products, format_products_for_ai, 
-    get_order_status, get_product_details, get_catalog_titles, get_pretty_product_info
+    get_order_status, get_product_details, get_catalog_titles, get_pretty_product_info,
+    format_colors
 )
 
 # Загрузка переменных окружения
@@ -74,7 +78,7 @@ class AICustomerBot:
 #### 🎨 ПРАВИЛА БРЕНДА:
 - Не используй [ТОВАРЫ], если не уверена в ID.
 - Если товара нет, предложи альтернативу из той же категории.
-- Никогда не упоминай технические детали (JSON, ID) в поле 'response'.
+- Никогда не упоминай технические детали (JSON, ID) или названия инструментов (search, info, order) в поле 'response'.
 """
         self._register_handlers()
 
@@ -96,7 +100,6 @@ class AICustomerBot:
             return completion.choices[0].message.content
         except Exception as e:
             self.logger.error(f"Groq Error: {e}")
-            # Fallback на Gemini через requests (упрощенно)
             return None
 
     def _extract_json(self, text):
@@ -122,6 +125,14 @@ class AICustomerBot:
             self.waiting_for_support.add(m.from_user.id)
             self.bot.send_message(m.chat.id, "👨‍💼 Напишите Ваш вопрос, и я передам его менеджеру.")
 
+        @self.bot.message_handler(func=lambda m: m.chat.id == self.ADMIN_ID and m.reply_to_message)
+        def admin_reply(m):
+            # Простой форвард ответа админа (логика v7.0 - все через reply)
+            try:
+                self.bot.send_message(m.reply_to_message.forward_from.id, f"👨‍💼 <b>Ответ менеджера:</b>\n\n{m.text}", parse_mode='HTML')
+                self.bot.reply_to(m, "✅ Ответ отправлен.")
+            except: self.bot.reply_to(m, "❌ Не удалось отправить (пользователь скрыт или бот заблокирован).")
+
         @self.bot.message_handler(content_types=['text', 'photo'])
         def handle(m):
             user_id = m.from_user.id
@@ -141,7 +152,7 @@ class AICustomerBot:
 
             try:
                 iteration = 0
-                final_json = {}
+                final_json = {"response": "✨ Я уточняю информацию..."}
                 while iteration < 3:
                     iteration += 1
                     raw = self._call_ai(messages)
@@ -183,12 +194,12 @@ class AICustomerBot:
                 tag_tov = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', resp)
                 if tag_tov:
                     start, stop = int(tag_tov.group(1)), int(tag_tov.group(2))
-                    from ai_bot.ai_customer_bot import AICustomerBot as Dummy
-                    # Используем старую логику форматирования списка для красоты
-                    from ai_bot.ai_customer_bot import AICustomerBot
-                    temp_bot = AICustomerBot(os.getenv('AI_BOT_TOKEN'), "")
-                    list_text = temp_bot._get_formatted_products(session.get('last_results', []), start, stop-start)
+                    list_text = self._get_formatted_products(session.get('last_results', []), start, stop-start)
                     resp = resp.replace(tag_tov.group(0), list_text or "Цены и наличие уточняйте у менеджера.")
+
+                # Замена тегов [ЗАКАЗ:id]
+                for match in re.findall(r'\[ЗАКАЗ:([^\]]+)\]', resp):
+                    resp = resp.replace(f"[ЗАКАЗ:{match}]", get_order_status(match.strip(), detailed=True))
 
                 self.bot.send_message(m.chat.id, resp, parse_mode='HTML', disable_web_page_preview=True)
                 session['history'].append({"role": "user", "content": user_text})
@@ -197,6 +208,39 @@ class AICustomerBot:
             except Exception as e:
                 self.logger.error(f"Handle Error: {e}")
                 self.bot.send_message(m.chat.id, "✨ Произошла небольшая заминка. Повторите запрос через секунду.")
+
+    def _get_formatted_products(self, products, offset=0, limit=10):
+        """Форматирует список товаров для Telegram (красивый UI)"""
+        if not products: return ""
+        
+        # Только товары в наличии (хотя search_products в v7.0 уже может их фильтровать)
+        in_stock = [p for p in products if any(item.get('quantity', 0) > 0 for item in p.get('inventory', []))]
+        if not in_stock: return ""
+        
+        batch = in_stock[offset:offset + limit]
+        if not batch: return ""
+            
+        lines = []
+        for idx, p in enumerate(batch, offset + 1):
+            url = f"https://monvoir.shop/product/{p['id']}"
+            price = f"{p['price']:,} сум".replace(',', ' ')
+            line = f"{idx}. <a href=\"{url}\"><b>{p['name']}</b></a> — <b>{price}</b> ✅"
+            
+            # Варианты (цвета/размеры)
+            variants = []
+            for item in p.get('inventory', [])[:5]:
+                v_parts = []
+                if item.get('color'): v_parts.append(format_colors([item['color']]))
+                if item.get('attribute1_value'): v_parts.append(item['attribute1_value'])
+                if item.get('attribute2_value'): v_parts.append(item['attribute2_value'])
+                v_str = ", ".join(v_parts)
+                if v_str and v_str not in variants: variants.append(v_str)
+            
+            if variants:
+                line += f"\n   <i>{'; '.join(variants)}</i>"
+            lines.append(line)
+        
+        return "\n\n".join(lines)
 
     def run(self):
         print("💎 Mona v7.0: The Rebirth запущен")

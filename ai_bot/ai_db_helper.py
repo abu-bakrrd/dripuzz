@@ -458,3 +458,71 @@ def get_pretty_product_info(product_id):
         res += "📍 <i>Информации о наличии размеров пока нет.</i>"
     
     return res
+
+# --- CORE AI FUNCTIONS (Requested) ---
+
+def search(keywords):
+    """Поиск товаров по ключевым словам для AI"""
+    results = search_products(keywords)
+    return results
+
+def catalog():
+    """Список всех товаров в формате: Название - ID"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT name, id FROM products ORDER BY name")
+        products = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        return "\n".join([f"{p['name']} - {p['id']}" for p in products])
+    except Exception as e:
+        return f"Error: {e}"
+
+def order(order_id):
+    """Информация о заказе по ID"""
+    data = get_order_status(order_id, internal_raw=True)
+    return data if data else "Заказ не найден."
+
+def info(product_id):
+    """Детальная информация о товаре по ID"""
+    product = get_product_details(product_id)
+    if not product:
+        return "Товар не найден."
+    return json.dumps(product, ensure_ascii=False, default=str)
+
+def in_stock(start=0, stop=5):
+    """Список товаров в наличии с характеристиками"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        limit = stop - start
+        offset = start
+        
+        cur.execute('''
+            SELECT p.name, p.id, pi.color, pi.attribute1_value as size, pi.quantity
+            FROM products p
+            JOIN product_inventory pi ON p.id = pi.product_id
+            WHERE pi.quantity > 0
+            ORDER BY p.name
+            LIMIT %s OFFSET %s
+        ''', (limit, offset))
+        
+        items = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if not items:
+            return "Ничего не найдено в наличии."
+            
+        res = []
+        for item in items:
+            color_name = hex_to_color_name(item['color']) if '#' in str(item['color']) else item['color']
+            char = f"размер {item['size']} - цвет {color_name}"
+            res.append(f"{item['name']} - {item['id']} - {char}")
+            
+        return "\n".join(res)
+    except Exception as e:
+        return f"Error: {e}"

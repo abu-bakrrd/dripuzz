@@ -38,7 +38,7 @@ if ! python3 -c "import google.generativeai" &> /dev/null; then
     if [ "$install_deps" = "y" ] || [ "$install_deps" = "Y" ]; then
         echo ""
         echo "Установка зависимостей..."
-        pip3 install google-generativeai pyTelegramBotAPI python-dotenv psycopg2-binary
+        pip3 install groq google-generativeai pyTelegramBotAPI python-dotenv psycopg2-binary
         echo ""
     else
         echo ""

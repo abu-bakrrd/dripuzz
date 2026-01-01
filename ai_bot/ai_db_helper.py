@@ -477,12 +477,21 @@ def get_pretty_product_info(product_id):
 # --- CORE AI FUNCTIONS (Requested) ---
 
 def search(keywords):
-    """Поиск всех подходящих товаров (включая под заказ)"""
+    """Поиск всех подходящих товаров (включая под заказ). Возвращает JSON."""
     results = search_products(keywords, include_out_of_stock=True)
-    return results
+    # Оставляем только нужные поля, чтобы не перегружать контекст
+    clean_res = []
+    for p in results:
+        clean_res.append({
+            "id": p['id'],
+            "name": p['name'],
+            "price": p['price'],
+            "in_stock": sum(i.get('quantity', 0) for i in p.get('inventory', [])) > 0
+        })
+    return json.dumps(clean_res, ensure_ascii=False)
 
 def catalog():
-    """Список всех товаров в формате: Название - ID"""
+    """Список всех товаров в формате JSON list"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -491,9 +500,9 @@ def catalog():
         cur.close()
         conn.close()
         
-        return "\n".join([f"{p['name']} - {p['id']}" for p in products])
+        return json.dumps([{"name": p['name'], "id": p['id']} for p in products], ensure_ascii=False)
     except Exception as e:
-        return f"Error: {e}"
+        return json.dumps({"error": str(e)})
 
 def order(order_id):
     """Информация о заказе по ID"""
@@ -508,7 +517,7 @@ def info(product_id):
     return json.dumps(product, ensure_ascii=False, default=str)
 
 def in_stock(start=0, stop=5):
-    """Список товаров в наличии с характеристиками"""
+    """Список товаров в наличии. Возвращает JSON."""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
@@ -517,7 +526,7 @@ def in_stock(start=0, stop=5):
         offset = start
         
         cur.execute('''
-            SELECT p.name, p.id, pi.color, pi.attribute1_value as size, pi.quantity
+            SELECT p.name, p.id, p.price, pi.color, pi.attribute1_value as size, pi.quantity
             FROM products p
             JOIN product_inventory pi ON p.id = pi.product_id
             WHERE pi.quantity > 0
@@ -530,14 +539,22 @@ def in_stock(start=0, stop=5):
         conn.close()
         
         if not items:
-            return "Ничего не найдено в наличии."
+            return "[]"
             
-        res = []
+        # Группируем по ID для компактности
+        products = {}
         for item in items:
+            pid = item['id']
+            if pid not in products:
+                products[pid] = {
+                    "id": pid,
+                    "name": item['name'],
+                    "price": item['price'],
+                    "stock": []
+                }
             color_name = hex_to_color_name(item['color']) if '#' in str(item['color']) else item['color']
-            char = f"размер {item['size']} - цвет {color_name}"
-            res.append(f"{item['name']} - {item['id']} - {char}")
+            products[pid]["stock"].append(f"{color_name}/{item['size']}:{item['quantity']}")
             
-        return "\n".join(res)
+        return json.dumps(list(products.values()), ensure_ascii=False)
     except Exception as e:
-        return f"Error: {e}"
+        return json.dumps({"error": str(e)})

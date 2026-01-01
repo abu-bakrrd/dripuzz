@@ -12,11 +12,7 @@ from groq import Groq
 # Добавляем путь к корню проекта для импорта ai_db_helper
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from ai_bot.ai_db_helper import (
-    search, info, catalog, order, in_stock,
-    format_products_for_ai, get_pretty_product_info,
-    format_colors, search_products
-)
+import ai_bot.ai_db_helper as db_helper
 
 # Загружаем ключи
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
@@ -147,26 +143,24 @@ class MonaBot:
             if tool == "search":
                 # keywords может прийти как query или keywords
                 kw = args.get("keywords") or args.get("query", "")
-                res = search(kw)
+                res = db_helper.search(kw)
                 session['last_results'] = res 
-                return str(res) # Для AI отдаем сырые данные (в search_products они уже RealDictRow)
+                return str(res)
             
             elif tool == "info":
-                return info(args.get("id", ""))
+                return db_helper.info(args.get("id", ""))
             
             elif tool == "catalog":
-                return catalog()
+                return db_helper.catalog()
             
             elif tool == "order":
-                return order(args.get("id", ""))
+                return db_helper.order(args.get("id", ""))
 
             elif tool == "in_stock":
-                res_str = in_stock(args.get("start", 0), args.get("stop", 5))
+                res_str = db_helper.in_stock(args.get("start", 0), args.get("stop", 5))
                 # Для [ТОВАРЫ] нам нужны объекты, поэтому делаем внутренний поиск
                 if "Ничего не найдено" not in res_str:
-                    # Попробуем получить объекты для UI через search_products с флагом наличия
-                    # Это временный костыль, чтобы тег [ТОВАРЫ] работал красиво
-                    session['last_results'] = search_products("", include_out_of_stock=False)
+                    session['last_results'] = db_helper.search_products("", include_out_of_stock=False)
                 return res_str
                 
         except Exception as e:
@@ -181,11 +175,11 @@ class MonaBot:
 
         # 1. Тег [ИНФО:id] -> Карточка товара
         for match in re.findall(r'\[ИНФО:([^\]]+)\]', text):
-            text = text.replace(f"[ИНФО:{match}]", get_pretty_product_info(match.strip()))
+            text = text.replace(f"[ИНФО:{match}]", db_helper.get_pretty_product_info(match.strip()))
 
         # 2. Тег [ЗАКАЗ:id] -> Статус заказа
         for match in re.findall(r'\[ЗАКАЗ:([^\]]+)\]', text):
-            text = text.replace(f"[ЗАКАЗ:{match}]", get_order_status(match.strip(), detailed=True))
+            text = text.replace(f"[ЗАКАЗ:{match}]", db_helper.get_order_status(match.strip(), internal_raw=False, detailed=True))
 
         # 3. Тег [ТОВАРЫ:start,stop] -> Список с ссылками
         tag_tov = re.search(r'\[ТОВАРЫ:(\d+),(\d+)\]', text)

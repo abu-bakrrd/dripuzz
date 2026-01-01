@@ -395,24 +395,39 @@ def get_categories():
         return []
 
 
-def get_order_status(order_id, internal_raw=True):
-    """Получение данных заказа (Raw Data Priority)"""
+def get_order_status(order_id, internal_raw=True, detailed=False):
+    """Получение данных заказа (Raw Data Priority or Pretty UI)"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         cur.execute("SELECT id, status, total, created_at, customer_name FROM orders WHERE id::text ILIKE %s", (f'{order_id}%',))
-        order = cur.fetchone()
-        if not order: return None
+        order_data = cur.fetchone()
+        if not order_data: return "Заказ не найден."
         
-        cur.execute("SELECT name, quantity, price, selected_color, selected_attributes FROM order_items WHERE order_id = %s", (order['id'],))
-        order['items'] = cur.fetchall()
+        cur.execute("SELECT name, quantity, price, selected_color, selected_attributes FROM order_items WHERE order_id = %s", (order_data['id'],))
+        order_data['items'] = cur.fetchall()
         cur.close()
         conn.close()
         
         if internal_raw:
-            return json.dumps(order, default=str, ensure_ascii=False)
-        return order
-    except Exception: return None
+            return json.dumps(order_data, default=str, ensure_ascii=False)
+        
+        if detailed:
+            # Формируем красивый текст для пользователя
+            date_str = order_data['created_at'].strftime("%d.%m.%Y %H:%M") if order_data['created_at'] else "Неизвестно"
+            res = f"📦 <b>Заказ #{str(order_data['id'])[:8]}</b>\n"
+            res += f"📅 <b>Дата:</b> {date_str}\n"
+            res += f"📊 <b>Статус:</b> {order_data['status']}\n"
+            res += f"💰 <b>Сумма:</b> {order_data['total']} сум\n\n"
+            res += "<b>Товары:</b>\n"
+            for item in order_data['items']:
+                color = f" ({item['selected_color']})" if item['selected_color'] else ""
+                res += f"• {item['name']}{color} x{item['quantity']} — {item['price']} сум\n"
+            return res
+            
+        return order_data
+    except Exception as e:
+        return f"Ошибка при получении заказа: {e}"
 def get_pretty_product_info(product_id):
     """
     Формирует красивый HTML-текст о товаре для пользователя.

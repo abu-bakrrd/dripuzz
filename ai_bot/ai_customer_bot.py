@@ -19,7 +19,7 @@ import json
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # ЯВНЫЙ ВЫВОД ВЕРСИИ ДЛЯ ОТЛАДКИ
-print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.5 (PURE DATA ARCHITECTURE)", flush=True)
+print("🚀 ЗАПУСК БОТА: ВЕРСИЯ 5.6 (MODEL RESILIENCE)", flush=True)
 
 import re
 from ai_bot.ai_db_helper import get_all_products_info, search_products, format_products_for_ai, get_order_status, format_colors, get_product_details, get_catalog_titles, get_pretty_product_info
@@ -64,12 +64,16 @@ class AICustomerBot:
             self.client = None
         else:
             try:
-                # Настройка моделей OpenRouter
-                self.primary_model = "google/gemini-2.0-flash-exp:free"
-                self.fallback_model = "google/gemini-flash-1.5:free"
-                self.model_name = self.primary_model
+                # Настройка цепочки моделей для максимальной стабильности
+                self.models_priority = [
+                    "google/gemini-2.0-flash-exp:free",
+                    "meta-llama/llama-3.3-70b-instruct:free",
+                    "google/gemini-flash-1.5-8b",
+                    "mistralai/mistral-7b-instruct:free"
+                ]
+                self.model_name = self.models_priority[0]
                 self.client = True # Флаг готовности
-                self.logger.info(f"OpenRouter initialized. Primary: {self.primary_model}")
+                self.logger.info(f"OpenRouter Resilience v5.6. Models: {self.models_priority}")
             except Exception as e:
                 self.logger.error(f"Error initializing AI: {e}", exc_info=True)
                 self.client = None
@@ -427,7 +431,7 @@ class AICustomerBot:
             welcome_text = f"""
 👋 Привет, <b>{username}</b>! 💕
 
-Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.5)
+Меня зовут <b>Mona</b>, и я твой AI-консультант магазина Monvoir! ✨ (v5.6)
 
 Я помогу тебе найти идеальные вещи и ответить на любые вопросы:
 
@@ -754,60 +758,60 @@ class AICustomerBot:
 
     
     def _call_openrouter(self, messages):
-        """Метод для прямого вызова API OpenRouter с ретраями и расширенными заголовками"""
+        """Метод для вызова API OpenRouter с интеллектуальным переключением моделей"""
         import time
         max_retries = 3
-        retry_delay = 2
+        retry_delay = 1
         
         url = "https://openrouter.ai/api/v1/chat/completions"
         headers = {
             "Authorization": f"Bearer {self.openrouter_key}",
             "Content-Type": "application/json",
             "HTTP-Referer": "https://monvoir.shop",
-            "X-Title": "Monvoir Mona AI (v5.1)",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AICustomerBot/5.1"
+            "X-Title": "Monvoir Mona AI (v5.6)",
+            "User-Agent": "Mozilla/5.0 AICustomerBot/5.6"
         }
         
-        data = {
-            "model": self.model_name,
-            "messages": messages,
-            "temperature": 0.1,
-            "max_tokens": 2048,
-            "top_p": 0.9,
-            "repetition_penalty": 1.1
-        }
+        # Индекс текущей модели из списка приоритетов
+        current_model_idx = 0
         
-        for attempt in range(max_retries):
+        for attempt in range(max_retries * 2): # Больше попыток для перебора моделей
+            model_to_use = self.models_priority[current_model_idx]
+            
+            data = {
+                "model": model_to_use,
+                "messages": messages,
+                "temperature": 0.2,
+                "max_tokens": 1500
+            }
+            
             try:
-                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=45)
+                self.logger.info(f"AI Request using model: {model_to_use} (Attempt {attempt+1})")
+                response = requests.post(url, headers=headers, data=json.dumps(data), timeout=30)
                 
                 if response.status_code == 200:
                     result = response.json()
                     content = result.get('choices', [{}])[0].get('message', {}).get('content')
                     if content:
+                        # Если успешно, запоминаем работающую модель (опционально)
                         return content
-                    else:
-                        self.logger.warning(f"Attempt {attempt+1}: Empty choices in response")
                 
-                elif response.status_code in [429, 500, 502, 503, 504]:
-                    self.logger.warning(f"Attempt {attempt+1}: OpenRouter Error {response.status_code}. Retrying...")
-                    if attempt == 0 and self.model_name == self.primary_model:
-                        self.logger.info(f"Switching to fallback model {self.fallback_model} early")
-                        self.model_name = self.fallback_model
-                        data["model"] = self.model_name
+                # Если 429 или 404 (модель не найдена) -> Переключаемся на следующую
+                if response.status_code in [429, 404, 500, 502, 503, 504]:
+                    self.logger.warning(f"Error {response.status_code} with {model_to_use}. Switching model...")
+                    current_model_idx = (current_model_idx + 1) % len(self.models_priority)
+                    time.sleep(retry_delay)
+                    continue
                 
                 else:
                     self.logger.error(f"OpenRouter Critical Error {response.status_code}: {response.text}")
                     break
                     
-            except (requests.exceptions.RequestException, Exception) as e:
-                self.logger.error(f"Attempt {attempt+1}: Connection Error: {e}")
-                if attempt < max_retries - 1:
-                    time.sleep(retry_delay * (attempt + 1))
-                    continue
-            
-            time.sleep(retry_delay)
-            
+            except Exception as e:
+                self.logger.error(f"Attempt {attempt+1} Connection Error: {e}")
+                current_model_idx = (current_model_idx + 1) % len(self.models_priority)
+                time.sleep(retry_delay * 2)
+        
         return None
 
     def run(self):

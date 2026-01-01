@@ -646,3 +646,48 @@ def get_order_status(order_id, detailed=True):
     except Exception as e:
         print(f"❌ Ошибка проверки заказа: {e}")
         return None
+def get_pretty_product_info(product_id):
+    """
+    Формирует красивый HTML-текст о товаре для пользователя.
+    Используется ботом для автоматической замены тега [ИНФО:id].
+    """
+    product = get_product_details(product_id)
+    if not product:
+        return "<i>Товар не найден.</i>"
+    
+    # Формируем текст
+    price_text = f"{product['price']} сум"
+    description = product.get('description')
+    if not description or description == 'NULL_DATA':
+        description = "<i>Описание этой модели сейчас готовится нашей командой Monvoir.</i>"
+    
+    res = f"🏷 <b>{product['name']}</b>\n"
+    res += f"💰 <b>Цена:</b> {price_text}\n\n"
+    res += f"📝 <b>Описание:</b>\n{description}\n\n"
+    
+    # Формируем матрицу размеров/цветов
+    inventory = product.get('inventory', [])
+    if inventory:
+        res += "📏 <b>Доступные размеры:</b>\n"
+        # Группируем по цветам для красоты
+        color_groups = {}
+        for item in inventory:
+            color_raw = item.get('color')
+            color = format_colors([color_raw]) if color_raw else "Стандарт"
+            if color not in color_groups:
+                color_groups[color] = []
+            
+            size = item.get('attribute1_value') or "Универсальный"
+            qty = item.get('quantity', 0)
+            if qty > 0:
+                color_groups[color].append(f"<code>{size}</code>")
+        
+        for color, sizes in color_groups.items():
+            if sizes:
+                res += f"• {color}: {', '.join(sizes)}\n"
+            else:
+                res += f"• {color}: <i>ожидается поступление</i>\n"
+    else:
+        res += "📍 <i>Информации о наличии размеров пока нет.</i>"
+    
+    return res

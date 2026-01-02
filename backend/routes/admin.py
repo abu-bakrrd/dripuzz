@@ -8,13 +8,16 @@ from datetime import datetime
 
 from ..database import (
     get_db_connection, get_platform_setting, set_platform_setting,
-    get_cloudinary_config, get_telegram_config, get_smtp_config, get_payment_config, get_yandex_maps_config
+    get_cloudinary_config, get_telegram_config, get_smtp_config, 
+    get_payment_config, get_yandex_maps_config
 )
 from ..utils.auth import require_admin, require_superadmin, admin_required_response, superadmin_required_response
 from ..services.cloud_service import upload_image_to_cloud, test_cloud_connection
 from ..services.email_service import send_email
 
 admin_bp = Blueprint('admin', __name__)
+
+# --- Auth & Admins ---
 
 @admin_bp.route('/login', methods=['POST'])
 def admin_login():
@@ -53,22 +56,19 @@ def admin_setup():
     cur = conn.cursor()
     cur.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = TRUE')
     if cur.fetchone()['count'] > 0:
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
         return jsonify({'error': 'Admin already exists'}), 403
     
     cur.execute('SELECT * FROM users WHERE email = %s', (email,))
     user = cur.fetchone()
     if not user or not check_password_hash(user['password_hash'], password):
-        cur.close()
-        conn.close()
+        cur.close(); conn.close()
         return jsonify({'error': 'Invalid credentials or user not registered'}), 401
     
     cur.execute('UPDATE users SET is_admin = TRUE, is_superadmin = TRUE WHERE id = %s RETURNING *', (user['id'],))
     updated_user = cur.fetchone()
     conn.commit()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     
     session.permanent = True
     session['user_id'] = updated_user['id']
@@ -80,8 +80,7 @@ def admin_check_setup():
     cur = conn.cursor()
     cur.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = TRUE')
     admin_count = cur.fetchone()['count']
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return jsonify({'needs_setup': admin_count == 0})
 
 @admin_bp.route('/me', methods=['GET'])
@@ -93,11 +92,9 @@ def admin_me():
     cur = conn.cursor()
     cur.execute('SELECT id, email, first_name, last_name, is_admin, is_superadmin FROM users WHERE id = %s', (admin_id,))
     user = cur.fetchone()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return jsonify({'user': user})
 
-# Admin Management
 @admin_bp.route('/admins', methods=['GET'])
 def get_all_admins():
     if not require_superadmin(): return superadmin_required_response()
@@ -105,31 +102,48 @@ def get_all_admins():
     cur = conn.cursor()
     cur.execute('SELECT id, email, first_name, last_name, phone, is_admin, is_superadmin, created_at FROM users WHERE is_admin = TRUE ORDER BY is_superadmin DESC, created_at ASC')
     admins = cur.fetchall()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return jsonify(admins)
 
-# Orders, Products, Categories, Inventory etc.
-@admin_bp.route('/orders', methods=['GET'])
-def admin_get_orders():
-    if not require_admin(): return admin_required_response()
-    status = request.args.get('status')
+@admin_bp.route('/admins', methods=['POST'])
+def add_admin():
+    if not require_superadmin(): return superadmin_required_response()
+    data = request.json
+    user_id = data.get('user_id')
+    
     conn = get_db_connection()
     cur = conn.cursor()
-    query = 'SELECT o.*, u.email as user_email, u.first_name, u.last_name FROM orders o LEFT JOIN users u ON o.user_id = u.id'
-    params = []
-    if status:
-        query += ' WHERE o.status = %s'
-        params.append(status)
-    query += ' ORDER BY o.created_at DESC LIMIT 50'
-    cur.execute(query, params)
-    orders = cur.fetchall()
-    for order in orders:
-        cur.execute('SELECT oi.*, p.images FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = %s', (order['id'],))
-        order['items'] = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(orders)
+    cur.execute('UPDATE users SET is_admin = TRUE WHERE id = %s RETURNING id, email', (user_id,))
+    user = cur.fetchone()
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': f"User {user['email']} promoted to admin"})
+
+@admin_bp.route('/admins/<admin_id>', methods=['DELETE'])
+def remove_admin(admin_id):
+    if not require_superadmin(): return superadmin_required_response()
+    if admin_id == session.get('user_id'): return jsonify({'error': 'Cannot remove yourself'}), 400
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    # Prevent removing superadmin if needed, or check if target is superadmin
+    cur.execute('UPDATE users SET is_admin = FALSE WHERE id = %s', (admin_id,))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': 'Admin privileges removed'})
+
+@admin_bp.route('/admins/users', methods=['GET'])
+def get_potential_admins():
+    if not require_superadmin(): return superadmin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT id, email, first_name, last_name FROM users WHERE is_admin = FALSE ORDER BY email LIMIT 50')
+    users = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify(users)
+
+
+# --- Products ---
 
 @admin_bp.route('/products', methods=['GET'])
 def admin_get_products():
@@ -138,9 +152,73 @@ def admin_get_products():
     cur = conn.cursor()
     cur.execute('SELECT * FROM products ORDER BY name')
     products = cur.fetchall()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return jsonify(products)
+
+@admin_bp.route('/products', methods=['POST'])
+def admin_create_product():
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    
+    # Validation could be added here
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        INSERT INTO products (name, description, price, images, category_id, colors, attributes)
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
+        RETURNING id
+    ''', (
+        data.get('name'), 
+        data.get('description'), 
+        data.get('price'), 
+        data.get('images', []), 
+        data.get('category_id'), 
+        data.get('colors', []), 
+        json.dumps(data.get('attributes', {}))
+    ))
+    new_id = cur.fetchone()['id']
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'id': new_id, 'message': 'Product created'})
+
+@admin_bp.route('/products/<product_id>', methods=['PUT'])
+def admin_update_product(product_id):
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''
+        UPDATE products 
+        SET name = %s, description = %s, price = %s, images = %s, category_id = %s, colors = %s, attributes = %s
+        WHERE id = %s
+    ''', (
+        data.get('name'), 
+        data.get('description'), 
+        data.get('price'), 
+        data.get('images', []), 
+        data.get('category_id'), 
+        data.get('colors', []), 
+        json.dumps(data.get('attributes', {})),
+        product_id
+    ))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': 'Product updated'})
+
+@admin_bp.route('/products/<product_id>', methods=['DELETE'])
+def admin_delete_product(product_id):
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': 'Product deleted'})
+
+
+# --- Inventory ---
 
 @admin_bp.route('/inventory', methods=['GET'])
 def admin_get_inventory():
@@ -149,11 +227,201 @@ def admin_get_inventory():
     cur = conn.cursor()
     cur.execute('SELECT i.*, p.name as product_name FROM product_inventory i JOIN products p ON i.product_id = p.id ORDER BY p.name')
     inventory = cur.fetchall()
-    cur.close()
-    conn.close()
+    cur.close(); conn.close()
     return jsonify(inventory)
 
-# Settings
+@admin_bp.route('/inventory', methods=['POST'])
+def admin_add_inventory():
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        cur.execute('''
+            INSERT INTO product_inventory (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days)
+            VALUES (%s, %s, %s, %s, %s, %s)
+            ON CONFLICT (product_id, color, attribute1_value, attribute2_value) 
+            DO UPDATE SET quantity = product_inventory.quantity + EXCLUDED.quantity
+            RETURNING id
+        ''', (
+            data.get('product_id'),
+            data.get('color'),
+            data.get('attribute1_value'),
+            data.get('attribute2_value'),
+            data.get('quantity', 0),
+            data.get('backorder_lead_time_days')
+        ))
+        conn.commit()
+        return jsonify({'message': 'Inventory added'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 400
+    finally:
+        cur.close(); conn.close()
+
+@admin_bp.route('/inventory/<item_id>', methods=['PUT', 'DELETE'])
+def admin_manage_inventory_item(item_id):
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    
+    if request.method == 'DELETE':
+        cur.execute('DELETE FROM product_inventory WHERE id = %s', (item_id,))
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'message': 'Item deleted'})
+    else:
+        data = request.json
+        cur.execute('''
+            UPDATE product_inventory 
+            SET quantity = %s, backorder_lead_time_days = %s 
+            WHERE id = %s
+        ''', (data.get('quantity'), data.get('backorder_lead_time_days'), item_id))
+        conn.commit()
+        cur.close(); conn.close()
+        return jsonify({'message': 'Item updated'})
+
+@admin_bp.route('/inventory/import', methods=['POST'])
+def admin_import_inventory():
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    items = data.get('items', [])
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        for item in items:
+            cur.execute('''
+                INSERT INTO product_inventory (product_id, color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT (product_id, color, attribute1_value, attribute2_value) 
+                DO UPDATE SET quantity = EXCLUDED.quantity, backorder_lead_time_days = EXCLUDED.backorder_lead_time_days
+            ''', (
+                item.get('product_id'),
+                item.get('color'),
+                item.get('attribute1_value'),
+                item.get('attribute2_value'),
+                item.get('quantity', 0),
+                item.get('backorder_lead_time_days')
+            ))
+        conn.commit()
+        return jsonify({'message': f'Imported {len(items)} items'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close(); conn.close()
+
+@admin_bp.route('/inventory/export', methods=['GET'])
+def admin_export_inventory():
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection(); cur = conn.cursor()
+    cur.execute('SELECT i.*, p.name FROM product_inventory i JOIN products p ON i.product_id = p.id')
+    items = cur.fetchall(); cur.close(); conn.close()
+    
+    si = io.StringIO()
+    cw = csv.DictWriter(si, fieldnames=['id', 'product_id', 'name', 'color', 'attribute1_value', 'attribute2_value', 'quantity', 'backorder_lead_time_days', 'created_at', 'updated_at'])
+    cw.writeheader()
+    cw.writerows(items)
+    return Response(si.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=inventory.csv'})
+
+
+# --- Categories ---
+
+@admin_bp.route('/categories', methods=['GET'])
+def admin_get_categories():
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM categories ORDER BY sort_order ASC, name ASC')
+    categories = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify(categories)
+
+@admin_bp.route('/categories', methods=['POST'])
+def admin_create_category():
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    name = data.get('name')
+    icon = data.get('icon')
+    sort_order = data.get('sort_order', 0)
+    
+    if not name: return jsonify({'error': 'Name is required'}), 400
+        
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('INSERT INTO categories (name, icon, sort_order) VALUES (%s, %s, %s) RETURNING id', (name, icon, sort_order))
+    new_id = cur.fetchone()['id']
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'id': new_id, 'message': 'Category created'})
+
+@admin_bp.route('/categories/<category_id>', methods=['PUT'])
+def admin_update_category(category_id):
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE categories SET name = %s, icon = %s, sort_order = %s WHERE id = %s',
+        (data.get('name'), data.get('icon'), data.get('sort_order', 0), category_id))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': 'Category updated'})
+
+@admin_bp.route('/categories/<category_id>', methods=['DELETE'])
+def admin_delete_category(category_id):
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('DELETE FROM categories WHERE id = %s', (category_id,))
+    conn.commit()
+    cur.close(); conn.close()
+    return jsonify({'message': 'Category deleted'})
+
+
+# --- Orders ---
+
+@admin_bp.route('/orders', methods=['GET'])
+def admin_get_orders():
+    if not require_admin(): return admin_required_response()
+    status = request.args.get('status')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    query = 'SELECT o.*, u.email as user_email, u.first_name, u.last_name FROM orders o LEFT JOIN users u ON o.user_id = u.id'
+    params = []
+    if status and status != 'all':
+        query += ' WHERE o.status = %s'
+        params.append(status)
+    query += ' ORDER BY o.created_at DESC LIMIT 50'
+    cur.execute(query, params)
+    orders = cur.fetchall()
+    for order in orders:
+        cur.execute('SELECT oi.*, p.images FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = %s', (order['id'],))
+        order['items'] = cur.fetchall()
+    cur.close(); conn.close()
+    return jsonify(orders)
+
+@admin_bp.route('/orders/<order_id>/status', methods=['PUT'])
+def admin_update_order_status(order_id):
+    if not require_admin(): return admin_required_response()
+    data = request.json
+    status = data.get('status')
+    
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('UPDATE orders SET status = %s WHERE id = %s', (status, order_id))
+    conn.commit()
+    
+    # Optional: Send notification if status changed
+    # We could fetch user_id and invoke notification service here
+    
+    cur.close(); conn.close()
+    return jsonify({'message': 'Status updated'})
+
+
+# --- Settings ---
+
 @admin_bp.route('/settings/cloudinary', methods=['GET', 'PUT'])
 def admin_cloudinary_settings():
     if not require_admin(): return admin_required_response()
@@ -168,37 +436,39 @@ def admin_cloudinary_settings():
         set_platform_setting('cloudinary_api_secret', data.get('api_secret'), True)
     return jsonify({'message': 'Settings saved'})
 
-# Stats
-@admin_bp.route('/statistics', methods=['GET'])
-def admin_get_statistics():
-    if not require_admin(): return admin_required_response()
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT COUNT(*) FROM users'); u_count = cur.fetchone()['count']
-    cur.execute('SELECT COUNT(*) FROM orders'); o_count = cur.fetchone()['count']
-    cur.execute("SELECT COALESCE(SUM(total), 0) FROM orders WHERE status != 'cancelled'"); rev = cur.fetchone()['sum']
-    cur.close(); conn.close()
-    return jsonify({'total_users': u_count, 'total_orders': o_count, 'total_revenue': rev})
-
 @admin_bp.route('/settings/cloudinary/test', methods=['POST'])
 def admin_test_cloudinary():
     if not require_admin(): return admin_required_response()
     ok, res = test_cloud_connection()
     return jsonify({'success': ok, 'message': 'Cloudinary connected' if ok else res})
 
+@admin_bp.route('/settings/telegram', methods=['GET', 'PUT'])
+def admin_telegram_settings():
+    if not require_admin(): return admin_required_response()
+    if request.method == 'GET':
+        cfg = get_telegram_config()
+        return jsonify({'bot_token': cfg['bot_token'], 'admin_chat_id': cfg['admin_chat_id'], 'notifications_enabled': cfg['notifications_enabled']})
+    
+    data = request.json
+    set_platform_setting('telegram_bot_token', data.get('bot_token'), True)
+    set_platform_setting('telegram_admin_chat_id', data.get('admin_chat_id'), False)
+    set_platform_setting('telegram_notifications_enabled', str(data.get('notifications_enabled')).lower(), False)
+    return jsonify({'message': 'Telegram settings saved'})
+
 @admin_bp.route('/settings/telegram/test', methods=['POST'])
 def admin_test_telegram():
     if not require_admin(): return admin_required_response()
-    from ..services.tg_service import send_telegram_notification
-    # Generic test message
     cfg = get_telegram_config()
     if not cfg['bot_token'] or not cfg['admin_chat_id']:
         return jsonify({'success': False, 'error': 'Telegram not configured'})
     
     url = f"https://api.telegram.org/bot{cfg['bot_token']}/sendMessage"
     payload = {'chat_id': cfg['admin_chat_id'], 'text': '✅ Test message from Admin Panel'}
-    resp = requests.post(url, json=payload, timeout=10)
-    return jsonify({'success': resp.status_code == 200, 'error': resp.text if resp.status_code != 200 else None})
+    try:
+        resp = requests.post(url, json=payload, timeout=10)
+        return jsonify({'success': resp.status_code == 200, 'error': resp.text if resp.status_code != 200 else None})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @admin_bp.route('/settings/smtp', methods=['GET', 'PUT'])
 def admin_smtp_settings():
@@ -222,80 +492,83 @@ def admin_get_payment_settings():
         'card_transfer': get_payment_config('card_transfer')
     })
 
-@admin_bp.route('/inventory/export', methods=['GET'])
-def admin_export_inventory():
-    if not require_admin(): return admin_required_response()
-    conn = get_db_connection(); cur = conn.cursor()
-    cur.execute('SELECT i.*, p.name FROM product_inventory i JOIN products p ON i.product_id = p.id')
-    items = cur.fetchall(); cur.close(); conn.close()
-    
-    si = io.StringIO()
-    cw = csv.DictWriter(si, fieldnames=['id', 'product_id', 'name', 'color', 'attribute1_value', 'attribute2_value', 'quantity', 'backorder_lead_time_days', 'created_at', 'updated_at'])
-    cw.writeheader()
-    cw.writerows(items)
-    return Response(si.getvalue(), mimetype='text/csv', headers={'Content-Disposition': 'attachment; filename=inventory.csv'})
-
-# Categories Management
-@admin_bp.route('/categories', methods=['GET'])
-def admin_get_categories():
-    if not require_admin(): return admin_required_response()
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute('SELECT * FROM categories ORDER BY sort_order ASC, name ASC')
-    categories = cur.fetchall()
-    cur.close()
-    conn.close()
-    return jsonify(categories)
-
-@admin_bp.route('/categories', methods=['POST'])
-def admin_create_category():
+@admin_bp.route('/settings/payments/<provider>', methods=['PUT'])
+def admin_update_payment_settings(provider):
     if not require_admin(): return admin_required_response()
     data = request.json
-    name = data.get('name')
-    icon = data.get('icon')
-    sort_order = data.get('sort_order', 0)
     
-    if not name:
-        return jsonify({'error': 'Name is required'}), 400
+    if provider == 'click':
+        set_platform_setting('click_enabled', str(data.get('enabled')).lower(), False)
+        set_platform_setting('click_merchant_id', data.get('merchant_id'), False)
+        set_platform_setting('click_service_id', data.get('service_id'), False)
+        if data.get('secret_key'): set_platform_setting('click_secret_key', data.get('secret_key'), True)
+    
+    elif provider == 'payme':
+        set_platform_setting('payme_enabled', str(data.get('enabled')).lower(), False)
+        set_platform_setting('payme_merchant_id', data.get('merchant_id'), False)
+        if data.get('key'): set_platform_setting('payme_key', data.get('key'), True)
         
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        'INSERT INTO categories (name, icon, sort_order) VALUES (%s, %s, %s) RETURNING id',
-        (name, icon, sort_order)
-    )
-    new_id = cur.fetchone()['id']
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'id': new_id, 'message': 'Category created'})
+    elif provider == 'uzum':
+        set_platform_setting('uzum_enabled', str(data.get('enabled')).lower(), False)
+        set_platform_setting('uzum_merchant_id', data.get('merchant_id'), False)
+        set_platform_setting('uzum_service_id', data.get('service_id'), False)
+        if data.get('secret_key'): set_platform_setting('uzum_secret_key', data.get('secret_key'), True)
+        
+    elif provider == 'card_transfer':
+        set_platform_setting('card_transfer_enabled', str(data.get('enabled')).lower(), False)
+        set_platform_setting('card_transfer_card_number', data.get('card_number'), False)
+        set_platform_setting('card_transfer_card_holder', data.get('card_holder'), False)
+        set_platform_setting('card_transfer_bank_name', data.get('bank_name'), False)
+        
+    return jsonify({'message': 'Payment settings saved'})
 
-@admin_bp.route('/categories/<category_id>', methods=['PUT'])
-def admin_update_category(category_id):
+@admin_bp.route('/settings/yandex_maps', methods=['GET', 'PUT'])
+def admin_yandex_maps_settings():
     if not require_admin(): return admin_required_response()
-    data = request.json
-    name = data.get('name')
-    icon = data.get('icon')
-    sort_order = data.get('sort_order', 0)
+    if request.method == 'GET':
+        return jsonify(get_yandex_maps_config())
     
-    conn = get_db_connection()
-    cur = conn.cursor()
-    cur.execute(
-        'UPDATE categories SET name = %s, icon = %s, sort_order = %s WHERE id = %s',
-        (name, icon, sort_order, category_id)
-    )
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'message': 'Category updated'})
+    data = request.json
+    set_platform_setting('yandex_maps_api_key', data.get('api_key'), False)
+    set_platform_setting('yandex_maps_default_lat', data.get('default_lat'), False)
+    set_platform_setting('yandex_maps_default_lng', data.get('default_lng'), False)
+    set_platform_setting('yandex_maps_default_zoom', str(data.get('default_zoom')), False)
+    return jsonify({'message': 'Maps settings saved'})
 
-@admin_bp.route('/categories/<category_id>', methods=['DELETE'])
-def admin_delete_category(category_id):
+@admin_bp.route('/settings/delivery', methods=['GET', 'POST'])
+def admin_delivery_settings():
+    if not require_admin(): return admin_required_response()
+    if request.method == 'GET':
+        return jsonify({
+            'default_delivery_days': get_platform_setting('default_delivery_days') or 3,
+            'enabled': get_platform_setting('delivery_enabled') == 'true'
+        })
+    
+    data = request.json
+    set_platform_setting('default_delivery_days', str(data.get('default_delivery_days')), False)
+    set_platform_setting('delivery_enabled', str(data.get('enabled')).lower(), False)
+    return jsonify({'message': 'Delivery settings saved'})
+
+
+# --- Stats ---
+
+@admin_bp.route('/statistics', methods=['GET'])
+def admin_get_statistics():
     if not require_admin(): return admin_required_response()
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('DELETE FROM categories WHERE id = %s', (category_id,))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return jsonify({'message': 'Category deleted'})
+    
+    try:
+        cur.execute('SELECT COUNT(*) as count FROM users'); u_count = cur.fetchone()['count']
+        cur.execute('SELECT COUNT(*) as count FROM orders'); o_count = cur.fetchone()['count']
+        cur.execute("SELECT COALESCE(SUM(total), 0) as sum FROM orders WHERE status != 'cancelled'"); rev = cur.fetchone()['sum']
+        
+        # Additional stats if needed by frontend chart
+        # For now, stick to basic to fix 500 error
+        
+        cur.close(); conn.close()
+        return jsonify({'total_users': u_count, 'total_orders': o_count, 'total_revenue': rev})
+    except Exception as e:
+        if not cur.closed: cur.close()
+        if not conn.closed: conn.close()
+        return jsonify({'error': str(e)}), 500

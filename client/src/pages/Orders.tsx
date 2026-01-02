@@ -395,7 +395,9 @@ export default function Orders() {
 				throw new Error('Не удалось проверить товары')
 			}
 
-			const { existing, missing } = await checkResponse.json()
+			const data = await checkResponse.json()
+			const existing = data.existing || []
+			const missing = data.missing || []
 
 			if (existing.length === 0) {
 				toast({

@@ -679,3 +679,57 @@ def admin_get_statistics():
         if not cur.closed: cur.close()
         if not conn.closed: conn.close()
         return jsonify({'error': str(e)}), 500
+
+@admin_bp.route('/settings/smtp', methods=['GET', 'PUT'])
+def admin_smtp_settings():
+    if not require_admin(): return admin_required_response()
+    
+    if request.method == 'GET':
+        cfg = get_smtp_config()
+        # Don't return the actual password, just a flag if it exists
+        return jsonify({
+            'host': cfg['host'], 
+            'port': cfg['port'], 
+            'user': cfg['user'], 
+            'has_password': bool(cfg['password']),
+            'from_email': cfg['from_email'],
+            'from_name': cfg['from_name'],
+            'use_tls': cfg['use_tls']
+        })
+    
+    data = request.json
+    set_platform_setting('smtp_host', data.get('host'), False)
+    set_platform_setting('smtp_port', data.get('port'), False)
+    set_platform_setting('smtp_user', data.get('user'), False)
+    # Only update password if provided
+    if data.get('password'):
+        set_platform_setting('smtp_password', data.get('password'), True)
+        
+    set_platform_setting('smtp_from_email', data.get('from_email'), False)
+    set_platform_setting('smtp_from_name', data.get('from_name'), False)
+    set_platform_setting('smtp_use_tls', str(data.get('use_tls', 'true')).lower(), False)
+    
+    return jsonify({'message': 'SMTP settings saved'})
+
+@admin_bp.route('/settings/smtp/test', methods=['POST'])
+def admin_test_smtp():
+    if not require_admin(): return admin_required_response()
+    
+    # Use the email of the current admin for testing
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT email FROM users WHERE id = %s', (session['user_id'],))
+    admin_email = cur.fetchone()['email']
+    cur.close(); conn.close()
+    
+    if not admin_email:
+        return jsonify({'success': False, 'error': 'Admin email not found'})
+        
+    # Send test email
+    success, error = send_email(
+        to_email=admin_email,
+        subject='SMTP Test - Admin Panel',
+        body='✅ Test email from Admin Panel. Your SMTP settings are correct.'
+    )
+    
+    return jsonify({'success': success, 'error': error, 'message': 'Test email sent' if success else error})

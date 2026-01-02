@@ -548,17 +548,7 @@ def admin_test_telegram():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
-@admin_bp.route('/settings/smtp', methods=['GET', 'PUT'])
-def admin_smtp_settings():
-    if not require_admin(): return admin_required_response()
-    if request.method == 'GET':
-        cfg = get_smtp_config()
-        return jsonify({'host': cfg['host'], 'port': cfg['port'], 'user': cfg['user'], 'has_password': bool(cfg['password']), 'from_email': cfg['from_email'], 'from_name': cfg['from_name'], 'use_tls': cfg['use_tls']})
-    data = request.json
-    for k, v in data.items():
-        if k == 'password' and v: set_platform_setting('smtp_password', v, True)
-        elif k != 'password': set_platform_setting(f'smtp_{k}', str(v), False)
-    return jsonify({'message': 'Saved'})
+
 
 @admin_bp.route('/settings/payments', methods=['GET'])
 def admin_get_payment_settings():

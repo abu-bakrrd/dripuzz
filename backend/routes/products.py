@@ -43,6 +43,71 @@ def get_product(product_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@products_bp.route('/products/<product_id>/inventory', methods=['GET'])
+def get_product_inventory(product_id):
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT color, attribute1_value, attribute2_value, quantity, backorder_lead_time_days FROM product_inventory WHERE product_id = %s', (product_id,))
+        inventory = cur.fetchall()
+        cur.close()
+        conn.close()
+        return jsonify(inventory)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@products_bp.route('/products/availability', methods=['POST'])
+def check_products_availability():
+    try:
+        data = request.json
+        items = data.get('items', []) # Expects [{product_id, quantity, color, attribute1_value, ...}]
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        results = []
+        for item in items:
+            pid = item.get('product_id')
+            if not pid: continue
+            
+            # Construct query based on provided attributes
+            query = "SELECT quantity FROM product_inventory WHERE product_id = %s"
+            params = [pid]
+            
+            if item.get('color'):
+                query += " AND color = %s"
+                params.append(item.get('color'))
+            else:
+                query += " AND color IS NULL"
+                
+            if item.get('attribute1_value'):
+                query += " AND attribute1_value = %s"
+                params.append(item.get('attribute1_value'))
+            else:
+                query += " AND attribute1_value IS NULL"
+                
+            if item.get('attribute2_value'):
+                query += " AND attribute2_value = %s"
+                params.append(item.get('attribute2_value'))
+            else:
+                query += " AND attribute2_value IS NULL"
+                
+            cur.execute(query, tuple(params))
+            row = cur.fetchone()
+            
+            available = row['quantity'] >= item.get('quantity', 1) if row else False
+            results.append({
+                'product_id': pid,
+                'available': available,
+                'quantity_in_stock': row['quantity'] if row else 0
+            })
+            
+        cur.close()
+        conn.close()
+        return jsonify({'items': results})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @products_bp.route('/products/check', methods=['POST'])
 def check_products_exist():
     try:

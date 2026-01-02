@@ -148,39 +148,84 @@ def get_potential_admins():
 @admin_bp.route('/products', methods=['GET'])
 def admin_get_products():
     if not require_admin(): return admin_required_response()
+    
+    search = request.args.get('search')
+    category = request.args.get('category')
+    sort = request.args.get('sort', 'name') # name, name_desc, price_asc, price_desc
+    
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('SELECT * FROM products ORDER BY name')
+    
+    query = 'SELECT * FROM products'
+    params = []
+    conditions = []
+    
+    if search:
+        conditions.append('LOWER(name) LIKE %s')
+        params.append(f'%{search.lower()}%')
+    
+    if category and category != 'all':
+        conditions.append('category_id = %s')
+        params.append(category)
+        
+    if conditions:
+        query += ' WHERE ' + ' AND '.join(conditions)
+    
+    # Sorting logic
+    if sort == 'name_desc':
+        query += ' ORDER BY name DESC'
+    elif sort == 'price_asc':
+        query += ' ORDER BY price ASC'
+    elif sort == 'price_desc':
+        query += ' ORDER BY price DESC'
+    else:
+        query += ' ORDER BY name ASC'
+        
+    cur.execute(query, tuple(params))
     products = cur.fetchall()
     cur.close(); conn.close()
     return jsonify(products)
+
+@admin_bp.route('/products/<product_id>', methods=['GET'])
+def admin_get_product(product_id):
+    if not require_admin(): return admin_required_response()
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT * FROM products WHERE id = %s', (product_id,))
+    product = cur.fetchone()
+    cur.close(); conn.close()
+    if not product: return jsonify({'error': 'Product not found'}), 404
+    return jsonify(product)
 
 @admin_bp.route('/products', methods=['POST'])
 def admin_create_product():
     if not require_admin(): return admin_required_response()
     data = request.json
     
-    # Validation could be added here
-    
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('''
-        INSERT INTO products (name, description, price, images, category_id, colors, attributes)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        RETURNING id
-    ''', (
-        data.get('name'), 
-        data.get('description'), 
-        data.get('price'), 
-        data.get('images', []), 
-        data.get('category_id'), 
-        data.get('colors', []), 
-        json.dumps(data.get('attributes', {}))
-    ))
-    new_id = cur.fetchone()['id']
-    conn.commit()
-    cur.close(); conn.close()
-    return jsonify({'id': new_id, 'message': 'Product created'})
+    try:
+        cur.execute('''
+            INSERT INTO products (name, description, price, images, category_id, colors, attributes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        ''', (
+            data['name'], 
+            data.get('description'), 
+            data['price'], 
+            data.get('images', []), 
+            data.get('category_id'),
+            data.get('colors', []),
+            json.dumps(data.get('attributes', []))
+        ))
+        pid = cur.fetchone()['id']
+        conn.commit()
+        return jsonify({'message': 'Product created', 'id': pid}), 201
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close(); conn.close()
 
 @admin_bp.route('/products/<product_id>', methods=['PUT'])
 def admin_update_product(product_id):
@@ -189,43 +234,76 @@ def admin_update_product(product_id):
     
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('''
-        UPDATE products 
-        SET name = %s, description = %s, price = %s, images = %s, category_id = %s, colors = %s, attributes = %s
-        WHERE id = %s
-    ''', (
-        data.get('name'), 
-        data.get('description'), 
-        data.get('price'), 
-        data.get('images', []), 
-        data.get('category_id'), 
-        data.get('colors', []), 
-        json.dumps(data.get('attributes', {})),
-        product_id
-    ))
-    conn.commit()
-    cur.close(); conn.close()
-    return jsonify({'message': 'Product updated'})
+    try:
+        cur.execute('''
+            UPDATE products 
+            SET name = %s, description = %s, price = %s, images = %s, category_id = %s, colors = %s, attributes = %s
+            WHERE id = %s
+        ''', (
+            data['name'], 
+            data.get('description'), 
+            data['price'], 
+            data.get('images', []), 
+            data.get('category_id'),
+            data.get('colors', []),
+            json.dumps(data.get('attributes', [])),
+            product_id
+        ))
+        conn.commit()
+        return jsonify({'message': 'Product updated'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close(); conn.close()
 
 @admin_bp.route('/products/<product_id>', methods=['DELETE'])
 def admin_delete_product(product_id):
     if not require_admin(): return admin_required_response()
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
-    conn.commit()
-    cur.close(); conn.close()
-    return jsonify({'message': 'Product deleted'})
-
+    try:
+        cur.execute('DELETE FROM products WHERE id = %s', (product_id,))
+        # Also clean up inventory
+        cur.execute('DELETE FROM product_inventory WHERE product_id = %s', (product_id,))
+        conn.commit()
+        return jsonify({'message': 'Product deleted'})
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        cur.close(); conn.close()
 
 # --- Inventory ---
 
 @admin_bp.route('/inventory', methods=['GET'])
 def admin_get_inventory():
     if not require_admin(): return admin_required_response()
+    
+    product_id = request.args.get('product_id')
+    sort = request.args.get('sort', 'name') # name, quantity_asc, quantity_desc
+    
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('SELECT i.*, p.name as product_name FROM product_inventory i JOIN products p ON i.product_id = p.id ORDER BY p.name')
+    
+    query = 'SELECT i.*, p.name as product_name FROM product_inventory i JOIN products p ON i.product_id = p.id'
+    params = []
+    
+    if product_id:
+        query += ' WHERE i.product_id = %s'
+        params.append(product_id)
+        
+    # Sorting logic
+    if sort == 'quantity_asc':
+        query += ' ORDER BY i.quantity ASC'
+    elif sort == 'quantity_desc':
+        query += ' ORDER BY i.quantity DESC'
+    elif sort == 'name_desc':
+        query += ' ORDER BY p.name DESC'
+    else:
+        query += ' ORDER BY p.name ASC'
+        
+    cur.execute(query, tuple(params))
     inventory = cur.fetchall()
     cur.close(); conn.close()
     return jsonify(inventory)
@@ -559,15 +637,44 @@ def admin_get_statistics():
     cur = conn.cursor()
     
     try:
+        # Basic counts
         cur.execute('SELECT COUNT(*) as count FROM users'); u_count = cur.fetchone()['count']
+        cur.execute('SELECT COUNT(DISTINCT user_id) as count FROM orders'); u_with_orders = cur.fetchone()['count']
         cur.execute('SELECT COUNT(*) as count FROM orders'); o_count = cur.fetchone()['count']
         cur.execute("SELECT COALESCE(SUM(total), 0) as sum FROM orders WHERE status != 'cancelled'"); rev = cur.fetchone()['sum']
         
-        # Additional stats if needed by frontend chart
-        # For now, stick to basic to fix 500 error
+        # Product & Category counts
+        cur.execute('SELECT COUNT(*) as count FROM products'); p_count = cur.fetchone()['count']
+        cur.execute('SELECT COUNT(*) as count FROM categories'); c_count = cur.fetchone()['count']
+        
+        # Orders by status
+        cur.execute('SELECT status, COUNT(*) as count FROM orders GROUP BY status')
+        obs_rows = cur.fetchall()
+        orders_by_status = {row['status']: row['count'] for row in obs_rows}
+        
+        # Recent orders (last 7 days)
+        cur.execute('''
+            SELECT DATE(created_at) as date, COUNT(*) as count, SUM(total) as revenue 
+            FROM orders 
+            WHERE created_at > NOW() - INTERVAL '7 days' 
+            GROUP BY DATE(created_at) 
+            ORDER BY date DESC
+        ''')
+        recent_rows = cur.fetchall()
+        recent_orders = [{'date': str(r['date']), 'count': r['count'], 'revenue': r['revenue']} for r in recent_rows]
         
         cur.close(); conn.close()
-        return jsonify({'total_users': u_count, 'total_orders': o_count, 'total_revenue': rev})
+        
+        return jsonify({
+            'total_users': u_count,
+            'users_with_orders': u_with_orders,
+            'total_orders': o_count,
+            'total_revenue': rev,
+            'orders_by_status': orders_by_status,
+            'total_products': p_count,
+            'total_categories': c_count,
+            'recent_orders': recent_orders
+        })
     except Exception as e:
         if not cur.closed: cur.close()
         if not conn.closed: conn.close()

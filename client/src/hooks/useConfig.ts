@@ -86,7 +86,7 @@ export function useConfig() {
 		error,
 	} = useQuery<AppConfig>({
 		queryKey: ['/api/config'],
-		staleTime: 5 * 60 * 1000, // 5 minutes
+		staleTime: 0,
 		// Use cached config from localStorage as initial data
 		initialData: () => {
 			try {

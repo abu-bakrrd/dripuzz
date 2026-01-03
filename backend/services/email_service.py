@@ -9,7 +9,7 @@ def send_email(to_email, subject, html_content, text_content=None):
         config = get_smtp_config()
         
         if not config['host'] or not config['user'] or not config['password']:
-            return False
+            return False, "Missing SMTP configuration (host, user, or password)"
         
         msg = MIMEMultipart('alternative')
         msg['Subject'] = subject
@@ -29,7 +29,7 @@ def send_email(to_email, subject, html_content, text_content=None):
         server.login(config['user'], config['password'])
         server.send_message(msg)
         server.quit()
-        return True
+        return True, None
     except Exception as e:
         print(f"❌ Email sending failed: {e}")
         return False, str(e)
@@ -57,4 +57,5 @@ def send_password_reset_email(email, token, site_url):
     
     text_content = f"Сброс пароля\n\nВы запросили сброс пароля. Перейдите по ссылке ниже, чтобы установить новый пароль:\n\n{reset_link}"
     
-    return send_email(email, "Сброс пароля", html_content, text_content)
+    success, error = send_email(email, "Сброс пароля", html_content, text_content)
+    return success

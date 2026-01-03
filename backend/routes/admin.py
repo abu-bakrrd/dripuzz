@@ -623,9 +623,20 @@ def admin_test_yandex_maps():
         resp = requests.get(url, timeout=5)
         
         if resp.status_code == 200:
-            return jsonify({'success': True, 'message': 'Yandex Maps API key is valid'})
+            data = resp.json()
+            # Check if we actually got results (proves key is valid and has quota)
+            if 'response' in data and 'GeoObjectCollection' in data['response']:
+                return jsonify({'success': True, 'message': 'Yandex Maps API key is valid'})
+            else:
+                return jsonify({'success': False, 'error': 'API returned success but no data (possibly invalid key)'})
         else:
-            return jsonify({'success': False, 'error': f'API Error: {resp.status_code}'})
+            # Check for error message in body
+            try:
+                error_data = resp.json()
+                error_msg = error_data.get('message', str(resp.status_code))
+                return jsonify({'success': False, 'error': f'API Error: {error_msg}'})
+            except:
+                return jsonify({'success': False, 'error': f'API Error: {resp.status_code}'})
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
@@ -745,10 +756,10 @@ def admin_test_smtp():
     success, error = send_email(
         to_email=admin_email,
         subject='SMTP Test - Admin Panel',
-        body='✅ Test email from Admin Panel. Your SMTP settings are correct.'
+        html_content='<p>✅ Test email from Admin Panel. Your SMTP settings are correct.</p>'
     )
     
     if not success:
-        return jsonify({'success': False, 'error': f"SMTP Error: {error}"}), 500
+        return jsonify({'success': False, 'error': f"SMTP Error: {error}"})
         
     return jsonify({'success': True, 'message': 'Test email sent successfully'})

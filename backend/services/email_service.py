@@ -32,7 +32,7 @@ def send_email(to_email, subject, html_content, text_content=None):
         return True
     except Exception as e:
         print(f"❌ Email sending failed: {e}")
-        return False
+        return False, str(e)
 
 def send_password_reset_email(email, token, site_url):
     """Send password reset email"""

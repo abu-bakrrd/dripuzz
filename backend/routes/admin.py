@@ -590,18 +590,26 @@ def admin_update_payment_settings(provider):
         
     return jsonify({'message': 'Payment settings saved'})
 
-@admin_bp.route('/settings/yandex_maps', methods=['GET', 'PUT'])
-def admin_yandex_maps_settings():
+@admin_bp.route('/settings/yandex_maps/test', methods=['POST'])
+def admin_test_yandex_maps():
     if not require_admin(): return admin_required_response()
-    if request.method == 'GET':
-        return jsonify(get_yandex_maps_config())
+    cfg = get_yandex_maps_config()
+    api_key = cfg.get('api_key')
     
-    data = request.json
-    set_platform_setting('yandex_maps_api_key', data.get('api_key'), False)
-    set_platform_setting('yandex_maps_default_lat', data.get('default_lat'), False)
-    set_platform_setting('yandex_maps_default_lng', data.get('default_lng'), False)
-    set_platform_setting('yandex_maps_default_zoom', str(data.get('default_zoom')), False)
-    return jsonify({'message': 'Maps settings saved'})
+    if not api_key:
+        return jsonify({'success': False, 'error': 'API Key is missing'})
+        
+    try:
+        # Simple test request to Yandex Geocoder API
+        url = f"https://geocode-maps.yandex.ru/1.x/?apikey={api_key}&format=json&geocode=Tashkent"
+        resp = requests.get(url, timeout=5)
+        
+        if resp.status_code == 200:
+            return jsonify({'success': True, 'message': 'Yandex Maps API key is valid'})
+        else:
+            return jsonify({'success': False, 'error': f'API Error: {resp.status_code}'})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)})
 
 @admin_bp.route('/settings/delivery', methods=['GET', 'POST'])
 def admin_delivery_settings():
@@ -722,4 +730,7 @@ def admin_test_smtp():
         body='✅ Test email from Admin Panel. Your SMTP settings are correct.'
     )
     
-    return jsonify({'success': success, 'error': error, 'message': 'Test email sent' if success else error})
+    if not success:
+        return jsonify({'success': False, 'error': f"SMTP Error: {error}"}), 500
+        
+    return jsonify({'success': True, 'message': 'Test email sent successfully'})

@@ -132,10 +132,6 @@ def seed_database():
     if product_count and product_count['count'] == 0:
         print("Adding products...")
         # Map category names to IDs from config
-        cat_name_to_id = {}
-        for cat_name, cat_id in category_ids.items():
-            cat_name_to_id[cat_name] = cat_id
-        
         # Use category IDs directly from config
         cat_ids_list = list(categories_config)
         

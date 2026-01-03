@@ -39,8 +39,15 @@ def update_telegrambot():
     """Update telegrambot.py with translations"""
     
     # Read the file
-    with open('telegrambot.py', 'r', encoding='utf-8') as f:
-        content = f.read()
+    file_path = 'telegram_bot/telegrambot.py'
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+    except FileNotFoundError:
+        # Fallback for old location
+        file_path = 'telegrambot.py'
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
     
     # Apply replacements
     for pattern, replacement in REPLACEMENTS.items():

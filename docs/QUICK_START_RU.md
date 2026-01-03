@@ -79,7 +79,7 @@ systemctl restart shop-app
 journalctl -u shop-app -f
 
 # Обновить приложение
-cd /home/shopapp/app
+cd /home/shopapp/app/scripts
 sudo ./update_vps.sh
 
 # Сделать резервную копию БД
@@ -110,10 +110,9 @@ git add .
 git commit -m "Описание ваших изменений"
 git push
 
-# 2. На VPS - получите обновления и перезапустите
+# 2. На VPS - обновите через скрипт
 ssh root@YOUR_VPS_IP
-cd /home/shopapp/app
-sudo -u shopapp git pull
+cd /home/shopapp/app/scripts
 sudo ./update_vps.sh
 ```
 

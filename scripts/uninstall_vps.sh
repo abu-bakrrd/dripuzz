@@ -12,7 +12,7 @@ NC='\033[0m'
 echo -e "${RED}⚠️  ВНИМАНИЕ! ЭТОТ СКРИПТ УДАЛИТ ВЕСЬ ПРОЕКТ!${NC}"
 echo "Будут удалены:"
 echo "  1. Папка приложения /home/shopapp/app"
-echo "  2. Сервисы systemd (shop-app, ai-bot)"
+echo "  2. Сервисы systemd (shop-app, ai-bot, telegram-bot)"
 echo "  3. Конфигурация Nginx"
 echo ""
 
@@ -31,8 +31,10 @@ echo ""
 echo "🛑 Остановка сервисов..."
 systemctl stop shop-app || true
 systemctl stop ai-bot || true
+systemctl stop telegram-bot || true
 systemctl disable shop-app || true
 systemctl disable ai-bot || true
+systemctl disable telegram-bot || true
 echo "✅ Сервисы остановлены."
 
 echo ""
@@ -40,6 +42,7 @@ echo "🗑 Удаление файлов..."
 rm -rf /home/shopapp/app
 rm -f /etc/systemd/system/shop-app.service
 rm -f /etc/systemd/system/ai-bot.service
+rm -f /etc/systemd/system/telegram-bot.service
 systemctl daemon-reload
 echo "✅ Файлы приложения удалены."
 

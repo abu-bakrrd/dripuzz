@@ -15,8 +15,9 @@ echo ""
 echo "Этот скрипт установит:"
 echo "  1. Python, PostgreSQL, Nginx, Node.js"
 echo "  2. Flask Web App (Интернет-магазин)"
-echo "  3. AI Bot 'Mona' (Telegram сервис)"
-echo "  4. Настроит базы данных и systemd сервисы"
+echo "  3. Telegram Shop Bot (Основной бот магазина)"
+echo "  4. AI Bot 'Mona' (Поддержка клиентов)"
+echo "  5. Настроит базы данных и systemd сервисы"
 echo ""
 read -p "❓ Вы хотите продолжить установку? (y/n): " CONFIRM_INSTALL
 if [[ "$CONFIRM_INSTALL" != "y" && "$CONFIRM_INSTALL" != "Y" ]]; then
@@ -98,7 +99,8 @@ APP_PORT=${APP_PORT:-5000}
 echo ""
 echo "🤖 НАСТРОЙКА AI БОТА (MONA)"
 echo ""
-read -p "Введите Telegram TOKEN для AI Бота: " AI_BOT_TOKEN
+read -p "Введите Telegram TOKEN для Основного Shop Бота: " TELEGRAM_BOT_TOKEN
+read -p "Введите Telegram TOKEN для AI Бота (Mona): " AI_BOT_TOKEN
 read -p "Введите GROQ API KEY (для Llama): " GROQ_API_KEY
 read -p "Введите GEMINI API KEY (резерв/опция): " GEMINI_API_KEY
 echo ""
@@ -204,7 +206,8 @@ PORT=$APP_PORT
 FLASK_ENV=production
 SESSION_SECRET=$SESSION_SECRET
 
-# AI Bot Configuration
+# Bot Configurations
+TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 AI_BOT_TOKEN=$AI_BOT_TOKEN
 GROQ_API_KEY=$GROQ_API_KEY
 GEMINI_API_KEY=$GEMINI_API_KEY
@@ -278,10 +281,10 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
-print_step "Создание сервиса AI Bot (Mona)..."
-cat > /etc/systemd/system/ai-bot.service <<EOF
+print_step "Создание сервиса Shop Bot (telegram-bot)..."
+cat > /etc/systemd/system/telegram-bot.service <<EOF
 [Unit]
-Description=AI Customer Support Bot
+Description=Telegram Shop Bot
 After=network.target postgresql.service shop-app.service
 
 [Service]
@@ -290,7 +293,7 @@ User=$APP_USER
 WorkingDirectory=$APP_DIR
 Environment="PATH=$APP_DIR/venv/bin"
 EnvironmentFile=$APP_DIR/.env
-ExecStart=$APP_DIR/venv/bin/python3 ai_bot/ai_customer_bot.py
+ExecStart=$APP_DIR/venv/bin/python3 telegram_bot/telegrambot.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -306,9 +309,11 @@ systemctl daemon-reload
 
 systemctl enable shop-app
 systemctl enable ai-bot
+systemctl enable telegram-bot
 
 systemctl restart shop-app
 systemctl restart ai-bot
+systemctl restart telegram-bot
 
 # Проверка статуса
 sleep 3
@@ -322,6 +327,12 @@ if systemctl is-active --quiet ai-bot; then
     print_step "✅ AI Бот (Mona) запущен!"
 else
     print_error "❌ Ошибка запуска AI Бота! Проверьте логи: journalctl -u ai-bot"
+fi
+
+if systemctl is-active --quiet telegram-bot; then
+    print_step "✅ Основной Shop Бот запущен!"
+else
+    print_error "❌ Ошибка запуска Shop Бота! Проверьте логи: journalctl -u telegram-bot"
 fi
 
 # Настройка Nginx
@@ -376,5 +387,6 @@ echo "2. AI Бот: Запущен в Telegram"
 echo ""
 echo "📜 ЛОГИ:"
 echo "   - Магазин: sudo journalctl -u shop-app -f"
-echo "   - Бот:     sudo journalctl -u ai-bot -f"
+echo "   - AI Бот:  sudo journalctl -u ai-bot -f"
+echo "   - Shop Бот: sudo journalctl -u telegram-bot -f"
 echo ""

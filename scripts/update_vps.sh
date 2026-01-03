@@ -62,14 +62,17 @@ else
 fi
 
 # Обновление кода (если используется git)
-if [ -d "$APP_DIR/.git" ]; then
+if [ -d ".git" ] || [ -d "../.git" ]; then
     print_step "Получение обновлений из Git..."
-    cd $APP_DIR
+    # Если мы в папке scripts, перейдем в корень для git команд
+    if [ ! -d ".git" ] && [ -d "../.git" ]; then
+        cd ..
+    fi
     # Отбрасываем локальные изменения и берем версию из GitHub
     sudo -u $APP_USER git reset --hard HEAD
     sudo -u $APP_USER git pull
 else
-    print_warning "Git репозиторий не найден. Убедитесь, что вы вручную обновили файлы."
+    print_warning "Git репозиторий (.git) не найден. Убедитесь, что вы вручную обновили файлы."
 fi
 
 # Обновление Node.js зависимостей
@@ -114,7 +117,7 @@ fi
 print_step "Перезапуск сервисов..."
 systemctl restart shop-app
 
-# Перезапуск ботов, если они существуют
+# Перезапуск ботов
 if systemctl list-unit-files | grep -q ai-bot.service; then
     print_step "Перезапуск AI бота..."
     systemctl restart ai-bot

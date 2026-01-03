@@ -35,6 +35,20 @@ else
     echo -e "${RED}❌ PostgreSQL НЕ работает${NC}"
 fi
 
+# Боты
+echo -e "\n1.1 Проверка ботов:"
+if systemctl is-active --quiet ai-bot; then
+    echo -e "${GREEN}✅ AI Bot работает${NC}"
+else
+    echo -e "${RED}❌ AI Bot НЕ работает${NC}"
+fi
+
+if systemctl is-active --quiet telegram-bot; then
+    echo -e "${GREEN}✅ Shop Bot работает${NC}"
+else
+    echo -e "${RED}❌ Shop Bot НЕ работает${NC}"
+fi
+
 # 2. Проверка портов
 echo -e "\n2. Проверка портов:"
 if ss -tuln | grep -q ":5000"; then
@@ -66,8 +80,9 @@ if [ -f "$APP_DIR/.env" ]; then
     echo -e "${GREEN}✅ Файл .env найден${NC}"
     # Проверка наличия ключей (не показывая значения)
     if grep -q "DATABASE_URL" "$APP_DIR/.env"; then echo "  - DATABASE_URL: OK"; else echo -e "  - ${RED}DATABASE_URL: MISSING${NC}"; fi
-    if grep -q "AI_BOT_TOKEN" "$APP_DIR/.env"; then echo "  - AI_BOT_TOKEN: OK"; else echo -e "  - ${YELLOW}AI_BOT_TOKEN: MISSING (нужен для бота)${NC}"; fi
-    if grep -q "GEMINI_API_KEY" "$APP_DIR/.env"; then echo "  - GEMINI_API_KEY: OK"; else echo -e "  - ${YELLOW}GEMINI_API_KEY: MISSING (нужен для бота)${NC}"; fi
+    if grep -q "AI_BOT_TOKEN" "$APP_DIR/.env"; then echo "  - AI_BOT_TOKEN: OK"; else echo -e "  - ${YELLOW}AI_BOT_TOKEN: MISSING${NC}"; fi
+    if grep -q "TELEGRAM_BOT_TOKEN" "$APP_DIR/.env"; then echo "  - TELEGRAM_BOT_TOKEN: OK"; else echo -e "  - ${YELLOW}TELEGRAM_BOT_TOKEN: MISSING${NC}"; fi
+    if grep -q "GROQ_API_KEY" "$APP_DIR/.env"; then echo "  - GROQ_API_KEY: OK"; else echo -e "  - ${YELLOW}GROQ_API_KEY: MISSING${NC}"; fi
 else
     echo -e "${RED}❌ Файл .env не найден в $APP_DIR${NC}"
 fi

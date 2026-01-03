@@ -82,9 +82,11 @@ SAFETY_BACKUP="$BACKUP_DIR/before_restore_$(date +%Y%m%d_%H%M%S).sql.gz"
 sudo -u postgres pg_dump $DB_NAME | gzip > $SAFETY_BACKUP
 print_step "Страховочная копия создана: $SAFETY_BACKUP"
 
-# Остановка приложения
-print_step "Остановка приложения..."
-systemctl stop shop-app
+# Остановка всех сервисов
+print_step "Остановка всех сервисов..."
+systemctl stop shop-app || true
+systemctl stop ai-bot || true
+systemctl stop telegram-bot || true
 
 # Восстановление базы данных
 print_step "Восстановление базы данных из: $BACKUP_FILE"
@@ -116,9 +118,11 @@ EOF
 
 print_step "База данных восстановлена успешно!"
 
-# Запуск приложения
-print_step "Запуск приложения..."
+# Запуск всех сервисов
+print_step "Запуск всех сервисов..."
 systemctl start shop-app
+systemctl start ai-bot
+systemctl start telegram-bot
 
 sleep 3
 
@@ -142,6 +146,8 @@ ALTER DATABASE ${DB_NAME}_old RENAME TO $DB_NAME;
 EOF
     
     systemctl start shop-app
+    systemctl start ai-bot
+    systemctl start telegram-bot
     print_error "База данных возвращена к предыдущему состоянию"
     exit 1
 fi

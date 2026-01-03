@@ -86,7 +86,8 @@ export function useConfig() {
 		error,
 	} = useQuery<AppConfig>({
 		queryKey: ['/api/config'],
-		staleTime: Infinity,
+		staleTime: 1000 * 60 * 5, // 5 minutes instead of Infinity
+		refetchOnWindowFocus: true,
 		// Use cached config from localStorage as initial data
 		initialData: () => {
 			try {

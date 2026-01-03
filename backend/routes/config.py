@@ -21,11 +21,25 @@ def get_config():
             "currency": {"symbol": "UZS", "code": "UZS", "position": "after"}
         }
 
-    # Overwrite from database if settings exist (example for Telegram notifications)
-    # We can add more overrides as needed
+    # Overwrite from database if settings exist
     telegram_bot_url = get_platform_setting('telegram_bot_url')
     if telegram_bot_url:
         config['telegramBotUrl'] = telegram_bot_url
+
+    # Fetch categories from database
+    try:
+        from backend.database import get_db_connection
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, name, icon FROM categories ORDER BY sort_order, name')
+        db_categories = cur.fetchall()
+        cur.close()
+        conn.close()
+        
+        if db_categories:
+            config['categories'] = db_categories
+    except Exception as e:
+        print(f"❌ Error fetching categories for config: {e}")
 
     # Ensure status translations from DB are used if available (optional)
     # For now, we trust settings.json as the single source for UI/Texts

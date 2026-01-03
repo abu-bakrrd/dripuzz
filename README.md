@@ -8,9 +8,10 @@
 
 ```bash
 ssh root@YOUR_VPS_IP
-wget https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/deploy_vps.sh
-chmod +x deploy_vps.sh
-sudo ./deploy_vps.sh
+git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git app
+cd app/scripts
+chmod +x master_deploy.sh
+sudo ./master_deploy.sh
 ```
 
 **Готово!** Через 3-5 минут откройте: `http://YOUR_VPS_IP`
@@ -162,20 +163,15 @@ sudo ./deploy_vps.sh
 
 ### Установка на VPS:
 
-1. **Скачайте главный скрипт:**
+1. **Запустите мастер-установку:**
 
 ```bash
-wget https://raw.githubusercontent.com/abu-bakrr/MiniTaskerBot3/main/scripts/deploy_vps.sh
-chmod +x deploy_vps.sh
+cd scripts
+chmod +x master_deploy.sh
+sudo ./master_deploy.sh
 ```
 
-2. **Запустите установку:**
-
-```bash
-sudo ./deploy_vps.sh
-```
-
-_(Скрипт спросит подтверждение, настроит сайт, базу и AI бота)_
+_(Скрипт полностью настроит сайт, базу данных, Nginx, SSL и всех трех ботов)_
 
 ### 🔄 Другие сценарии:
 
@@ -274,14 +270,13 @@ sudo ./fix_permissions.sh
 ├── docs/                # 📚 Документация
 │   ├── ПОЛНОЕ_РУКОВОДСТВО.md  # ⭐ Главный документ
 │   └── ...
-├── telegram_bot/        # Telegram бот для управления товарами
+├── telegram_bot/        # Telegram бот (управление товарами + цвета/атрибуты)
+├── bot/                 # Giveaway / Информационный бот
+├── ai_bot/              # AI ассистент Mona
 ├── app.py               # 🐍 Flask бэкенд (основной файл)
 ├── main.py              # Точка входа
-├── deploy_vps.sh        # 📋 Интерактивная установка на VPS
-├── update_vps.sh        # 🔄 Обновление
-├── backup_db.sh         # 💾 Резервное копирование
-├── setup_domain.sh      # 🌐 Настройка домена
-└── setup_ssl.sh         # 🔐 SSL сертификат
+├── scripts/             # Скрипты автоматизации
+│   └── master_deploy.sh # 🚀 ПОЛНОЕ развертывание всего проекта
 ```
 
 ---

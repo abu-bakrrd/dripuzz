@@ -63,13 +63,14 @@ async def contact_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     """Запуск бота"""
-    token = os.getenv('INFO_BOT_TOKEN')
+    # Пробуем получить токен из разных переменных (для совместимости с мастером развертывания)
+    token = os.getenv('GIVEAWAY_BOT_TOKEN') or os.getenv('INFO_BOT_TOKEN')
     
     if not token:
-        logger.error("❌ INFO_BOT_TOKEN не найден в .env файле!")
+        logger.error("❌ GIVEAWAY_BOT_TOKEN или INFO_BOT_TOKEN не найден в .env файле!")
         return
     
-    logger.info("🤖 Запуск информационного бота...")
+    logger.info("🤖 Запуск информационного (Giveaway) бота...")
     
     application = Application.builder().token(token).build()
     

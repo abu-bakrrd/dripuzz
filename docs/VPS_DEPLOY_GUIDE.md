@@ -1,6 +1,16 @@
 # 🚀 Инструкция по развертыванию на VPS Ubuntu 22.04
 
+> [!IMPORTANT] > **Мастер-установка (РЕКОМЕНДУЕТСЯ)** 🔥
+> Если вы хотите установить всё (сайт + все боты + SSL) одной командой, используйте:
+>
+> ```bash
+> sudo ./scripts/master_deploy.sh
+> ```
+>
+> Подробнее: [БЫСТРАЯ_УСТАНОВКА.md](file:///c%3A/MiniTaskerBot3/docs/%D0%91%D0%AB%D0%A1%D0%A2%D0%A0%D0%90%D0%AF_%D0%A3%D0%A1%D0%A2%D0%90%D0%9D%D0%9E%D0%92%D0%9A%D0%90.md)
+
 ## Информация о VPS
+
 - **IP**: YOUR_VPS_IP
 - **ОС**: Ubuntu 22.04
 - **База данных**: PostgreSQL (локально на VPS)
@@ -131,6 +141,7 @@ sudo nano /etc/systemd/system/shop-app.service
 ```
 
 Содержимое файла:
+
 ```ini
 [Unit]
 Description=Telegram Shop Flask Application
@@ -170,6 +181,7 @@ sudo nano /etc/nginx/sites-available/shop
 ```
 
 Содержимое файла:
+
 ```nginx
 server {
     listen 80;
@@ -202,7 +214,7 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # Увеличиваем таймауты для длительных запросов
         proxy_connect_timeout 120s;
         proxy_send_timeout 120s;
@@ -255,6 +267,7 @@ sudo nano /etc/systemd/system/shop-bot.service
 ```
 
 Содержимое файла:
+
 ```ini
 [Unit]
 Description=Telegram Shop Bot
@@ -414,6 +427,7 @@ htop
 ## 🎉 Готово!
 
 Ваше приложение теперь развернуто на VPS и доступно по адресу:
+
 - **HTTP**: http://YOUR_VPS_IP
 - **HTTPS** (если настроили SSL): https://yourdomain.com
 

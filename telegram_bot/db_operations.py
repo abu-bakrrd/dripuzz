@@ -74,7 +74,15 @@ def get_categories_from_config():
         return []
 
 
-def add_product(name: str, description: str, price: int, images: List[str], category_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+def add_product(
+    name: str, 
+    description: str, 
+    price: int, 
+    images: List[str], 
+    category_id: Optional[str] = None,
+    colors: Optional[List[str]] = None,
+    attributes: Optional[List[Dict[str, Any]]] = None
+) -> Optional[Dict[str, Any]]:
     """
     Adds new product to database
     
@@ -84,6 +92,8 @@ def add_product(name: str, description: str, price: int, images: List[str], cate
         price (int): Product price in cents
         images (list): Array of image URLs
         category_id (str, optional): Category ID (must match category ID from config)
+        colors (list, optional): Array of color hex codes
+        attributes (list, optional): Array of attribute dictionaries with 'name' and 'values'
     
     Returns:
         dict: Dictionary with created product data or None if error
@@ -94,9 +104,16 @@ def add_product(name: str, description: str, price: int, images: List[str], cate
         if not conn:
             return None
         cur = conn.cursor()
+        
+        # Преобразуем attributes в JSON если есть
+        attributes_json = json.dumps(attributes) if attributes else None
+        
         cur.execute(
-            'INSERT INTO products (name, description, price, images, category_id) VALUES (%s, %s, %s, %s, %s) RETURNING *',
-            (name, description, price, images, category_id)
+            '''INSERT INTO products 
+               (name, description, price, images, category_id, colors, attributes) 
+               VALUES (%s, %s, %s, %s, %s, %s, %s) 
+               RETURNING *''',
+            (name, description, price, images, category_id, colors, attributes_json)
         )
         product = cur.fetchone()
         conn.commit()

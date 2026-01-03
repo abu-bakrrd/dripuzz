@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-from app import init_db
+from backend.database import init_db
 
 if __name__ == '__main__':
     print("Creating database tables if they don't exist...")

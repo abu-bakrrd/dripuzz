@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from ai_bot.ai_db_helper import get_order_status
-from app import get_db_connection
+from backend.database import get_db_connection
 
 def test_orders():
     print("🚀 TЕСТ ПОИСКА ЗАКАЗОВ В БАЗЕ (Прямой запрос)")

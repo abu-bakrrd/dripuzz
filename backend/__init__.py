@@ -32,4 +32,11 @@ def create_app():
     app.register_blueprint(config_bp, url_prefix='/api')
     app.register_blueprint(upload_bp, url_prefix='/api')
     
+    # Serve config assets (logo, etc.)
+    @app.route('/config/<path:filename>')
+    def serve_config(filename):
+        config_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config')
+        from flask import send_from_directory
+        return send_from_directory(config_dir, filename)
+
     return app

@@ -53,7 +53,6 @@ echo ""
 echo "  🤖 Боты:"
 echo "     • AI Bot 'Mona' (клиентская поддержка)"
 echo "     • Telegram Bot (основной бот магазина)"
-echo "     • Giveaway Bot (розыгрыши)"
 echo ""
 echo "  🗄️ База данных:"
 echo "     • PostgreSQL настройка"
@@ -123,7 +122,6 @@ echo ""
 echo -e "${YELLOW}🤖 ТОКЕНЫ TELEGRAM БОТОВ${NC}"
 read -p "AI Bot Token (Mona): " AI_BOT_TOKEN
 read -p "Main Telegram Bot Token: " TELEGRAM_BOT_TOKEN
-read -p "Giveaway Bot Token (опционально): " GIVEAWAY_BOT_TOKEN
 echo ""
 
 # API ключи
@@ -260,9 +258,6 @@ GEMINI_API_KEY=$GEMINI_API_KEY
 # Main Telegram Bot
 TELEGRAM_BOT_TOKEN=$TELEGRAM_BOT_TOKEN
 
-# Giveaway Bot
-GIVEAWAY_BOT_TOKEN=$GIVEAWAY_BOT_TOKEN
-
 # Cloudinary
 CLOUDINARY_CLOUD_NAME=$CLOUDINARY_CLOUD_NAME
 CLOUDINARY_API_KEY=$CLOUDINARY_API_KEY
@@ -388,30 +383,6 @@ WantedBy=multi-user.target
 EOF
 fi
 
-# Giveaway Bot
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-cat > /etc/systemd/system/giveaway-bot.service <<EOF
-[Unit]
-Description=Giveaway Telegram Bot
-After=network.target postgresql.service
-
-[Service]
-Type=simple
-User=$APP_USER
-WorkingDirectory=$APP_DIR/bot
-Environment="PATH=$APP_DIR/venv/bin"
-EnvironmentFile=$APP_DIR/.env
-ExecStart=$APP_DIR/venv/bin/python3 main.py
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=multi-user.target
-EOF
-fi
-
 # ============================================================================
 # ЗАПУСК СЕРВИСОВ
 # ============================================================================
@@ -427,11 +398,6 @@ systemctl start ai-bot
 if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
     systemctl enable telegram-bot
     systemctl start telegram-bot
-fi
-
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-    systemctl enable giveaway-bot
-    systemctl start giveaway-bot
 fi
 
 sleep 3
@@ -456,14 +422,6 @@ if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
         print_step "✅ Telegram Bot запущен"
     else
         print_error "❌ Telegram Bot не запустился"
-    fi
-fi
-
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-    if systemctl is-active --quiet giveaway-bot; then
-        print_step "✅ Giveaway Bot запущен"
-    else
-        print_error "❌ Giveaway Bot не запустился"
     fi
 fi
 
@@ -618,9 +576,6 @@ echo -e "   ✅ AI Bot (Mona) - запущен"
 if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
     echo -e "   ✅ Main Telegram Bot - запущен"
 fi
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-    echo -e "   ✅ Giveaway Bot - запущен"
-fi
 echo ""
 
 echo -e "${BLUE}📊 УПРАВЛЕНИЕ СЕРВИСАМИ:${NC}"
@@ -629,9 +584,6 @@ echo -e "   AI Bot:        sudo systemctl {start|stop|restart|status} ai-bot"
 if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
     echo -e "   Telegram Bot:  sudo systemctl {start|stop|restart|status} telegram-bot"
 fi
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-    echo -e "   Giveaway Bot:  sudo systemctl {start|stop|restart|status} giveaway-bot"
-fi
 echo ""
 
 echo -e "${BLUE}📜 ПРОСМОТР ЛОГОВ:${NC}"
@@ -639,9 +591,6 @@ echo -e "   Shop App:      sudo journalctl -u shop-app -f"
 echo -e "   AI Bot:        sudo journalctl -u ai-bot -f"
 if [ ! -z "$TELEGRAM_BOT_TOKEN" ]; then
     echo -e "   Telegram Bot:  sudo journalctl -u telegram-bot -f"
-fi
-if [ ! -z "$GIVEAWAY_BOT_TOKEN" ]; then
-    echo -e "   Giveaway Bot:  sudo journalctl -u giveaway-bot -f"
 fi
 echo ""
 

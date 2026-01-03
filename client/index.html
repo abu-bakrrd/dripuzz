@@ -19,10 +19,19 @@
 			property="og:locale"
 			content="{{SEO_LANGUAGE}}_{{SEO_LANGUAGE_UPPER}}"
 		/>
-		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:card" content="summary_large_image" />
 		<meta name="twitter:title" content="{{SEO_TITLE}}" />
 		<meta name="twitter:description" content="{{SEO_DESCRIPTION}}" />
+		<meta name="twitter:image" content="{{SEO_SITE_URL}}/config/logo.svg" />
+
+		<!-- Favicons -->
 		<link rel="icon" type="image/svg+xml" href="/config/logo.svg" />
+		<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+		<link rel="apple-touch-icon" href="/config/logo.svg" />
+
+		<!-- Google Search specific -->
+		<meta name="google" content="notranslate" />
+
 		<link rel="canonical" href="{{SEO_SITE_URL}}" />
 		<title>{{SEO_TITLE}}</title>
 

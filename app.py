@@ -65,8 +65,71 @@ def serve_react(path):
     if path.startswith('api/'):
         return jsonify({'error': 'Not found'}), 404
     
-    # Simple SEO stub for now, keeping it robust
-    return send_from_directory(app.static_folder, 'index.html')
+    # Check if the requested file exists in static folder (like favicon.ico, etc.)
+    full_path = os.path.join(app.static_folder, path)
+    if path and os.path.exists(full_path) and os.path.isfile(full_path):
+        return send_from_directory(app.static_folder, path)
+
+    # Dynamic SEO placeholder replacement for index.html
+    try:
+        index_path = os.path.join(app.static_folder, 'index.html')
+        if not os.path.exists(index_path):
+            return send_from_directory(app.static_folder, 'index.html') # Let Flask handle error if not exists
+
+        with open(index_path, 'r', encoding='utf-8') as f:
+            html = f.read()
+
+        # Load SEO data from config
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        config_path = os.path.join(current_dir, 'config', 'settings.json')
+        
+        seo_data = {
+            'shopName': 'Monvoir',
+            'title': 'Monvoir — Стильная одежда | Интернет-магазин',
+            'description': 'Monvoir — интернет-магазин стильной одежды в Узбекистане.',
+            'keywords': 'одежда, Узбекистан, интернет-магазин, стиль',
+            'siteUrl': 'https://monvoir.shop',
+            'language': 'ru'
+        }
+
+        if os.path.exists(config_path):
+            try:
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config = json.load(f)
+                    seo = config.get('seo', {})
+                    seo_data['shopName'] = config.get('shopName', seo_data['shopName'])
+                    seo_data['title'] = seo.get('title', seo_data['title'])
+                    seo_data['description'] = seo.get('description', seo_data['description'])
+                    seo_data['keywords'] = seo.get('keywords', seo_data['keywords'])
+                    seo_data['siteUrl'] = seo.get('siteUrl', seo_data['siteUrl'])
+                    seo_data['language'] = seo.get('language', seo_data['language'])
+            except Exception as e:
+                print(f"⚠️ Error parsing settings.json for SEO: {e}")
+
+        # Derive locale values
+        lang = seo_data['language']
+        lang_upper = lang.upper()
+
+        # Perform replacements
+        replacements = {
+            '{{SEO_TITLE}}': seo_data['title'],
+            '{{SEO_DESCRIPTION}}': seo_data['description'],
+            '{{SEO_KEYWORDS}}': seo_data['keywords'],
+            '{{SEO_SITE_URL}}': seo_data['siteUrl'],
+            '{{SHOP_NAME}}': seo_data['shopName'],
+            '{{SEO_LANGUAGE}}': lang,
+            '{{SEO_LANGUAGE_UPPER}}': lang_upper
+        }
+
+        for placeholder, value in replacements.items():
+            html = html.replace(placeholder, str(value or ""))
+
+        from flask import Response
+        return Response(html, mimetype='text/html')
+
+    except Exception as e:
+        print(f"❌ Error during server-side SEO replacement: {e}")
+        return send_from_directory(app.static_folder, 'index.html')
 
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))

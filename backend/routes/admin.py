@@ -544,11 +544,16 @@ def admin_test_telegram():
     payload = {'chat_id': cfg['admin_chat_id'], 'text': '✅ Test message from Admin Panel'}
     try:
         resp = requests.post(url, json=payload, timeout=10)
-        return jsonify({'success': resp.status_code == 200, 'error': resp.text if resp.status_code != 200 else None})
+        return jsonify({
+            'success': resp.status_code == 200, 
+            'error': resp.text if resp.status_code != 200 else None,
+            'message': 'Message sent successfully' if resp.status_code == 200 else None
+        })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)})
 
 
+# --- Payments ---
 
 @admin_bp.route('/settings/payments', methods=['GET'])
 def admin_get_payment_settings():
@@ -589,6 +594,19 @@ def admin_update_payment_settings(provider):
         set_platform_setting('card_transfer_bank_name', data.get('bank_name'), False)
         
     return jsonify({'message': 'Payment settings saved'})
+
+@admin_bp.route('/settings/yandex_maps', methods=['GET', 'PUT'])
+def admin_yandex_maps_settings():
+    if not require_admin(): return admin_required_response()
+    if request.method == 'GET':
+        return jsonify(get_yandex_maps_config())
+    
+    data = request.json
+    set_platform_setting('yandex_maps_api_key', data.get('api_key'), False)
+    set_platform_setting('yandex_maps_default_lat', data.get('default_lat'), False)
+    set_platform_setting('yandex_maps_default_lng', data.get('default_lng'), False)
+    set_platform_setting('yandex_maps_default_zoom', str(data.get('default_zoom')), False)
+    return jsonify({'message': 'Maps settings saved'})
 
 @admin_bp.route('/settings/yandex_maps/test', methods=['POST'])
 def admin_test_yandex_maps():

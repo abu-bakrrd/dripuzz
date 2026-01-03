@@ -368,7 +368,7 @@ CLOUDINARY_API_SECRET=ваш_api_secret
 ### Создайте systemd сервис
 
 ```bash
-sudo nano /etc/systemd/system/shop-bot.service
+sudo nano /etc/systemd/system/telegram-bot.service
 ```
 
 Вставьте:
@@ -398,16 +398,16 @@ WantedBy=multi-user.target
 sudo systemctl daemon-reload
 
 # Включите автозапуск
-sudo systemctl enable shop-bot
+sudo systemctl enable telegram-bot
 
 # Запустите
-sudo systemctl start shop-bot
+sudo systemctl start telegram-bot
 
 # Проверьте статус
-sudo systemctl status shop-bot
+sudo systemctl status telegram-bot
 
 # Посмотрите логи
-journalctl -u shop-bot -f
+journalctl -u telegram-bot -f
 ```
 
 Теперь бот будет работать всегда, даже после перезагрузки VPS!

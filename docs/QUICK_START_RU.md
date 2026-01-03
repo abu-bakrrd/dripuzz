@@ -70,13 +70,15 @@ http://YOUR_VPS_IP
 
 ```bash
 # Проверить статус
-systemctl status shop-app
+systemctl status shop-app ai-bot telegram-bot
 
 # Перезапустить
-systemctl restart shop-app
+systemctl restart shop-app ai-bot telegram-bot
 
 # Посмотреть логи
 journalctl -u shop-app -f
+journalctl -u ai-bot -f
+journalctl -u telegram-bot -f
 
 # Обновить приложение
 cd /home/shopapp/app/scripts

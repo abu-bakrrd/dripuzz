@@ -300,6 +300,7 @@ sudo -u $APP_USER bash <<EOF
 cd $APP_DIR
 source venv/bin/activate
 python3 scripts/init_tables.py
+python3 scripts/seed_db.py
 EOF
 
 # ============================================================================

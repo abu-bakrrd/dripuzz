@@ -89,17 +89,37 @@ def seed_database():
     
     conn.commit()
     
-    # Categories are now stored in config/settings.json
-    # Load category IDs from config
-    print("Loading categories from config...")
+    # Load categories from config/settings.json and seed them into DB
+    print("Seeding categories from config...")
     import json
     config_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'config', 'settings.json')
     with open(config_path, 'r', encoding='utf-8') as f:
         config = json.load(f)
     
     categories_config = config.get('categories', [])
-    category_ids = {cat['name']: cat['id'] for cat in categories_config}
-    print(f"Loaded {len(category_ids)} categories from config: {list(category_ids.keys())}")
+    
+    # Create categories table if not exists (redundant but safe)
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS categories (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            name TEXT NOT NULL,
+            icon TEXT,
+            sort_order INTEGER DEFAULT 0
+        )
+    ''')
+    
+    cat_mapping = {}
+    for i, cat in enumerate(categories_config):
+        # Insert or update category
+        cur.execute('''
+            INSERT INTO categories (id, name, icon, sort_order)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, icon = EXCLUDED.icon, sort_order = EXCLUDED.sort_order
+            RETURNING id
+        ''', (cat['id'], cat['name'], cat.get('icon', ''), i))
+        cat_mapping[cat['name']] = cat['id']
+    
+    print(f"Seeded {len(cat_mapping)} categories from config.")
     
     # Check if products exist
     cur.execute('SELECT COUNT(*) as count FROM products')

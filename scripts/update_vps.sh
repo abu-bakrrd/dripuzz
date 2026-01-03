@@ -62,17 +62,30 @@ else
 fi
 
 # Обновление кода (если используется git)
-if [ -d ".git" ] || [ -d "../.git" ]; then
-    print_step "Получение обновлений из Git..."
-    # Если мы в папке scripts, перейдем в корень для git команд
-    if [ ! -d ".git" ] && [ -d "../.git" ]; then
-        cd ..
-    fi
+# Пытаемся найти корень Git репозитория
+GIT_FOUND=false
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    GIT_ROOT=$(git rev-parse --show-toplevel)
+    GIT_FOUND=true
+elif [ -d "$APP_DIR/.git" ]; then
+    GIT_ROOT="$APP_DIR"
+    GIT_FOUND=true
+elif [ -d ".git" ]; then
+    GIT_ROOT="$(pwd)"
+    GIT_FOUND=true
+elif [ -d "../.git" ]; then
+    GIT_ROOT="$(dirname "$(pwd)")"
+    GIT_FOUND=true
+fi
+
+if [ "$GIT_FOUND" = true ]; then
+    print_step "Обнаружен Git репозиторий в $GIT_ROOT. Получаем обновления..."
+    cd "$GIT_ROOT"
     # Отбрасываем локальные изменения и берем версию из GitHub
     sudo -u $APP_USER git reset --hard HEAD
     sudo -u $APP_USER git pull
 else
-    print_warning "Git репозиторий (.git) не найден. Убедитесь, что вы вручную обновили файлы."
+    print_warning "Git репозиторий (.git) не найден. Текущая папка: $(pwd). Убедитесь, что вы вручную обновили файлы."
 fi
 
 # Обновление Node.js зависимостей

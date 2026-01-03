@@ -252,29 +252,6 @@ export default function QuickAddModal({
 									Дополнительные опции не требуются
 								</p>
 							)}
-
-							{hasInventoryTracking && (
-								<div className='pt-2'>
-									{currentInventory && currentInventory.quantity > 0 ? (
-										<span className='inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
-											<Package className='w-3 h-3' />
-											<span>В наличии</span>
-										</span>
-									) : (
-										<span className='inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full'>
-											<Clock className='w-3 h-3' />
-											<span>
-												Под заказ
-												{currentInventory?.backorder_lead_time_days && (
-													<span className='ml-1'>
-														({currentInventory.backorder_lead_time_days} дн.)
-													</span>
-												)}
-											</span>
-										</span>
-									)}
-								</div>
-							)}
 						</>
 					) : (
 						<div className='text-center py-8 text-muted-foreground'>
@@ -283,7 +260,52 @@ export default function QuickAddModal({
 					)}
 				</div>
 
-				<div className='sticky bottom-0 bg-background border-t p-4'>
+				<div className='sticky bottom-0 bg-background border-t p-4 space-y-3'>
+					{product && (
+						<div className='flex justify-center'>
+							{(() => {
+								const hasColors = product.colors && product.colors.length > 0
+								const hasAttributes =
+									product.attributes && product.attributes.length > 0
+								const colorSelected = !hasColors || selectedColor
+								const allAttributesSelected =
+									!hasAttributes ||
+									(product.attributes &&
+										product.attributes.every(
+											attr => selectedAttributes[attr.name]
+										))
+								const canAddToCart = colorSelected && allAttributesSelected
+
+								if (!canAddToCart) return null
+
+								if (hasInventoryTracking) {
+									if (currentInventory && currentInventory.quantity > 0) {
+										return (
+											<span className='inline-flex items-center gap-1.5 text-sm font-medium text-green-700 bg-green-100 px-3 py-1 rounded-full'>
+												<Package className='w-4 h-4' />
+												<span>В наличии</span>
+											</span>
+										)
+									} else {
+										return (
+											<span className='inline-flex items-center gap-1.5 text-sm font-medium text-amber-700 bg-amber-100 px-3 py-1 rounded-full'>
+												<Clock className='w-4 h-4' />
+												<span>
+													Под заказ
+													{currentInventory?.backorder_lead_time_days && (
+														<span className='ml-1'>
+															({currentInventory.backorder_lead_time_days} дн.)
+														</span>
+													)}
+												</span>
+											</span>
+										)
+									}
+								}
+								return null
+							})()}
+						</div>
+					)}
 					<Button
 						className='w-full'
 						size='lg'

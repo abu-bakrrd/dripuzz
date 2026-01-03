@@ -7,14 +7,20 @@ config_bp = Blueprint('config', __name__)
 
 @config_bp.route('/config', methods=['GET'])
 def get_config():
-    # Base path for config/settings.json
-    config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'settings.json')
+    # Robust path resolution for settings.json
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(os.path.dirname(current_dir))
+    config_path = os.path.join(project_root, 'config', 'settings.json')
     
     try:
+        if not os.path.exists(config_path):
+            print(f"⚠️ settings.json not found at: {config_path}")
+            raise FileNotFoundError(f"settings.json not found at: {config_path}")
+            
         with open(config_path, 'r', encoding='utf-8') as f:
             config = json.load(f)
     except Exception as e:
-        print(f"❌ Error reading settings.json: {e}")
+        print(f"❌ Error loading settings.json: {e}")
         # Fallback to empty dict or basic structure
         config = {
             "shopName": "MiniOrder",

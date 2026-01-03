@@ -204,7 +204,8 @@ export default function Home({
 	// Fetch categories from database API with caching
 	const { data: categories = [] } = useQuery<Category[]>({
 		queryKey: ['/api/categories'],
-		staleTime: Infinity,
+		staleTime: 1000 * 60 * 5, // 5 minutes instead of Infinity
+		refetchOnWindowFocus: true,
 		initialData: () => {
 			try {
 				const cached = localStorage.getItem('app-categories')

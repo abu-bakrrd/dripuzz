@@ -126,9 +126,12 @@ export default function QuickAddModal({
 	const getCurrentInventory = (): InventoryItem | undefined => {
 		if (!product?.inventory || product.inventory.length === 0) return undefined
 
-		const attrValues = Object.values(selectedAttributes)
-		const attr1 = attrValues[0] || null
-		const attr2 = attrValues[1] || null
+		const attr1 = product.attributes?.[0]
+			? selectedAttributes[product.attributes[0].name] || null
+			: null
+		const attr2 = product.attributes?.[1]
+			? selectedAttributes[product.attributes[1].name] || null
+			: null
 
 		return product.inventory.find(
 			inv =>

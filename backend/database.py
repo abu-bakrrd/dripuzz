@@ -63,7 +63,8 @@ def init_db():
             images TEXT[] NOT NULL,
             category_id TEXT,
             colors TEXT[],
-            attributes JSONB
+            attributes JSONB,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -82,6 +83,10 @@ def init_db():
             IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
                           WHERE table_name='products' AND column_name='attributes') THEN
                 ALTER TABLE products ADD COLUMN attributes JSONB;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='products' AND column_name='updated_at') THEN
+                ALTER TABLE products ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
             END IF;
         END $$;
     ''')
@@ -124,7 +129,8 @@ def init_db():
             name TEXT NOT NULL,
             icon TEXT,
             sort_order INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
     
@@ -202,17 +208,45 @@ def init_db():
     # Create product_inventory table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS product_inventory (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
-            color TEXT,
-            attribute1_value TEXT,
-            attribute2_value TEXT,
-            quantity INTEGER NOT NULL DEFAULT 0,
-            backorder_lead_time_days INTEGER,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(product_id, color, attribute1_value, attribute2_value)
         )
     ''')
+    
+    # Add updated_at to categories if it doesn't exist
+    cur.execute('''
+        DO $$ 
+        BEGIN 
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                          WHERE table_name='categories' AND column_name='updated_at') THEN
+                ALTER TABLE categories ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+            END IF;
+        END $$;
+    ''')
+
+    # Create trigger for automatic updated_at
+    cur.execute('''
+        CREATE OR REPLACE FUNCTION update_updated_at_column()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            NEW.updated_at = CURRENT_TIMESTAMP;
+            RETURN NEW;
+        END;
+        $$ language 'plpgsql';
+    ''')
+
+    # Apply triggers to tables
+    for table in ['products', 'categories', 'platform_settings', 'product_inventory']:
+        cur.execute(f'''
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname = 'update_{table}_updated_at') THEN
+                    CREATE TRIGGER update_{table}_updated_at
+                    BEFORE UPDATE ON {table}
+                    FOR EACH ROW
+                    EXECUTE FUNCTION update_updated_at_column();
+                END IF;
+            END $$;
+        ''')
     
     conn.commit()
     cur.close()

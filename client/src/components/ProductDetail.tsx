@@ -66,7 +66,9 @@ export default function ProductDetail({
 
 	const [currentImage, setCurrentImage] = useState(0)
 	const [imageErrors, setImageErrors] = useState<Set<number>>(new Set())
-	const [imageLoading, setImageLoading] = useState<Set<number>>(new Set(images.map((_, idx) => idx)))
+	const [imageLoading, setImageLoading] = useState<Set<number>>(
+		new Set(images.map((_, idx) => idx))
+	)
 	const [selectedColor, setSelectedColor] = useState<string | undefined>()
 	const [selectedAttributes, setSelectedAttributes] = useState<
 		Record<string, string>
@@ -84,9 +86,12 @@ export default function ProductDetail({
 	const getCurrentInventory = (): InventoryItem | undefined => {
 		if (inventory.length === 0) return undefined
 
-		const attrValues = Object.values(selectedAttributes)
-		const attr1 = attrValues[0] || null
-		const attr2 = attrValues[1] || null
+		const attr1 = attributes?.[0]
+			? selectedAttributes[attributes[0].name] || null
+			: null
+		const attr2 = attributes?.[1]
+			? selectedAttributes[attributes[1].name] || null
+			: null
 
 		return inventory.find(
 			inv =>
@@ -209,7 +214,7 @@ export default function ProductDetail({
 							{images.map((img, idx) => {
 								const isLoading = imageLoading.has(idx) && !imageErrors.has(idx)
 								const isVisible = idx === currentImage
-								
+
 								return (
 									<div key={idx} className='absolute inset-0 w-full h-full'>
 										{/* Skeleton заставка */}
@@ -224,7 +229,7 @@ export default function ProductDetail({
 												</div>
 											</div>
 										)}
-										
+
 										{/* Изображение или ошибка */}
 										{imageErrors.has(idx) ? (
 											<div

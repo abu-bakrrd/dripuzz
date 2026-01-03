@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/hooks/useCart'
 import { useConfig } from '@/hooks/useConfig'
 import { useFavorites } from '@/hooks/useFavorites'
+import { useSync } from '@/hooks/useSync'
 import Cart from '@/pages/Cart'
 import Favorites from '@/pages/Favorites'
 import ForgotPassword from '@/pages/ForgotPassword'
@@ -34,6 +35,7 @@ interface PendingAction {
 }
 
 function AppContent() {
+	useSync()
 	const [location, setLocation] = useLocation()
 	const [selectedProductId, setSelectedProductId] = useState<string>('')
 	const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)

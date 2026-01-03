@@ -27,3 +27,25 @@ def get_config():
             'card_transfer': 'Перевод на карту'
         }
     })
+
+@config_bp.route('/config/version', methods=['GET'])
+def get_config_version():
+    from ..database import get_db_connection
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # Get the latest update timestamp from all relevant tables
+        cur.execute('''
+            SELECT CAST(EXTRACT(EPOCH FROM GREATEST(
+                COALESCE((SELECT MAX(updated_at) FROM products), '1970-01-01'::timestamp),
+                COALESCE((SELECT MAX(updated_at) FROM categories), '1970-01-01'::timestamp),
+                COALESCE((SELECT MAX(updated_at) FROM platform_settings), '1970-01-01'::timestamp),
+                COALESCE((SELECT MAX(updated_at) FROM product_inventory), '1970-01-01'::timestamp)
+            )) AS BIGINT) as version
+        ''')
+        result = cur.fetchone()
+        cur.close()
+        conn.close()
+        return jsonify({'version': result['version'] if result and result['version'] else 0})
+    except Exception:
+        return jsonify({'version': 0})

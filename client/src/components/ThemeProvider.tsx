@@ -33,7 +33,10 @@ export function ThemeProvider({
 	useLayoutEffect(() => {
 		const root = window.document.documentElement
 
-		// Синхронное переключение темы - все изменения происходят одновременно
+		// Добавляем класс для мгновенного переключения (без анимаций)
+		root.classList.add('no-transitions')
+
+		// Синхронное переключение темы
 		root.classList.remove('light', 'dark')
 
 		if (theme === 'system') {
@@ -43,15 +46,26 @@ export function ThemeProvider({
 				: 'light'
 
 			root.classList.add(systemTheme)
-			return
+		} else {
+			root.classList.add(theme)
 		}
 
-		root.classList.add(theme)
+		// Принудительно вызываем перерисовку (reflow) чтобы изменения применились мгновенно
+		window.getComputedStyle(root).opacity
+
+		// Удаляем класс после завершения синхронного цикла обновлений
+		const timeout = setTimeout(() => {
+			root.classList.remove('no-transitions')
+		}, 0)
+
+		return () => clearTimeout(timeout)
 	}, [theme])
 
 	const value = {
 		theme,
 		setTheme: (theme: Theme) => {
+			// Добавляем класс сразу при клике, чтобы даже начало смены было мгновенным
+			document.documentElement.classList.add('no-transitions')
 			localStorage.setItem(storageKey, theme)
 			setTheme(theme)
 		},

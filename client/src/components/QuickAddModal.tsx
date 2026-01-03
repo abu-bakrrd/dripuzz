@@ -113,7 +113,7 @@ export default function QuickAddModal({
 	}
 
 	const handleAttributeSelect = (attrName: string, value: string) => {
-		setSelectedAttributes((prev: Record<string, string>) => ({
+		setSelectedAttributes(prev => ({
 			...prev,
 			[attrName]: value,
 		}))
@@ -126,15 +126,12 @@ export default function QuickAddModal({
 	const getCurrentInventory = (): InventoryItem | undefined => {
 		if (!product?.inventory || product.inventory.length === 0) return undefined
 
-		const attr1 = product.attributes?.[0]
-			? selectedAttributes[product.attributes[0].name] || null
-			: null
-		const attr2 = product.attributes?.[1]
-			? selectedAttributes[product.attributes[1].name] || null
-			: null
+		const attrValues = Object.values(selectedAttributes)
+		const attr1 = attrValues[0] || null
+		const attr2 = attrValues[1] || null
 
 		return product.inventory.find(
-			(inv: InventoryItem) =>
+			inv =>
 				(inv.color === selectedColor ||
 					(inv.color === null && !selectedColor)) &&
 				(inv.attribute1_value === attr1 ||
@@ -147,12 +144,6 @@ export default function QuickAddModal({
 	const currentInventory = getCurrentInventory()
 	const hasInventoryTracking =
 		product?.inventory && product.inventory.length > 0
-
-	const allAttributesSelected =
-		!product?.attributes ||
-		product.attributes.every((attr: Attribute) => selectedAttributes[attr.name])
-	const canShowStatus =
-		(!product?.colors || selectedColor) && allAttributesSelected
 
 	if (!isOpen) return null
 
@@ -201,27 +192,9 @@ export default function QuickAddModal({
 								</div>
 								<div className='flex-1 min-w-0'>
 									<h4 className='font-medium line-clamp-2'>{product.name}</h4>
-									<div className='flex items-center justify-between mt-1'>
-										<p className='text-lg font-bold'>
-											{formatPrice(product.price)}
-										</p>
-
-										{hasInventoryTracking && canShowStatus && (
-											<div>
-												{currentInventory && currentInventory.quantity > 0 ? (
-													<span className='inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
-														<Package className='w-3 h-3' />
-														<span>В наличии</span>
-													</span>
-												) : (
-													<span className='inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full'>
-														<Clock className='w-3 h-3' />
-														<span>Под заказ</span>
-													</span>
-												)}
-											</div>
-										)}
-									</div>
+									<p className='text-lg font-bold mt-1'>
+										{formatPrice(product.price)}
+									</p>
 								</div>
 							</div>
 
@@ -278,6 +251,29 @@ export default function QuickAddModal({
 								<p className='text-sm text-muted-foreground text-center py-2'>
 									Дополнительные опции не требуются
 								</p>
+							)}
+
+							{hasInventoryTracking && (
+								<div className='pt-2'>
+									{currentInventory && currentInventory.quantity > 0 ? (
+										<span className='inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
+											<Package className='w-3 h-3' />
+											<span>В наличии</span>
+										</span>
+									) : (
+										<span className='inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full'>
+											<Clock className='w-3 h-3' />
+											<span>
+												Под заказ
+												{currentInventory?.backorder_lead_time_days && (
+													<span className='ml-1'>
+														({currentInventory.backorder_lead_time_days} дн.)
+													</span>
+												)}
+											</span>
+										</span>
+									)}
+								</div>
 							)}
 						</>
 					) : (

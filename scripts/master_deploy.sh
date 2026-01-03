@@ -596,7 +596,7 @@ echo ""
 
 echo -e "${BLUE}🔄 ОБНОВЛЕНИЕ:${NC}"
 echo -e "   cd $APP_DIR && git pull"
-echo -e "   sudo systemctl restart shop-app ai-bot telegram-bot giveaway-bot"
+echo -e "   sudo systemctl restart shop-app ai-bot telegram-bot"
 echo ""
 
 echo -e "${YELLOW}📝 СЛЕДУЮЩИЕ ШАГИ:${NC}"

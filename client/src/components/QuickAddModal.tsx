@@ -113,7 +113,7 @@ export default function QuickAddModal({
 	}
 
 	const handleAttributeSelect = (attrName: string, value: string) => {
-		setSelectedAttributes(prev => ({
+		setSelectedAttributes((prev: Record<string, string>) => ({
 			...prev,
 			[attrName]: value,
 		}))
@@ -126,12 +126,15 @@ export default function QuickAddModal({
 	const getCurrentInventory = (): InventoryItem | undefined => {
 		if (!product?.inventory || product.inventory.length === 0) return undefined
 
-		const attrValues = Object.values(selectedAttributes)
-		const attr1 = attrValues[0] || null
-		const attr2 = attrValues[1] || null
+		const attr1 = product.attributes?.[0]
+			? selectedAttributes[product.attributes[0].name] || null
+			: null
+		const attr2 = product.attributes?.[1]
+			? selectedAttributes[product.attributes[1].name] || null
+			: null
 
 		return product.inventory.find(
-			inv =>
+			(inv: InventoryItem) =>
 				(inv.color === selectedColor ||
 					(inv.color === null && !selectedColor)) &&
 				(inv.attribute1_value === attr1 ||
@@ -144,6 +147,12 @@ export default function QuickAddModal({
 	const currentInventory = getCurrentInventory()
 	const hasInventoryTracking =
 		product?.inventory && product.inventory.length > 0
+
+	const allAttributesSelected =
+		!product?.attributes ||
+		product.attributes.every((attr: Attribute) => selectedAttributes[attr.name])
+	const canShowStatus =
+		(!product?.colors || selectedColor) && allAttributesSelected
 
 	if (!isOpen) return null
 
@@ -192,35 +201,29 @@ export default function QuickAddModal({
 								</div>
 								<div className='flex-1 min-w-0'>
 									<h4 className='font-medium line-clamp-2'>{product.name}</h4>
-									<div className='flex items-center gap-3 mt-1'>
-										<p className='text-xl font-bold'>
+									<div className='flex items-center justify-between mt-1'>
+										<p className='text-lg font-bold'>
 											{formatPrice(product.price)}
 										</p>
-										{hasInventoryTracking ? (
-											currentInventory && currentInventory.quantity > 0 ? (
-												<span className='flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
-													<Package className='w-3 h-3' />В наличии
-												</span>
-											) : (
-												<span className='flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full'>
-													<Clock className='w-3 h-3' />
-													Под заказ
-												</span>
-											)
-										) : (
-											<span className='flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
-												<Package className='w-3 h-3' />В наличии
-											</span>
+
+										{hasInventoryTracking && canShowStatus && (
+											<div>
+												{currentInventory && currentInventory.quantity > 0 ? (
+													<span className='inline-flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full'>
+														<Package className='w-3 h-3' />
+														<span>В наличии</span>
+													</span>
+												) : (
+													<span className='inline-flex items-center gap-1 text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full'>
+														<Clock className='w-3 h-3' />
+														<span>Под заказ</span>
+													</span>
+												)}
+											</div>
 										)}
 									</div>
 								</div>
 							</div>
-
-							{hasInventoryTracking && !currentInventory && (
-								<p className='text-xs text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-100 italic'>
-									Эта комбинация параметров временно недоступна для заказа
-								</p>
-							)}
 
 							{product.colors && product.colors.length > 0 && (
 								<div className='space-y-2'>

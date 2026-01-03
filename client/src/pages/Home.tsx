@@ -204,7 +204,7 @@ export default function Home({
 	// Fetch categories from database API with caching
 	const { data: categories = [] } = useQuery<Category[]>({
 		queryKey: ['/api/categories'],
-		staleTime: 0,
+		staleTime: Infinity,
 		initialData: () => {
 			try {
 				const cached = localStorage.getItem('app-categories')
@@ -231,7 +231,6 @@ export default function Home({
 		Product[]
 	>({
 		queryKey: ['/api/products'],
-		staleTime: 0,
 	})
 
 	// Fetch availability data for all products

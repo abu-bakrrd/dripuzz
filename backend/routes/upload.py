@@ -22,12 +22,15 @@ def upload_file():
         file_content = file.read()
         
         # Upload using the service
-        url = upload_image_to_cloud(file_content)
+        result, error = upload_image_to_cloud(file_content)
         
-        if not url:
-            return jsonify({'error': 'Failed to upload image'}), 500
+        if error:
+            return jsonify({'error': f'Failed to upload image: {error}'}), 500
             
-        return jsonify({'secure_url': url})
+        if not result or 'secure_url' not in result:
+            return jsonify({'error': 'Failed to get secure URL from cloud'}), 500
+            
+        return jsonify({'secure_url': result['secure_url']})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -43,11 +46,14 @@ def upload_receipt():
         
     try:
         file_content = file.read()
-        url = upload_image_to_cloud(file_content)
+        result, error = upload_image_to_cloud(file_content, folder='receipts')
         
-        if not url:
-            return jsonify({'error': 'Failed to upload receipt'}), 500
+        if error:
+            return jsonify({'error': f'Failed to upload receipt: {error}'}), 500
             
-        return jsonify({'secure_url': url})
+        if not result or 'secure_url' not in result:
+            return jsonify({'error': 'Failed to get secure URL from cloud'}), 500
+            
+        return jsonify({'secure_url': result['secure_url']})
     except Exception as e:
         return jsonify({'error': str(e)}), 500

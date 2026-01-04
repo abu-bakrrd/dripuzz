@@ -1,110 +1,142 @@
 {
-  "language": "ru",
-  "shopName": "DRIP UZ",
-  "description": "DRIP culture. Streetwear from Uzbekistan.",
+	"language": "ru",
+	"shopName": "DRIP UZ",
+	"description": "DRIP culture. Streetwear from Uzbekistan.",
 
-  "logo": "/config/logo.svg",
-  "logoSize": 32,
+	"logo": "/config/logo.svg",
+	"logoSize": 32,
 
-  "seo": {
-    "title": "DRIP UZ — Streetwear & DRIP Culture",
-    "description": "DRIP UZ — streetwear бренд. Минимализм, городской стиль, DRIP культура. Онлайн-заказы по Узбекистану.",
-    "keywords": "drip uz, streetwear, drip, одежда, стиль, uzbekistan, urban",
-    "siteUrl": "https://dripuz.shop",
-    "language": "ru"
-  },
+	"seo": {
+		"title": "DRIP UZ — Streetwear & DRIP Culture",
+		"description": "DRIP UZ — streetwear бренд. Минимализм, городской стиль, DRIP культура. Онлайн-заказы по Узбекистану.",
+		"keywords": "drip uz, streetwear, drip, одежда, стиль, uzbekistan, urban",
+		"siteUrl": "https://dripuz.shop",
+		"language": "ru"
+	},
 
-  "currency": {
-    "symbol": "UZS",
-    "code": "UZS",
-    "position": "after"
-  },
+	"currency": {
+		"symbol": "UZS",
+		"code": "UZS",
+		"position": "after"
+	},
 
-  "managerContact": "@dripadmin1",
-  "telegramBotUrl": "https://t.me/dripuzAI_bot",
+	"managerContact": "@dripadmin1",
+	"telegramBotUrl": "https://t.me/dripuzAI_bot",
 
-  "colorScheme": {
-    "background": "#FFFFFF",
-    "foreground": "#0B0B0B",
+	"colorScheme": {
+		"background": "#FFFFFF",
+		"foreground": "#0B0B0B",
 
-    "card": "#FFFFFF",
-    "cardForeground": "#0B0B0B",
+		"card": "#FFFFFF",
+		"cardForeground": "#0B0B0B",
 
-    "primary": "#000000",
-    "primaryForeground": "#FFFFFF",
+		"primary": "#000000",
+		"primaryForeground": "#FFFFFF",
 
-    "secondary": "#1A1A1A",
-    "secondaryForeground": "#FFFFFF",
+		"secondary": "#1A1A1A",
+		"secondaryForeground": "#FFFFFF",
 
-    "muted": "#F3F3F3",
-    "mutedForeground": "#707070",
+		"muted": "#F3F3F3",
+		"mutedForeground": "#707070",
 
-    "accent": "#000000",
-    "accentForeground": "#FFFFFF",
+		"accent": "#000000",
+		"accentForeground": "#FFFFFF",
 
-    "border": "#E5E5E5",
-    "input": "#E5E5E5",
-    "ring": "#000000"
-  },
+		"border": "#E5E5E5",
+		"input": "#E5E5E5",
+		"ring": "#000000"
+	},
 
-  "fonts": {
-    "fontFamily": "Inter",
-    "productName": { "weight": 600 },
-    "price": { "weight": 700 },
-    "description": { "weight": 400 }
-  },
+	"colorSchemeDark": {
+		"background": "#0B0B0B",
+		"foreground": "#FFFFFF",
 
-  "ui": {
-    "maxWidth": "420px",
-    "productsPerPage": 12,
-    "showCategoryIcons": true,
-    "showPriceFilter": false,
-    "rounded": "8px",
-    "buttonStyle": "solid"
-  },
+		"card": "#121212",
+		"cardForeground": "#FFFFFF",
 
-  "sortOptions": [
-    { "id": "new", "label": "Новые" },
-    { "id": "price_asc", "label": "Дешевле" },
-    { "id": "price_desc", "label": "Дороже" }
-  ],
+		"primary": "#FFFFFF",
+		"primaryForeground": "#000000",
 
-  "texts": {
-    "addToCart": "В корзину",
-    "addedToCart": "Добавлено",
-    "checkout": "Оформить",
-    "total": "Итого",
-    "emptyCart": "Корзина пуста",
-    "emptyFavorites": "Нет избранного",
-    "loading": "Загрузка"
-  },
+		"secondary": "#1A1A1A",
+		"secondaryForeground": "#FFFFFF",
 
-  "categories": [
-    { "id": "caps", "name": "Кепки", "icon": "🧢" },
-    { "id": "tshirts", "name": "Футболки", "icon": "👕" },
-    { "id": "outerwear", "name": "Верхняя одежда", "icon": "🧥" },
-    { "id": "shoes", "name": "Обувь", "icon": "👟" },
-    { "id": "accessories", "name": "Аксессуары", "icon": "🕶️" }
-  ],
+		"muted": "#1F1F1F",
+		"mutedForeground": "#A0A0A0",
 
-  "orderStatuses": { "pending": "Ожидает оплаты", "reviewing": "Рассматривается", "paid": "Оплачен", "processing": "Собирается", "shipped": "В пути", "delivered": "Доставлен", "cancelled": "Отменён"},
+		"accent": "#FFFFFF",
+		"accentForeground": "#000000",
 
-  "payment": {
-    "cardTransfer": {
-      "enabled": true,
-      "cardNumber": "0000 0000 0000 0000",
-      "cardHolder": "DRIP UZ",
-      "bankName": "Uzcard"
-    }
-  },
+		"border": "#2A2A2A",
+		"input": "#2A2A2A",
+		"ring": "#FFFFFF"
+	},
 
-  "telegramNotifications": {
-    "enabled": true,
-    "adminChatId": "5644397480"
-  },
+	"fonts": {
+		"fontFamily": "Inter",
+		"productName": { "weight": 600 },
+		"price": { "weight": 700 },
+		"description": { "weight": 400 }
+	},
 
-  "delivery": {
-    "enabled": true,
-    "freeDeliveryNote": "Доставка оплачивается при получении"
-  }
+	"ui": {
+		"maxWidth": "420px",
+		"productsPerPage": 12,
+		"showCategoryIcons": true,
+		"showPriceFilter": false,
+		"rounded": "8px",
+		"buttonStyle": "solid"
+	},
+
+	"sortOptions": [
+		{ "id": "new", "label": "Новые" },
+		{ "id": "price_asc", "label": "Дешевле" },
+		{ "id": "price_desc", "label": "Дороже" }
+	],
+
+	"texts": {
+		"addToCart": "В корзину",
+		"addedToCart": "Добавлено",
+		"checkout": "Оформить",
+		"total": "Итого",
+		"emptyCart": "Корзина пуста",
+		"emptyFavorites": "Нет избранного",
+		"loading": "Загрузка"
+	},
+
+	"categories": [
+		{ "id": "caps", "name": "Кепки", "icon": "🧢" },
+		{ "id": "tshirts", "name": "Футболки", "icon": "👕" },
+		{ "id": "outerwear", "name": "Верхняя одежда", "icon": "🧥" },
+		{ "id": "shoes", "name": "Обувь", "icon": "👟" },
+		{ "id": "accessories", "name": "Аксессуары", "icon": "🕶️" }
+	],
+
+	"orderStatuses": {
+		"pending": "Ожидает оплаты",
+		"reviewing": "Рассматривается",
+		"paid": "Оплачен",
+		"processing": "Собирается",
+		"shipped": "В пути",
+		"delivered": "Доставлен",
+		"cancelled": "Отменён"
+	},
+
+	"payment": {
+		"cardTransfer": {
+			"enabled": true,
+			"cardNumber": "0000 0000 0000 0000",
+			"cardHolder": "DRIP UZ",
+			"bankName": "Uzcard"
+		}
+	},
+
+	"telegramNotifications": {
+		"enabled": true,
+		"adminChatId": "5644397480"
+	},
+
+	"delivery": {
+		"enabled": true,
+		"freeDeliveryNote": "Доставка оплачивается при получении"
+	}
 }

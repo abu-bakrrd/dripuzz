@@ -50,102 +50,69 @@ export default function ThemeApplier() {
 		if (!config?.colorScheme) return
 
 		const root = document.documentElement
-		const scheme = config.colorScheme
 		const isDark =
 			theme === 'dark' ||
 			(theme === 'system' &&
 				window.matchMedia('(prefers-color-scheme: dark)').matches)
 
-		// Все изменения CSS переменных применяются синхронно в useLayoutEffect
-		// Это гарантирует, что все элементы меняют цвет одновременно
+		// Apply colors based on theme
+		const currentScheme =
+			isDark && config.colorSchemeDark
+				? config.colorSchemeDark
+				: config.colorScheme
 
-		// Apply primary colors regardless of theme (brand identity)
-		root.style.setProperty('--primary', hexToHSL(scheme.primary))
+		// Common colors (always apply from chosen scheme)
+		root.style.setProperty('--primary', hexToHSL(currentScheme.primary))
 		root.style.setProperty(
 			'--primary-foreground',
-			hexToHSL(scheme.primaryForeground)
+			hexToHSL(currentScheme.primaryForeground)
 		)
-		root.style.setProperty('--accent', hexToHSL(scheme.accent)) // Keep accent
+		root.style.setProperty('--accent', hexToHSL(currentScheme.accent))
 		root.style.setProperty(
 			'--accent-foreground',
-			hexToHSL(scheme.accentForeground)
+			hexToHSL(currentScheme.accentForeground)
 		)
 
-		// Only apply background/surface colors if NOT in dark mode
-		// In dark mode, we let index.css .dark class handle it
-		if (!isDark) {
-			root.style.setProperty('--background', hexToHSL(scheme.background))
-			root.style.setProperty('--foreground', hexToHSL(scheme.foreground))
-			root.style.setProperty('--card', hexToHSL(scheme.card))
-			root.style.setProperty(
-				'--card-foreground',
-				hexToHSL(scheme.cardForeground)
-			)
-			root.style.setProperty('--secondary', hexToHSL(scheme.secondary))
-			root.style.setProperty(
-				'--secondary-foreground',
-				hexToHSL(scheme.secondaryForeground)
-			)
-			root.style.setProperty('--muted', hexToHSL(scheme.muted))
-			root.style.setProperty(
-				'--muted-foreground',
-				hexToHSL(scheme.mutedForeground)
-			)
-			root.style.setProperty('--border', hexToHSL(scheme.border))
-			root.style.setProperty('--input', hexToHSL(scheme.input))
-			root.style.setProperty('--ring', hexToHSL(scheme.ring))
+		// Surface and other colors
+		root.style.setProperty('--background', hexToHSL(currentScheme.background))
+		root.style.setProperty('--foreground', hexToHSL(currentScheme.foreground))
+		root.style.setProperty('--card', hexToHSL(currentScheme.card))
+		root.style.setProperty(
+			'--card-foreground',
+			hexToHSL(currentScheme.cardForeground)
+		)
+		root.style.setProperty('--secondary', hexToHSL(currentScheme.secondary))
+		root.style.setProperty(
+			'--secondary-foreground',
+			hexToHSL(currentScheme.secondaryForeground)
+		)
+		root.style.setProperty('--muted', hexToHSL(currentScheme.muted))
+		root.style.setProperty(
+			'--muted-foreground',
+			hexToHSL(currentScheme.mutedForeground)
+		)
+		root.style.setProperty('--border', hexToHSL(currentScheme.border))
+		root.style.setProperty('--input', hexToHSL(currentScheme.input))
+		root.style.setProperty('--ring', hexToHSL(currentScheme.ring))
 
-			root.style.setProperty('--card-border', hexToHSL(scheme.border))
-			root.style.setProperty('--sidebar', hexToHSL(scheme.card))
-			root.style.setProperty(
-				'--sidebar-foreground',
-				hexToHSL(scheme.cardForeground)
-			)
-			root.style.setProperty('--sidebar-border', hexToHSL(scheme.border))
-			root.style.setProperty('--sidebar-primary', hexToHSL(scheme.primary))
-			root.style.setProperty(
-				'--sidebar-primary-foreground',
-				hexToHSL(scheme.primaryForeground)
-			)
-			root.style.setProperty('--sidebar-accent', hexToHSL(scheme.accent))
-			root.style.setProperty(
-				'--sidebar-accent-foreground',
-				hexToHSL(scheme.accentForeground)
-			)
-			root.style.setProperty('--sidebar-ring', hexToHSL(scheme.ring))
-		} else {
-			// In dark mode, remove inline styles so CSS classes (.dark) take over
-			// This is safer than forcing values in JS, as it respects the stylesheet
-			const propsToRemove = [
-				'--background',
-				'--foreground',
-				'--card',
-				'--card-foreground',
-				'--popover',
-				'--popover-foreground',
-				'--secondary',
-				'--secondary-foreground',
-				'--muted',
-				'--muted-foreground',
-				'--accent',
-				'--accent-foreground',
-				'--destructive',
-				'--destructive-foreground',
-				'--border',
-				'--input',
-				'--ring',
-				'--card-border',
-				'--sidebar',
-				'--sidebar-foreground',
-				'--sidebar-border',
-				'--sidebar-primary',
-				'--sidebar-primary-foreground',
-				'--sidebar-accent',
-				'--sidebar-accent-foreground',
-				'--sidebar-ring',
-			]
-			propsToRemove.forEach(prop => root.style.removeProperty(prop))
-		}
+		root.style.setProperty('--card-border', hexToHSL(currentScheme.border))
+		root.style.setProperty('--sidebar', hexToHSL(currentScheme.card))
+		root.style.setProperty(
+			'--sidebar-foreground',
+			hexToHSL(currentScheme.cardForeground)
+		)
+		root.style.setProperty('--sidebar-border', hexToHSL(currentScheme.border))
+		root.style.setProperty('--sidebar-primary', hexToHSL(currentScheme.primary))
+		root.style.setProperty(
+			'--sidebar-primary-foreground',
+			hexToHSL(currentScheme.primaryForeground)
+		)
+		root.style.setProperty('--sidebar-accent', hexToHSL(currentScheme.accent))
+		root.style.setProperty(
+			'--sidebar-accent-foreground',
+			hexToHSL(currentScheme.accentForeground)
+		)
+		root.style.setProperty('--sidebar-ring', hexToHSL(currentScheme.ring))
 	}, [config, theme])
 
 	return null

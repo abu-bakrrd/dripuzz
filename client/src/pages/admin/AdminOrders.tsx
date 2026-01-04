@@ -117,13 +117,13 @@ export default function AdminOrders() {
 		const query = searchQuery.toLowerCase()
 		return orders.filter(
 			order =>
-				order.customer_name?.toLowerCase().includes(query) ||
-				order.customer_phone?.toLowerCase().includes(query) ||
-				order.user_email?.toLowerCase().includes(query) ||
-				order.first_name?.toLowerCase().includes(query) ||
-				order.last_name?.toLowerCase().includes(query) ||
-				order.id.toLowerCase().includes(query) ||
-				order.delivery_address?.toLowerCase().includes(query)
+				(order.customer_name?.toLowerCase() ?? '').includes(query) ||
+				(order.customer_phone?.toLowerCase() ?? '').includes(query) ||
+				(order.user_email?.toLowerCase() ?? '').includes(query) ||
+				(order.first_name?.toLowerCase() ?? '').includes(query) ||
+				(order.last_name?.toLowerCase() ?? '').includes(query) ||
+				(order.id?.toLowerCase() ?? '').includes(query) ||
+				(order.delivery_address?.toLowerCase() ?? '').includes(query)
 		)
 	}, [orders, searchQuery])
 

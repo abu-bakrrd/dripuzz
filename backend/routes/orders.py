@@ -118,7 +118,15 @@ def checkout_order():
             
             order_items_with_status.append({**dict(item), 'availability_status': status, 'backorder_lead_time_days': lead_time})
         
-        default_days = int(get_platform_setting('default_delivery_days') or 3)
+        def safe_int(val, default):
+            try:
+                if val is None or str(val).lower() == 'none':
+                    return default
+                return int(val)
+            except (ValueError, TypeError):
+                return default
+
+        default_days = safe_int(get_platform_setting('default_delivery_days'), 3)
         estimated_days = max(default_days, max_backorder_days) if has_backorder else default_days
         backorder_date = datetime.now() + timedelta(days=estimated_days) if has_backorder else None
         

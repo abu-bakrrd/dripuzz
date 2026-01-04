@@ -36,9 +36,8 @@ class ColorFormatter(logging.Formatter):
             logging.CRITICAL: Colors.BOLD + Colors.RED
         }.get(record.levelno, Colors.ENDC)
         
-        # Укорачиваем время для красоты
-        time = datetime.now().strftime("%H:%M:%S")
-        return f"{Colors.CYAN}[{time}]{Colors.ENDC} {color}{record.getMessage()}{Colors.ENDC}"
+        # Для journalctl не нужно время внутри строки, он добавит его сам
+        return f"{color}{record.getMessage()}{Colors.ENDC}"
 
 # Настройка логирования
 logger = logging.getLogger("Mona")

@@ -32,6 +32,30 @@ def get_config():
     if telegram_bot_url:
         config['telegramBotUrl'] = telegram_bot_url
 
+    # Yandex Maps from database
+    try:
+        from backend.database import get_yandex_maps_config
+        yandex_cfg = get_yandex_maps_config()
+        if yandex_cfg.get('api_key'):
+            config['yandexMaps'] = {
+                'apiKey': yandex_cfg['api_key'],
+                'defaultCenter': [float(yandex_cfg['default_lat']), float(yandex_cfg['default_lng'])],
+                'defaultZoom': yandex_cfg['default_zoom']
+            }
+    except Exception as e:
+        print(f"❌ Error fetching Yandex Maps config: {e}")
+
+    # Payment settings from database
+    try:
+        from backend.database import get_payment_config
+        for p in ['click', 'payme', 'uzum', 'card_transfer']:
+            p_cfg = get_payment_config(p)
+            if p_cfg.get('enabled') is not None:
+                if 'payment' not in config: config['payment'] = {}
+                config['payment'][p] = p_cfg
+    except Exception as e:
+        print(f"❌ Error fetching payment config: {e}")
+
     # Fetch categories from database
     try:
         from backend.database import get_db_connection
@@ -47,7 +71,4 @@ def get_config():
     except Exception as e:
         print(f"❌ Error fetching categories for config: {e}")
 
-    # Ensure status translations from DB are used if available (optional)
-    # For now, we trust settings.json as the single source for UI/Texts
-    
     return jsonify(config)

@@ -376,7 +376,8 @@ def format_products_for_ai(products):
         for inv in p.get('inventory', []):
             if inv['quantity'] > 0:
                 color = hex_to_color_name(inv['color']) if '#' in str(inv['color']) or len(str(inv['color'])) == 6 else inv['color']
-                item["stock"].append(f"{color}/{inv['attribute1_value']}:{inv['quantity']}")
+                # Скрываем точное количество от ИИ
+                item["stock"].append(f"{color}/{inv['attribute1_value']}:✅")
         out.append(item)
     return json.dumps(out, ensure_ascii=False)
 
@@ -486,11 +487,21 @@ def search(keywords):
     results = search_products(keywords, include_out_of_stock=True)
     clean_res = []
     for p in results:
+        # Скрываем количество от ИИ
+        inv_data = []
+        for inv in p.get('inventory', []):
+            if inv['quantity'] > 0:
+                inv_data.append({
+                    "color": hex_to_color_name(inv['color']) if '#' in str(inv['color']) else inv['color'],
+                    "size": inv['attribute1_value'],
+                    "available": True
+                })
+        
         clean_res.append({
             "id": p['id'],
-            "name": p['name'],
+            "name": p['name'].strip(), # Удаляем лишние пробелы сразу
             "price": p['price'],
-            "inventory": p.get('inventory', []) # Передаем инвентарь для UI
+            "inventory": inv_data
         })
     return json.dumps(clean_res, ensure_ascii=False)
 
@@ -516,8 +527,11 @@ def order(order_id):
 def info(product_id):
     """Детальная информация о товаре по ID"""
     product = get_product_details(product_id)
-    if not product:
-        return "Товар не найден."
+    if product:
+        # Удаляем точное количество, оставляем только флаг наличия
+        for inv in product.get('inventory', []):
+            inv['available'] = inv['quantity'] > 0
+            del inv['quantity']
     return json.dumps(product, ensure_ascii=False, default=str)
 
 def in_stock(start=0, stop=5):
@@ -564,7 +578,7 @@ def in_stock(start=0, stop=5):
             products[pid]["inventory"].append({
                 "color": color_name,
                 "attribute1_value": item['size'],
-                "quantity": item['quantity']
+                "available": True # Не даем цифры
             })
             
         return json.dumps(list(products.values()), ensure_ascii=False)

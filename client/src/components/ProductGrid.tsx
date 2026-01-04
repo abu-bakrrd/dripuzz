@@ -88,8 +88,8 @@ export default function ProductGrid({
 					<ProductCard
 						key={product.id}
 						{...product}
-						isFavorite={favoriteIds.includes(product.id)}
-						isInCart={cartItemIds.includes(product.id)}
+						isFavorite={(favoriteIds ?? []).includes(product.id)}
+						isInCart={(cartItemIds ?? []).includes(product.id)}
 						availability={availabilityData[product.id]}
 						priority={index < 4}
 						onToggleFavorite={onToggleFavorite}
@@ -106,7 +106,9 @@ export default function ProductGrid({
 				onClose={() => setQuickAddProductId(null)}
 				onAddToCart={handleQuickAddToCart}
 				isInCart={
-					quickAddProductId ? cartItemIds.includes(quickAddProductId) : false
+					quickAddProductId
+						? (cartItemIds ?? []).includes(quickAddProductId)
+						: false
 				}
 				onCartClick={onCartClick}
 			/>

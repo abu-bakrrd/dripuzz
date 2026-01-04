@@ -411,7 +411,7 @@ export default function Orders() {
 
 			let addedCount = 0
 			const availableItems = order.items.filter(item =>
-				existing.map(String).includes(String(item.product_id))
+				(existing ?? []).map(String).includes(String(item.product_id))
 			)
 
 			for (const item of availableItems) {

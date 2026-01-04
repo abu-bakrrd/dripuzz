@@ -162,7 +162,7 @@ function AppContent() {
 		(sum, item) => sum + item.quantity,
 		0
 	)
-	const cartItemIds = cartItems.map(item => item.product_id || item.id)
+	const cartItemIds = (cartItems ?? []).map(item => item.product_id || item.id)
 
 	if (isUserLoading) {
 		return (

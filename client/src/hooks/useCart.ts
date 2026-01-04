@@ -32,7 +32,7 @@ export function useCart() {
 	const userId = user?.id
 
 	// Fetch cart items
-	const { data: cartItems = [], isLoading } = useQuery<CartItem[]>({
+	const { data: cartItemsData = [], isLoading } = useQuery<CartItem[]>({
 		queryKey: ['/api/cart', userId],
 		queryFn: async () => {
 			const response = await fetch(`/api/cart/${userId}`)
@@ -234,7 +234,7 @@ export function useCart() {
 	})
 
 	return {
-		cartItems,
+		cartItems: cartItemsData ?? [],
 		isLoading,
 		addToCart: (
 			productId: string,

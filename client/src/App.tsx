@@ -316,8 +316,8 @@ function AppContent() {
 									onBack={() => setLocation(lastHomeUrl)}
 									onAddToCart={handleAddToCart}
 									onToggleFavorite={handleToggleFavorite}
-									isFavorite={favoriteIds.includes(productId)}
-									isInCart={cartItemIds.includes(productId)}
+									isFavorite={(favoriteIds ?? []).includes(productId)}
+									isInCart={(cartItemIds ?? []).includes(productId)}
 									onCartClick={() => setLocation('/cart')}
 								/>
 							)

@@ -127,7 +127,7 @@ def checkout_order():
                 return default
 
         default_days = safe_int(get_platform_setting('default_delivery_days'), 3)
-        estimated_days = max(default_days, max_backorder_days) if has_backorder else default_days
+        estimated_days = max_backorder_days if has_backorder and max_backorder_days > 0 else default_days
         backorder_date = datetime.now() + timedelta(days=estimated_days) if has_backorder else None
         
         initial_status = 'reviewing'
@@ -168,9 +168,9 @@ def checkout_order():
             cfg = get_payment_config('uzum')
             if cfg.get('enabled') and cfg.get('merchant_id'):
                 payment_url = f"https://payment.apelsin.uz/merchant?merchantId={cfg['merchant_id']}&amount={total}&orderId={order_id}"
-        elif payment_method == 'card_transfer':
-            cur.execute('DELETE FROM cart WHERE user_id = %s', (user_id,))
-            conn.commit()
+        # Always clear cart after order
+        cur.execute('DELETE FROM cart WHERE user_id = %s', (user_id,))
+        conn.commit()
 
         if payment_url:
             cur.execute('UPDATE orders SET payment_id = %s WHERE id = %s', (f"{payment_method}_{order_id}", order_id))

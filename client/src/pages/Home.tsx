@@ -281,7 +281,7 @@ export default function Home({
 		if (searchQuery.trim()) {
 			const query = searchQuery.toLowerCase()
 			filtered = filtered.filter(product =>
-				product.name.toLowerCase().includes(query)
+				(product.name?.toLowerCase() ?? '').includes(query)
 			)
 		}
 

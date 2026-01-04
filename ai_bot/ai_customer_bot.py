@@ -53,7 +53,7 @@ file_handler = logging.FileHandler("mona_v8.log", encoding='utf-8')
 file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
 logger.addHandler(file_handler)
 
-class DripBot:
+class MonaBot:
     def __init__(self):
         self.token = os.getenv('AI_BOT_TOKEN')
         if not self.token:

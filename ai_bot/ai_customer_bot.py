@@ -15,8 +15,10 @@ import ai_bot.ai_db_helper as db_helper
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
 # ANSI Color Codes
+if os.name == 'nt': 
+    os.system('color') # Магия для включения цветов в Windows CMD
+
 class Colors:
-    HEADER = '\033[95m'
     BLUE = '\033[94m'
     CYAN = '\033[96m'
     GREEN = '\033[92m'
@@ -24,22 +26,19 @@ class Colors:
     RED = '\033[91m'
     ENDC = '\033[0m'
     BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
 
 class ColorFormatter(logging.Formatter):
-    """Кастомный форматировщик для красивых логов в консоли"""
-    FORMATS = {
-        logging.DEBUG: Colors.CYAN + "%(message)s" + Colors.ENDC,
-        logging.INFO: Colors.BLUE + "%(message)s" + Colors.ENDC,
-        logging.WARNING: Colors.YELLOW + "⚠️ %(message)s" + Colors.ENDC,
-        logging.ERROR: Colors.RED + "❌ %(message)s" + Colors.ENDC,
-        logging.CRITICAL: Colors.BOLD + Colors.RED + "‼️ %(message)s" + Colors.ENDC
-    }
-
     def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
+        color = {
+            logging.INFO: Colors.BLUE,
+            logging.WARNING: Colors.YELLOW,
+            logging.ERROR: Colors.RED,
+            logging.CRITICAL: Colors.BOLD + Colors.RED
+        }.get(record.levelno, Colors.ENDC)
+        
+        # Укорачиваем время для красоты
+        time = datetime.now().strftime("%H:%M:%S")
+        return f"{Colors.CYAN}[{time}]{Colors.ENDC} {color}{record.getMessage()}{Colors.ENDC}"
 
 # Настройка логирования
 logger = logging.getLogger("Mona")

@@ -25,8 +25,15 @@ def get_cart(user_id):
 @cart_bp.route('/cart/<user_id>/delivery-info', methods=['GET'])
 def get_cart_delivery_info(user_id):
     try:
-        delivery_days_in_stock = int(get_platform_setting('delivery_days_in_stock') or 3)
-        delivery_days_backorder = int(get_platform_setting('delivery_days_backorder') or 14)
+        try:
+            delivery_days_in_stock = int(float(get_platform_setting('delivery_days_in_stock') or 3))
+        except (ValueError, TypeError):
+            delivery_days_in_stock = 3
+            
+        try:
+            delivery_days_backorder = int(float(get_platform_setting('delivery_days_backorder') or 14))
+        except (ValueError, TypeError):
+            delivery_days_backorder = 14
         
         conn = get_db_connection()
         cur = conn.cursor()

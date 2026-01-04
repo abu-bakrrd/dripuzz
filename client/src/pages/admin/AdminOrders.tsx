@@ -311,10 +311,14 @@ export default function AdminOrders() {
 									#{order.id.slice(0, 6)}
 								</span>
 								{getStatusBadge(order.status)}
-								{order.has_backorder && (
+								{order.has_backorder ? (
 									<Badge className='bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0 dark:bg-orange-900/40 dark:text-orange-300'>
 										<Clock className='h-2.5 w-2.5 mr-0.5' />
-										Заказ
+										Под заказ
+									</Badge>
+								) : (
+									<Badge className='bg-green-100 text-green-800 text-[10px] px-1.5 py-0 dark:bg-green-900/40 dark:text-green-300'>
+										<Package className='h-2.5 w-2.5 mr-0.5' />В наличии
 									</Badge>
 								)}
 							</div>
@@ -374,10 +378,14 @@ export default function AdminOrders() {
 							<div className='flex items-center justify-between flex-wrap gap-2'>
 								<div className='flex items-center gap-2 flex-wrap'>
 									{getStatusBadge(selectedOrder.status)}
-									{selectedOrder.has_backorder && (
+									{selectedOrder.has_backorder ? (
 										<Badge className='bg-orange-100 text-orange-800 text-xs dark:bg-orange-900/40 dark:text-orange-300'>
 											<Clock className='h-3 w-3 mr-1' />
 											Под заказ
+										</Badge>
+									) : (
+										<Badge className='bg-green-100 text-green-800 text-xs dark:bg-green-900/40 dark:text-green-300'>
+											<Package className='h-3 w-3 mr-1' />В наличии
 										</Badge>
 									)}
 								</div>
@@ -387,11 +395,19 @@ export default function AdminOrders() {
 							</div>
 
 							{selectedOrder.estimated_delivery_days && (
-								<div className='bg-blue-50 border border-blue-200 p-2.5 rounded-lg text-sm'>
-									<div className='flex items-center gap-2 text-blue-800'>
+								<div
+									className={`p-2.5 rounded-lg text-sm border ${
+										selectedOrder.has_backorder
+											? 'bg-orange-50 border-orange-200 text-orange-800'
+											: 'bg-blue-50 border-blue-200 text-blue-800'
+									}`}
+								>
+									<div className='flex items-center gap-2'>
 										<Clock className='h-3.5 w-3.5 shrink-0' />
 										<span>
-											Доставка:{' '}
+											{selectedOrder.has_backorder
+												? 'Срок поставки:'
+												: 'Доставка:'}{' '}
 											<strong>
 												{selectedOrder.estimated_delivery_days} дн.
 											</strong>

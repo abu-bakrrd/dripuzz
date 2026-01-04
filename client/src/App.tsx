@@ -48,6 +48,7 @@ function AppContent() {
 		updateQuantity,
 		removeFromCart,
 		clearCart,
+		clearCartAsync,
 	} = useCart()
 
 	const {
@@ -133,8 +134,10 @@ function AppContent() {
 		}
 	}
 
-	const handleClearCart = () => {
-		clearCart()
+	const handleClearCart = async () => {
+		if (user) {
+			await clearCartAsync()
+		}
 	}
 
 	const transformedCartItems = cartItems.map(item => ({

@@ -127,7 +127,11 @@ def checkout_order():
                 return default
 
         default_days = safe_int(get_platform_setting('default_delivery_days'), 3)
-        estimated_days = max_backorder_days if has_backorder and max_backorder_days > 0 else default_days
+        if has_backorder:
+            estimated_days = max_backorder_days if max_backorder_days > 0 else default_days
+        else:
+            estimated_days = default_days
+        
         backorder_date = datetime.now() + timedelta(days=estimated_days) if has_backorder else None
         
         initial_status = 'reviewing'

@@ -238,7 +238,7 @@ const getDeliveryLabel = (
 		}
 	}
 	return {
-		text: formatDeliveryDate(order.created_at, order.estimated_delivery_days),
+		text: 'В наличии (доставка)',
 		isBackorder: false,
 	}
 }
@@ -621,6 +621,15 @@ export default function Orders() {
 													{isNew && (
 														<Badge className='bg-primary text-primary-foreground text-[9px] px-1 py-0 animate-pulse flex-shrink-0'>
 															Новый
+														</Badge>
+													)}
+													{order.has_backorder ? (
+														<Badge className='bg-orange-100 text-orange-800 text-[10px] px-1.5 py-0 dark:bg-orange-900/40 dark:text-orange-300 flex-shrink-0'>
+															Под заказ
+														</Badge>
+													) : (
+														<Badge className='bg-green-100 text-green-800 text-[10px] px-1.5 py-0 dark:bg-green-900/40 dark:text-green-300 flex-shrink-0'>
+															В наличии
 														</Badge>
 													)}
 												</div>

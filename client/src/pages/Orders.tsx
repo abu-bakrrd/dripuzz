@@ -609,12 +609,12 @@ export default function Orders() {
 											</div>
 
 											<div className='flex-1 min-w-0 overflow-hidden'>
-												<div className='flex items-center gap-1.5'>
+												<div className='flex flex-wrap items-center gap-1.5'>
 													<Badge
 														variant='outline'
 														className={`${getStatusColor(
 															order.status
-														)} text-[10px] font-medium px-1.5 py-0 truncate max-w-[120px]`}
+														)} text-[10px] font-medium px-1.5 py-0`}
 													>
 														{getStatusLabel(order.status)}
 													</Badge>

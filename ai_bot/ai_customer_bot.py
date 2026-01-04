@@ -8,20 +8,52 @@ from datetime import datetime
 from dotenv import load_dotenv
 from groq import Groq
 
-# --- 1. CONFIGURATION & IMPORTS ---
+# --- 1. CONFIGURATION & LOGGING ---
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import ai_bot.ai_db_helper as db_helper
 
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env'))
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("mona_v8.log", encoding='utf-8'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# ANSI Color Codes
+class Colors:
+    HEADER = '\033[95m'
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+class ColorFormatter(logging.Formatter):
+    """Кастомный форматировщик для красивых логов в консоли"""
+    FORMATS = {
+        logging.DEBUG: Colors.CYAN + "%(message)s" + Colors.ENDC,
+        logging.INFO: Colors.BLUE + "%(message)s" + Colors.ENDC,
+        logging.WARNING: Colors.YELLOW + "⚠️ %(message)s" + Colors.ENDC,
+        logging.ERROR: Colors.RED + "❌ %(message)s" + Colors.ENDC,
+        logging.CRITICAL: Colors.BOLD + Colors.RED + "‼️ %(message)s" + Colors.ENDC
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+# Настройка логирования
+logger = logging.getLogger("Mona")
+logger.setLevel(logging.INFO)
+
+# Консольный хендлер с цветами
+console_handler = logging.StreamHandler(sys.stdout)
+console_handler.setFormatter(ColorFormatter())
+logger.addHandler(console_handler)
+
+# Файловый хендлер (без цветов)
+file_handler = logging.FileHandler("mona_v8.log", encoding='utf-8')
+file_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+logger.addHandler(file_handler)
 
 class MonaBot:
     def __init__(self):
@@ -31,7 +63,7 @@ class MonaBot:
         self.bot = telebot.TeleBot(self.token)
         self.groq_key = os.getenv('GROQ_API_KEY')
         self.groq = Groq(api_key=self.groq_key) if self.groq_key else None
-        self.logger = logging.getLogger("MonaBot")
+        self.logger = logger
         self.sessions = {}
         self.ADMIN_ID = 5644397480
         self.waiting_for_support = set()
@@ -167,7 +199,7 @@ JSON:
         wait_time = "несколько секунд"
         for model_name in MODELS:
             try:
-                self.logger.info(f"🤖 Пытаюсь использовать модель: {model_name}")
+                self.logger.info(f"🤖 [REQUEST] Model: {model_name}")
                 full_msgs = [{"role": "system", "content": self.system_prompt}] + messages
                 completion = self.groq.chat.completions.create(
                     model=model_name,
@@ -175,10 +207,12 @@ JSON:
                     temperature=0.1,
                     response_format={"type": "json_object"}
                 )
-                return json.loads(completion.choices[0].message.content)
+                res = json.loads(completion.choices[0].message.content)
+                self.logger.info(f"🧠 [THOUGHT] {res.get('thoughts')}")
+                return res
             except Exception as e:
                 err_msg = str(e).lower()
-                self.logger.warning(f"⚠️ Модель {model_name} дала сбой: {e}")
+                self.logger.warning(f"⚠️ [FAIL] Model {model_name}: {e}")
                 if "429" in err_msg or "rate limit" in err_msg:
                     last_error = "overloaded"
                     match = re.search(r'in (\d+m?\s?\d*s)', err_msg)
@@ -193,7 +227,7 @@ JSON:
         tool = action_data.get("tool")
         args = action_data.get("args", {})
         if not tool or tool == "none": return None
-        self.logger.info(f"🔧 TOOL EXEC: {tool} args={args}")
+        self.logger.info(f"🔧 [TOOL] {Colors.BOLD}{tool}{Colors.ENDC} -> {args}")
         try:
             if tool == "search": return db_helper.search(args.get("query", ""))
             elif tool == "info": return db_helper.info(args.get("id", ""))
@@ -252,7 +286,9 @@ JSON:
                     action = ai_plan.get("action", {})
                     tool_name = action.get("tool")
                     if not tool_name or tool_name == "none": break
+                    
                     tool_result = self._execute_tool(action, session)
+                    self.logger.info(f"👁 [OBSERVATION] {str(tool_result)[:100]}...")
                     assistant_msg = {"role": "assistant", "content": json.dumps(ai_plan, ensure_ascii=False)}
                     observation_msg = {"role": "user", "content": f"SYSTEM_OBSERVATION: {tool_result}"}
                     context_messages.append(assistant_msg)

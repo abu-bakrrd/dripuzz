@@ -54,18 +54,22 @@ def init_db():
     cur.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto')
     
     # Create products table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS products (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            name TEXT NOT NULL,
-            description TEXT,
-            price INTEGER NOT NULL,
-            images TEXT[] NOT NULL,
-            category_id TEXT,
-            colors TEXT[],
-            attributes JSONB
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS products (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                name TEXT NOT NULL,
+                description TEXT,
+                price INTEGER NOT NULL,
+                images TEXT[] NOT NULL,
+                category_id TEXT,
+                colors TEXT[],
+                attributes JSONB
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # ... (rest of tables from app.py) ...
     # Note: To keep this concise for now, I'll include the full logic in the implementation
@@ -87,144 +91,184 @@ def init_db():
     ''')
     
     # Create users table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            username TEXT,
-            password TEXT,
-            telegram_id BIGINT UNIQUE,
-            first_name TEXT,
-            last_name TEXT,
-            email TEXT UNIQUE,
-            password_hash TEXT,
-            phone TEXT,
-            telegram_username TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            is_admin BOOLEAN DEFAULT FALSE,
-            is_superadmin BOOLEAN DEFAULT FALSE
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                username TEXT,
+                password TEXT,
+                telegram_id BIGINT UNIQUE,
+                first_name TEXT,
+                last_name TEXT,
+                email TEXT UNIQUE,
+                password_hash TEXT,
+                phone TEXT,
+                telegram_username TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                is_admin BOOLEAN DEFAULT FALSE,
+                is_superadmin BOOLEAN DEFAULT FALSE
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     # Create password_reset_tokens table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS password_reset_tokens (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            token VARCHAR(64) UNIQUE NOT NULL,
-            expires_at TIMESTAMP NOT NULL,
-            used BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                token VARCHAR(64) UNIQUE NOT NULL,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create categories table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS categories (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            name TEXT NOT NULL,
-            icon TEXT,
-            sort_order INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS categories (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                name TEXT NOT NULL,
+                icon TEXT,
+                sort_order INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create favorites table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS favorites (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
-            UNIQUE(user_id, product_id)
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS favorites (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
+                UNIQUE(user_id, product_id)
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create cart table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS cart (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
-            quantity INTEGER NOT NULL DEFAULT 1,
-            selected_color TEXT,
-            selected_attributes JSONB
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS cart (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
+                quantity INTEGER NOT NULL DEFAULT 1,
+                selected_color TEXT,
+                selected_attributes JSONB
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create orders table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            total INTEGER NOT NULL,
-            status TEXT DEFAULT 'pending',
-            payment_method TEXT,
-            payment_status TEXT DEFAULT 'pending',
-            payment_id TEXT,
-            delivery_address TEXT,
-            delivery_lat DOUBLE PRECISION,
-            delivery_lng DOUBLE PRECISION,
-            customer_phone TEXT,
-            customer_name TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            has_backorder BOOLEAN DEFAULT FALSE,
-            backorder_delivery_date TIMESTAMP,
-            estimated_delivery_days INTEGER,
-            payment_receipt_url TEXT
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS orders (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                total INTEGER NOT NULL,
+                status TEXT DEFAULT 'pending',
+                payment_method TEXT,
+                payment_status TEXT DEFAULT 'pending',
+                payment_id TEXT,
+                delivery_address TEXT,
+                delivery_lat DOUBLE PRECISION,
+                delivery_lng DOUBLE PRECISION,
+                customer_phone TEXT,
+                customer_name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                has_backorder BOOLEAN DEFAULT FALSE,
+                backorder_delivery_date TIMESTAMP,
+                estimated_delivery_days INTEGER,
+                payment_receipt_url TEXT
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create order_items table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS order_items (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            order_id VARCHAR REFERENCES orders(id) ON DELETE CASCADE,
-            product_id VARCHAR REFERENCES products(id) ON DELETE SET NULL,
-            name TEXT NOT NULL,
-            price INTEGER NOT NULL,
-            quantity INTEGER NOT NULL,
-            selected_color TEXT,
-            selected_attributes JSONB,
-            availability_status TEXT DEFAULT 'in_stock',
-            backorder_lead_time_days INTEGER
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS order_items (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                order_id VARCHAR REFERENCES orders(id) ON DELETE CASCADE,
+                product_id VARCHAR REFERENCES products(id) ON DELETE SET NULL,
+                name TEXT NOT NULL,
+                price INTEGER NOT NULL,
+                quantity INTEGER NOT NULL,
+                selected_color TEXT,
+                selected_attributes JSONB,
+                availability_status TEXT DEFAULT 'in_stock',
+                backorder_lead_time_days INTEGER
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create platform_settings table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS platform_settings (
-            key VARCHAR PRIMARY KEY,
-            value TEXT,
-            is_secret BOOLEAN DEFAULT FALSE,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS platform_settings (
+                key VARCHAR PRIMARY KEY,
+                value TEXT,
+                is_secret BOOLEAN DEFAULT FALSE,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     # Create product_inventory table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS product_inventory (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
-            color TEXT,
-            attribute1_value TEXT,
-            attribute2_value TEXT,
-            quantity INTEGER NOT NULL DEFAULT 0,
-            backorder_lead_time_days INTEGER,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(product_id, color, attribute1_value, attribute2_value)
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS product_inventory (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                product_id VARCHAR REFERENCES products(id) ON DELETE CASCADE,
+                color TEXT,
+                attribute1_value TEXT,
+                attribute2_value TEXT,
+                quantity INTEGER NOT NULL DEFAULT 0,
+                backorder_lead_time_days INTEGER,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(product_id, color, attribute1_value, attribute2_value)
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
 
     # Create chat_messages table
-    cur.execute('''
-        CREATE TABLE IF NOT EXISTS chat_messages (
-            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            sender_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
-            content TEXT NOT NULL,
-            is_read BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    ''')
+    try:
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                sender_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+                content TEXT NOT NULL,
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        conn.commit()
+    except Exception:
+        conn.rollback()
     
     conn.commit()
     cur.close()

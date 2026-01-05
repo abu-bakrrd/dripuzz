@@ -359,7 +359,7 @@ Type=simple
 User=$APP_USER
 WorkingDirectory=$APP_DIR
 Environment="NODE_ENV=production"
-Environment="PORT=5002"
+Environment="CHAT_PORT=5002"
 Environment="SKIP_FLASK=true"
 EnvironmentFile=$APP_DIR/.env
 ExecStart=/usr/bin/node dist/index.js

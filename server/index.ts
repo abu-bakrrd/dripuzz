@@ -7,7 +7,14 @@ const app = express()
 
 // Flask will run on port 5001
 const FLASK_PORT = 5001
-const SERVER_PORT = process.env.PORT ? parseInt(process.env.PORT) : 5000
+const SERVER_PORT =
+	process.env.SKIP_FLASK === 'true'
+		? process.env.CHAT_PORT
+			? parseInt(process.env.CHAT_PORT)
+			: 5002
+		: process.env.PORT
+		? parseInt(process.env.PORT)
+		: 5000
 
 if (process.env.SKIP_FLASK !== 'true') {
 	// Start Flask application

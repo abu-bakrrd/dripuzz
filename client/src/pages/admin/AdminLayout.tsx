@@ -90,7 +90,7 @@ export default function AdminLayout() {
 						<TabsList className='inline-flex w-max min-w-full sm:w-full sm:grid sm:grid-cols-7 lg:grid-cols-8 gap-1'>
 							<TabsTrigger
 								value='products'
-								className='flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap'
+								className='flex items-center gap-1 px-2 sm:gap-1.5 sm:px-3 py-2 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap'
 							>
 								<Package className='h-4 w-4 flex-shrink-0' />
 								<span>Товары</span>

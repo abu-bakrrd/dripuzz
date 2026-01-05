@@ -1,9 +1,7 @@
-import { Pool, neonConfig } from '@neondatabase/serverless'
 import * as schema from '@shared/schema'
-import { drizzle } from 'drizzle-orm/neon-serverless'
-import ws from 'ws'
-
-neonConfig.webSocketConstructor = ws
+import { drizzle } from 'drizzle-orm/node-postgres'
+import pkg from 'pg'
+const { Pool } = pkg
 
 if (!process.env.DATABASE_URL) {
 	throw new Error(
@@ -11,8 +9,13 @@ if (!process.env.DATABASE_URL) {
 	)
 }
 
+// Disable SSL for connections to localhost (common on VPS)
+const isLocal =
+	process.env.DATABASE_URL.includes('localhost') ||
+	process.env.DATABASE_URL.includes('127.0.0.1')
+
 export const pool = new Pool({
 	connectionString: process.env.DATABASE_URL,
-	ssl: process.env.DATABASE_URL?.includes('localhost') ? false : undefined,
+	ssl: isLocal ? false : { rejectUnauthorized: false },
 })
-export const db = drizzle({ client: pool, schema })
+export const db = drizzle(pool, { schema })

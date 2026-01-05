@@ -1,58 +1,31 @@
 import FontLoader from '@/components/FontLoader'
 import { OrganizationSchema } from '@/components/SEO'
 import ThemeApplier from '@/components/ThemeApplier'
+import { ThemeProvider } from '@/components/ThemeProvider'
 import { Toaster } from '@/components/ui/toaster'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { useCart } from '@/hooks/useCart'
 import { useConfig } from '@/hooks/useConfig'
 import { useFavorites } from '@/hooks/useFavorites'
-// Lazy load Chat
+import Cart from '@/pages/Cart'
+import Favorites from '@/pages/Favorites'
+import ForgotPassword from '@/pages/ForgotPassword'
+import Home from '@/pages/Home'
+import Login from '@/pages/Login'
+import Orders from '@/pages/Orders'
+import Product from '@/pages/Product'
+import Register from '@/pages/Register'
+import ResetPassword from '@/pages/ResetPassword'
+import { QueryClientProvider } from '@tanstack/react-query'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { Route, Router, Switch, useLocation } from 'wouter'
+import { queryClient } from './lib/queryClient'
+
+// Lazy-load админку для code splitting (загружается отдельно от основного бандла)
+const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'))
+const AdminLogin = lazy(() => import('@/pages/admin/AdminLogin'))
 const Chat = lazy(() => import('@/pages/Chat'))
-
-// ... inside AppContent ...
-
-	const handleChatClick = () => {
-		if (!user) {
-			setPendingAction({
-				type: 'navigate',
-				targetPath: '/chat',
-			})
-			setLocation('/registration')
-			return
-		}
-		setLocation('/chat')
-	}
-
-// ... inside return Switch ...
-
-					<Route path='/chat'>
-						<Suspense
-							fallback={
-								<div className='min-h-screen flex items-center justify-center'>
-									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
-								</div>
-							}
-						>
-							<Chat />
-						</Suspense>
-					</Route>
-
-					<Route path='/'>
-						<Home
-							onCartClick={handleCartClick}
-							onFavoritesClick={handleFavoritesClick}
-							onAccountClick={handleAccountClick}
-                            onChatClick={handleChatClick}
-							onProductClick={handleProductClick}
-							cartCount={cartCount}
-							favoritesCount={transformedFavoriteItems.length}
-							onAddToCart={handleAddToCart}
-							onToggleFavorite={handleToggleFavorite}
-							favoriteIds={favoriteIds}
-							cartItemIds={cartItemIds}
-						/>
-					</Route>
 
 interface PendingAction {
 	type: 'addToCart' | 'toggleFavorite' | 'navigate'
@@ -233,6 +206,18 @@ function AppContent() {
 		}
 	}
 
+	const handleChatClick = () => {
+		if (!user) {
+			setPendingAction({
+				type: 'navigate',
+				targetPath: '/chat',
+			})
+			setLocation('/registration')
+			return
+		}
+		setLocation('/chat')
+	}
+
 	return (
 		<div className='w-full mx-auto bg-background min-h-screen'>
 			<div className='w-full'>
@@ -356,11 +341,24 @@ function AppContent() {
 						}}
 					</Route>
 
+					<Route path='/chat'>
+						<Suspense
+							fallback={
+								<div className='min-h-screen flex items-center justify-center'>
+									<div className='animate-spin rounded-full h-8 w-8 border-b-2 border-primary'></div>
+								</div>
+							}
+						>
+							<Chat />
+						</Suspense>
+					</Route>
+
 					<Route path='/'>
 						<Home
 							onCartClick={handleCartClick}
 							onFavoritesClick={handleFavoritesClick}
 							onAccountClick={handleAccountClick}
+							onChatClick={handleChatClick}
 							onProductClick={handleProductClick}
 							cartCount={cartCount}
 							favoritesCount={transformedFavoriteItems.length}
@@ -387,8 +385,6 @@ function TitleUpdater() {
 
 	return null
 }
-
-import { ThemeProvider } from '@/components/ThemeProvider'
 
 function App() {
 	return (

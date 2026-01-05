@@ -88,6 +88,9 @@ else
     print_warning "Git репозиторий (.git) не найден. Текущая папка: $(pwd). Убедитесь, что вы вручную обновили файлы."
 fi
 
+# Исправляем права перед установкой
+chown -R $APP_USER:$APP_USER $APP_DIR
+
 # Обновление Node.js зависимостей
 print_step "Обновление Node.js зависимостей..."
 sudo -u $APP_USER bash <<EOF
@@ -139,6 +142,11 @@ fi
 if systemctl list-unit-files | grep -q telegram-bot.service; then
     print_step "Перезапуск Shop бота..."
     systemctl restart telegram-bot
+fi
+
+if systemctl list-unit-files | grep -q shop-chat.service; then
+    print_step "Перезапуск чат-сервиса..."
+    systemctl restart shop-chat
 fi
 
 # Ожидание запуска

@@ -262,18 +262,17 @@ export default function AdminChat() {
 						<ScrollArea className='flex-1 p-4'>
 							<div className='space-y-4'>
 								{messages.map((msg, index) => {
-									const isUser = msg.sender_id === selectedUserId
-									const isAdmin = !isUser
+									const isMe = msg.sender_id === user?.id // I am admin
 									return (
 										<div
 											key={msg.id || index}
 											className={`flex ${
-												isUser ? 'justify-end' : 'justify-start'
+												isMe ? 'justify-start' : 'justify-end'
 											}`}
 										>
 											<div
 												className={`max-w-[70%] rounded-2xl px-4 py-3 ${
-													isAdmin
+													isMe
 														? 'bg-muted text-foreground rounded-bl-none'
 														: 'bg-primary text-primary-foreground rounded-br-none'
 												}`}

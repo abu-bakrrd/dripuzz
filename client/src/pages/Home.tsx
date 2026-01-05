@@ -35,6 +35,7 @@ interface HomeProps {
 	onCartClick: () => void
 	onFavoritesClick: () => void
 	onAccountClick: () => void
+	onChatClick: () => void
 	onProductClick: (id: string) => void
 	cartCount: number
 	favoritesCount: number
@@ -52,6 +53,7 @@ export default function Home({
 	onCartClick,
 	onFavoritesClick,
 	onAccountClick,
+	onChatClick,
 	onProductClick,
 	cartCount,
 	favoritesCount,
@@ -350,6 +352,7 @@ export default function Home({
 				onCartClick={onCartClick}
 				onFavoritesClick={onFavoritesClick}
 				onAccountClick={onAccountClick}
+				onChatClick={onChatClick}
 				cartCount={cartCount}
 				favoritesCount={favoritesCount}
 			/>

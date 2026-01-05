@@ -213,6 +213,18 @@ def init_db():
             UNIQUE(product_id, color, attribute1_value, attribute2_value)
         )
     ''')
+
+    # Create chat_messages table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS chat_messages (
+            id VARCHAR PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+            sender_id VARCHAR REFERENCES users(id) ON DELETE CASCADE,
+            content TEXT NOT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
     
     conn.commit()
     cur.close()

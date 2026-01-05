@@ -61,7 +61,7 @@ export default function AdminChat() {
 		if (!user) return
 
 		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-		const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}`
+		const wsUrl = `${protocol}//${window.location.host}/ws?userId=${user.id}&isAdmin=true`
 		const socket = new WebSocket(wsUrl)
 
 		socket.onopen = () => {
@@ -129,7 +129,7 @@ export default function AdminChat() {
 			await fetch('/api/chat/read', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ sender_id: senderId }),
+				body: JSON.stringify({ userId: user?.id, senderId: senderId }),
 			})
 			// Update local state to reflect read status (optional, but good for UI)
 			setUsers(prev =>

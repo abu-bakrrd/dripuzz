@@ -63,6 +63,17 @@ export default function Chat() {
 				const data = JSON.parse(event.data)
 				if (data.type === 'new_message') {
 					setMessages(prev => [...prev, data.message])
+					// Mark as read if not from me
+					if (data.message.sender_id !== user.id) {
+						fetch('/api/chat/read', {
+							method: 'POST',
+							headers: { 'Content-Type': 'application/json' },
+							body: JSON.stringify({
+								userId: user.id,
+								senderId: data.message.sender_id,
+							}),
+						}).catch(err => console.error('Failed to mark read:', err))
+					}
 				}
 			} catch (e) {
 				console.error('Error parsing WS message:', e)

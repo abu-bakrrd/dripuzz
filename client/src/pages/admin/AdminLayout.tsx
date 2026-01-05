@@ -5,6 +5,7 @@ import {
 	BarChart3,
 	FolderOpen,
 	LogOut,
+	MessageCircle,
 	Package,
 	Settings,
 	ShoppingCart,
@@ -14,6 +15,7 @@ import {
 import { useEffect, useState } from 'react'
 import { useLocation } from 'wouter'
 import AdminCategories from './AdminCategories'
+import AdminChat from './AdminChat'
 import AdminInventory from './AdminInventory'
 import AdminManagers from './AdminManagers'
 import AdminOrders from './AdminOrders'
@@ -131,6 +133,13 @@ export default function AdminLayout() {
 								</TabsTrigger>
 							)}
 							<TabsTrigger
+								value='chat'
+								className='flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap'
+							>
+								<MessageCircle className='h-4 w-4 flex-shrink-0' />
+								<span>Чат</span>
+							</TabsTrigger>
+							<TabsTrigger
 								value='settings'
 								className='flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm whitespace-nowrap'
 							>
@@ -148,6 +157,7 @@ export default function AdminLayout() {
 					{activeTab === 'managers' && admin?.is_superadmin && (
 						<AdminManagers />
 					)}
+					{activeTab === 'chat' && <AdminChat />}
 					{activeTab === 'settings' && <AdminSettings />}
 				</Tabs>
 			</div>

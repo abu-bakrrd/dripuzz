@@ -348,6 +348,28 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 
+# WebSocket Chat Service
+cat > /etc/systemd/system/shop-chat.service <<EOF
+[Unit]
+Description=Telegram Shop WebSocket Chat Service
+After=network.target postgresql.service shop-app.service
+
+[Service]
+Type=simple
+User=$APP_USER
+WorkingDirectory=$APP_DIR
+Environment="NODE_ENV=production"
+Environment="PORT=5002"
+Environment="SKIP_FLASK=true"
+EnvironmentFile=$APP_DIR/.env
+ExecStart=/usr/bin/node dist/index.js
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 # AI Bot (Mona)
 cat > /etc/systemd/system/ai-bot.service <<EOF
 [Unit]
@@ -403,6 +425,9 @@ systemctl daemon-reload
 systemctl enable shop-app
 systemctl start shop-app
 
+systemctl enable shop-chat
+systemctl start shop-chat
+
 systemctl enable ai-bot
 systemctl start ai-bot
 
@@ -420,6 +445,12 @@ if systemctl is-active --quiet shop-app; then
     print_step "✅ Shop App запущен"
 else
     print_error "❌ Shop App не запустился"
+fi
+
+if systemctl is-active --quiet shop-chat; then
+    print_step "✅ Chat Service запущен"
+else
+    print_error "❌ Chat Service не запустился"
 fi
 
 if systemctl is-active --quiet ai-bot; then
@@ -462,6 +493,15 @@ server {
         alias $APP_DIR/config;
         expires 1h;
         add_header Cache-Control "public";
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:5002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
     }
 
     location / {

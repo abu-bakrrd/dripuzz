@@ -129,19 +129,14 @@ if [ -d "$APP_DIR/config" ]; then
     chmod -R 755 $APP_DIR/config
 fi
 
-# Перезапуск приложения
-print_step "Перезапуск сервисов..."
-systemctl restart shop-app
-
-# Перезапуск ботов
-if systemctl list-unit-files | grep -q ai-bot.service; then
-    print_step "Перезапуск AI бота..."
-    systemctl restart ai-bot
+if systemctl list-unit-files | grep -q shop-app.service; then
+    print_step "Перезапуск приложения..."
+    systemctl restart shop-app
 fi
 
-if systemctl list-unit-files | grep -q telegram-bot.service; then
-    print_step "Перезапуск Shop бота..."
-    systemctl restart telegram-bot
+if systemctl list-unit-files | grep -q shop-chat.service; then
+    print_step "Перезапуск чат-сервиса..."
+    systemctl restart shop-chat
 fi
 
 if systemctl list-unit-files | grep -q shop-chat.service; then

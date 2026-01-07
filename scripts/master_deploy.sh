@@ -283,6 +283,9 @@ chmod 600 $APP_DIR/.env
 print_step "Установка зависимостей..."
 cd $APP_DIR
 
+# Исправляем права перед установкой Node зависимостей
+chown -R $APP_USER:$APP_USER $APP_DIR
+
 # Frontend
 sudo -u $APP_USER bash <<EOF
 export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -534,6 +537,15 @@ server {
         alias $APP_DIR/config;
         expires 1h;
         add_header Cache-Control "public";
+    }
+
+    location /ws {
+        proxy_pass http://127.0.0.1:5002;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
     }
 
     location / {

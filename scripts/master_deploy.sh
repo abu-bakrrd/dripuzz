@@ -203,7 +203,15 @@ usermod -a -G www-data $APP_USER
 # НАСТРОЙКА POSTGRESQL
 # ============================================================================
 print_step "Настройка PostgreSQL..."
-sudo -u postgres psql <<EOF
+
+# Убеждаемся, что база запущена
+systemctl start postgresql
+systemctl enable postgresql
+
+# Запускаем команды от имени postgres в корневой папке, чтобы избежать Permission Denied (если скрипт в /root)
+sudo -u postgres bash <<EOF
+cd /
+psql <<SQL
 SELECT 'CREATE DATABASE $DB_NAME' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME')\\gexec
 DO
 \$\$
@@ -215,6 +223,7 @@ END
 \$\$;
 GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
 ALTER DATABASE $DB_NAME OWNER TO $DB_USER;
+SQL
 EOF
 
 # Настройка pg_hba.conf
